@@ -1,0 +1,1 @@
+//main dosyası Her şeyi başlatan dosya.
