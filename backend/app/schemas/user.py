@@ -14,15 +14,21 @@ class UserRole(str, Enum):
     UYE = "uye"
     MEZUN = "mezun"
 
+
 # ==========================================
 # BASE SCHEMAS
 # ==========================================
 
 class UserBase(BaseModel):
     email: EmailStr
-    full_name: Optional[str] = None
-    role: UserRole  # ← Enum kullan, string değil
-    
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    role: UserRole
+    department: Optional[str] = None
+    class_: Optional[int] = None
+    university_department: Optional[str] = None
+
+
     @field_validator('role')
     @classmethod
     def validate_role(cls, v):
@@ -34,14 +40,18 @@ class UserBase(BaseModel):
             except ValueError:
                 raise ValueError(f"Geçersiz rol: {v}. Geçerli roller: {[r.value for r in UserRole]}")
         return v
+    class Config:
+        populate_by_name = True   # class_ ile class eşleşsin 
+
+
 
 class User(UserBase):
-    id: int
-    is_active: bool = True
+    id: str  #uuid
+    created_at: Optional[str] = None  # ISO formatında tarih
 
     class Config:
         from_attributes = True  # Pydantic v2
         use_enum_values = True  # Enum değerlerini string olarak dön
-
+        populate_by_name = True   # class_ ile class eşleşsin
 class UserInDB(User):
-    hashed_password: str
+    pass

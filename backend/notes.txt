@@ -77,31 +77,6 @@ Kısaca:
 
 “Güvenlik işlemleri”
 
-📁 models/
-
-DB tablolarının Python karşılığı.
-
-Örnek:
-
-user.py → users tablosu
-
-role.py → roles tablosu
-
-event.py → events tablosu
-
-İçinde:
-
-id
-
-name
-
-created_at
-
-foreign key’ler
-
-Kısaca:
-
-“Veritabanı şeması kod hali”
 
 📁 schemas/
 
@@ -169,3 +144,10 @@ Migration için kullanılır
 Kısaca:
 
 “Veritabanı bağlantı katmanı”
+
+1 tane manuel elçi rolu oluşturuldu 
+{
+  "email": "admin@hsd.com",
+  "password": "Admin123!"
+}
+giriş yaparken kullanılıabilir 

@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
+from app.routers import auth 
 app = FastAPI(
     title="Kulüp Yönetim Sistemi API",
     description="Üniversite kulüplerini yönetmek için geliştirilen API.",
@@ -20,9 +20,12 @@ app.add_middleware(
 )
 
 # Auth router
-from app.routers import auth
+
 app.include_router(auth.router)
 
 @app.get("/")
 async def root():
     return {"message": "Kulüp Yönetim Sistemi API'sine Hoşgeldiniz!"}
+
+
+

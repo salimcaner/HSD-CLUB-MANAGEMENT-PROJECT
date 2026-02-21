@@ -127,13 +127,8 @@ Login testi için:
 
 | Email | Şifre | Rol |
 |-------|-------|-----|
-| `admin@example.com` | `secret` | Admin |
-| `elci@example.com` | `secret` | Elçi |
-| `lider@example.com` | `secret` | Lider |
-| `uye@example.com` | `secret` | Üye |
-| `mezun@example.com` | `secret` | Mezun |
+| `admin@hsd.com` | `Admin123!` | elçi |
 
----
 
 ## 🔄 HER GÜN ÇALIŞMAYA BAŞLARKEN
 

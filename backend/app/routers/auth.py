@@ -1,79 +1,75 @@
-from fastapi import APIRouter, HTTPException, status, Response, Depends
-from datetime import timedelta
-from app.schemas.auth import LoginRequest
-from app.core import security, config
-from app.services.mock_db import get_user
+from fastapi import APIRouter, Response, Depends
+from app.schemas.auth import InviteRequest, LoginRequest
+from app.services.auth_service import invite_user, login_user
+from app.core import security
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
+
 @router.post("/login")
 async def login(request: LoginRequest, response: Response):
-    """
-    Kullanıcı girişi - Email ve şifre kontrolü, JWT token üretimi
-    """
-    
-    # 1. Kullanıcıyı veritabanından bul
-    user = get_user(request.email)
-    
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Email veya şifre hatalı!",
-        )
-    
-    # 2. Şifre kontrolü
-    if not security.verify_password(request.password, user.hashed_password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Email veya şifre hatalı!",
-        )
-    
-    # 3. Hesap aktif mi kontrolü
-    if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Hesabınız aktif değil!",
-        )
-    
-    # 4. Access Token oluştur
-    access_token_expires = timedelta(minutes=config.settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    
-    access_token = security.create_access_token(
-        subject=user.id,
-        role=user.role,
-        expires_delta=access_token_expires
+
+    # Service çağır
+    access_token, user = login_user(
+        email=request.email,
+        password=request.password
     )
-    
-    # 5. Cookie'ye kaydet (Swagger için otomatik authorize)
+
+    # Cookie set (HTTP işi → router)
     response.set_cookie(
         key="access_token",
         value=f"Bearer {access_token}",
         httponly=True,
-        max_age=1800,  # 30 dakika
+        max_age=1800,
         samesite="lax"
     )
-    
-    # 6. JSON döndür (Frontend için)
+
+    # JSON response
     return {
-        "access_token": access_token,
-        "token_type": "bearer",
-        "user": {
-            "id": user.id,
-            "email": user.email,
-            "full_name": user.full_name,
-            "role": user.role,
-        }
+    "access_token": access_token,
+    "token_type": "bearer",
+    "user": {
+        "id": user["id"],
+        "email": user["email"],
+        "first_name": user["first_name"],
+        "last_name": user["last_name"],
+        "role": user["role"],
     }
+}
 
 @router.get("/me")
-async def get_current_user_info(current_user = Depends(security.get_current_user)):
-    """
-    Mevcut kullanıcı bilgisini getir (Token'dan)
-    """
+async def get_current_user_info(
+    current_user = Depends(security.get_current_user)
+):
     return {
         "id": current_user.id,
         "email": current_user.email,
-        "full_name": current_user.full_name,
+        "first_name": current_user.first_name,
+        "last_name": current_user.last_name,
         "role": current_user.role,
-        "is_active": current_user.is_active,
+        "department": current_user.department,
+        "class": current_user.class_,
+        "created_at": current_user.created_at,
+        "university_department": current_user.university_department
     }
+
+# -----------------------------
+# kullanıcı ekleme endpoint
+# -----------------------------
+
+@router.post("/invite")
+async def invite_endpoint(request: InviteRequest,
+    current_user = Depends(security.require_lider_or_above)): # Sadece lider ve üzeri davet atabilir):
+   
+    user = invite_user(
+        email=request.email,
+        first_name=request.first_name,
+        last_name=request.last_name,
+        role=request.role,
+        department=request.department,
+        class_=request.class_,
+        university_department=request.university_department
+    )
+    return {"message": f"{request.email} için davet gönderildi."}
+
+

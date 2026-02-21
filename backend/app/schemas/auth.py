@@ -1,12 +1,24 @@
 from pydantic import BaseModel, EmailStr
+from typing import Optional
 
-# Kullanıcı giriş isteği (Login Request) için veri doğrulama şeması.
-# Pydantic kütüphanesini kullanarak gelen verinin formatını kontrol ediyoruz.
+
+# -------------------------
+# LOGIN
+# -------------------------
 class LoginRequest(BaseModel):
-    # Kullanıcının e-posta adresi.
-    # EmailStr tipi ile geçerli bir e-posta formatı olup olmadığı otomatik kontrol edilir.
     email: EmailStr
-    
-    # Kullanıcının parolası.
-    # String tipinde olmalıdır.
     password: str
+
+
+# -------------------------
+# ADMIN → Invite User
+# -------------------------
+class InviteRequest(BaseModel):
+    email: EmailStr
+    first_name: str
+    last_name: str
+    role: str
+    department: Optional[str] = None
+    class_: Optional[int] = None
+    university_department: Optional[str] = None
+

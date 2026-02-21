@@ -6,6 +6,7 @@ from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer
 from app.core.config import settings
 from app.schemas.user import UserInDB, UserRole
+from app.services.user_service import get_user_by_email
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 security_scheme = HTTPBearer(auto_error=False)  # ← Cookie için auto_error=False
@@ -27,6 +28,7 @@ def get_password_hash(password: str) -> str:
 def create_access_token(
     subject: Union[str, Any], 
     role: str, 
+    email: str,
     expires_delta: Optional[timedelta] = None
 ) -> str:
     if expires_delta:
@@ -37,7 +39,7 @@ def create_access_token(
     to_encode = {
         "exp": expire, 
         "sub": str(subject),
-        "user_id": str(subject),
+        "email": email,
         "role": role
     }
     
@@ -69,8 +71,7 @@ async def get_current_user(
 ) -> UserInDB:
     """Token'dan mevcut kullanıcıyı çıkar (Header veya Cookie)"""
     from app.schemas.user import UserInDB
-    from app.services.mock_db import get_user_by_id
-
+    from app.services.user_service import get_user_by_email
     token = None
     
     # 1. Önce Header'dan token al (Frontend)
@@ -94,8 +95,8 @@ async def get_current_user(
     # Token decode
     payload = decode_access_token(token)
     
-    user_id: str = payload.get("user_id")
-    if user_id is None:
+    user_email: str = payload.get("email")
+    if user_email is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token geçersiz!",
@@ -103,23 +104,18 @@ async def get_current_user(
         )
     
     # Kullanıcı bul
-    user_dict = get_user_by_id(int(user_id))
+    user_dict = get_user_by_email(user_email)
     
     if user_dict is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Kullanıcı bulunamadı!"
         )
+    # Supabase'den "class" gelir ama Python keyword, "class_" olarak değiştir
+    if "class" in user_dict:
+        user_dict["class_"] = user_dict.pop("class")
     
     user = UserInDB(**user_dict)
-    
-    # Aktif mi kontrolü
-    if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Hesabınız aktif değil!"
-        )
-    
     return user
 
 # ==========================================
