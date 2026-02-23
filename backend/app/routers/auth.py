@@ -72,4 +72,14 @@ async def invite_endpoint(request: InviteRequest,
     )
     return {"message": f"{request.email} için davet gönderildi."}
 
-
+# -------------------------
+# Logout endpoint
+# -------------------------
+@router.post("/logout")
+async def logout(response: Response):
+    response.delete_cookie(
+        key="access_token",
+        httponly=True,
+        samesite="lax"
+    )
+    return {"message": "Başarıyla çıkış yapıldı."}

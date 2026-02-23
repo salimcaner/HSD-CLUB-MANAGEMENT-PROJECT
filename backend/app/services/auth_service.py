@@ -46,30 +46,40 @@ def login_user(email: str, password: str):
 # -------------------------
 def invite_user(email: str, first_name: str, last_name: str, role: str, department: str = None, class_: int = None, university_department: str = None):
    
-    existing_user = get_user_by_email(email)
-    if existing_user:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=f"{email} adresi zaten sistemde kayıtlı!"
-        )
-    # 1️⃣ Supabase Auth tarafında kullanıcıyı invite et
-    response = supabase.auth.admin.invite_user_by_email(email)
+    try:
+        response = supabase.auth.admin.invite_user_by_email(email)
+    except Exception as e:
+        error_str = str(e).lower()
+        if "already registered" in error_str or "already exists" in error_str:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"{email} adresi zaten sistemde kayıtlı!"
+            )
+        raise HTTPException(status_code=400, detail="Davet gönderilemedi.")
 
+   
     if not response.user:
          raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Kullanıcı davet edilirken hata oluştu."
         )
 
-    #2️⃣ Profiles tablosuna ekle
-    create_user(
-        email=email,
-        first_name=first_name,
-        last_name=last_name,
-        role=role,
-        department=department,
-        class_=class_,
-        university_department=university_department,
-        user_id=response.user.id
-    )
+    #2️⃣ Profiles tablosuna ekle — hata olursa Auth'dan da sil (rollback)
+    try:
+        create_user(
+            email=email,
+            first_name=first_name,
+            last_name=last_name,
+            role=role,
+            department=department,
+            class_=class_,
+            university_department=university_department,
+            user_id=response.user.id
+        )
+    except Exception:
+        supabase.auth.admin.delete_user(response.user.id)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Profil oluşturulamadı, davet iptal edildi. Lütfen tekrar deneyin."
+        )
     return response.user
