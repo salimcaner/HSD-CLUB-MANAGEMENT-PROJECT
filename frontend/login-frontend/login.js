@@ -11,51 +11,51 @@ btn.addEventListener('click', () =>{
     container.classList.remove('active');
 });
 
-// loginForm.addEventListener('submit', async (e) => {
-//     e.preventDefault(); // Formun varsayılan gönderme işlemini engelle
+loginForm.addEventListener('submit', async (e) => {
+    e.preventDefault(); // Formun varsayılan gönderme işlemini engelle
 
-//     const email = loginEmail.value;
-//     const password = loginPassword.value;
+    const email = loginEmail.value;
+    const password = loginPassword.value;
 
-// //     try {
-// //         // Backend API'ye giriş isteği gönder
-// //         const response = await fetch(`${API_BASE_URL}/login`, {
-// //             method: 'POST',
-// //             headers: {
-// //                 'Content-Type': 'application/json',
-// //             },
-// //             body: JSON.stringify({
-// //                 email: email,
-// //                 password: password
-// //             })
-// //         });
+    try {
+        // Backend API'ye giriş isteği gönder
+        const response = await fetch(`$http://127.0.0.1:8001//login`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                email: email,
+                password: password
+            })
+        });
 
-// //         const data = await response.json();
+        const data = await response.json();
 
-//         if (response.ok) {
-//             // Giriş başarılı
-//             console.log("Giriş başarılı! ID Token:", data.idToken);
+        if (response.ok) {
+            // Giriş başarılı
+            console.log("Giriş başarılı! ID Token:", data.idToken);
             
-//             // Token'ı localStorage'a kaydet
-//             localStorage.setItem('token', data.idToken);
+            // Token'ı localStorage'a kaydet
+            localStorage.setItem('access_token', data.access_token);
+            localStorage.setItem('user', JSON.stringify(data.user));
 
-//             alert("Giriş başarıyla yapıldı!");
-//             loginEmail.value = ''; // Inputları temizle
-//             loginPassword.value = '';
+            alert(`Hoş geldiniz ${data.user.full_name}!`);
+            loginEmail.value = ''; // Inputları temizle
+            loginPassword.value = '';
 
-//             // Kullanıcıyı ana sayfaya yönlendir
-//             window.location.href = '#';
-//         }
-// //         } else {
-// //             // Backend'den gelen hata mesajını göster
-// //             throw new Error(data.detail || 'Giriş sırasında bir hata oluştu');
-// //         }
+            // Kullanıcıyı ana sayfaya yönlendir
+            window.location.href = '../Home-frontend/html/index.html';
+        } else {
+            // Backend'den gelen hata mesajını göster
+            throw new Error(data.detail || 'Giriş sırasında bir hata oluştu');
+        }
 
-// //     } catch (error) {
-// //         console.error("Giriş hatası:", error);
-// //         alert(`Giriş sırasında bir hata oluştu: ${error.message}`);
-// //     }
-//  });
+    } catch (error) {
+        console.error("Giriş hatası:", error);
+        alert(`Hata: ${error.message}`);
+        }
+ });
 
  toggleBtn.addEventListener("click", () =>{
         const isHidden = loginPassword.type === "password";
