@@ -55,3 +55,15 @@ class User(UserBase):
         populate_by_name = True   # class_ ile class eşleşsin
 class UserInDB(User):
     pass
+
+
+class UserUpdateSelf(BaseModel):
+    """Kullanıcı kendini güncellerken"""
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    department: Optional[str] = None
+    class_: Optional[int] = None
+    university_department: Optional[str] = None
+    
+    class Config:
+        populate_by_name = True
