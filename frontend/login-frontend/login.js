@@ -1,11 +1,12 @@
 
 const container = document.querySelector('.container');
 const btn = document.querySelector('.btn');
-const loginForm = document.querySelector('#loginForm');
+const loginForm = document.querySelector('#LoginForm');
 const loginEmail = document.querySelector('#loginEmail');
 const loginPassword = document.getElementById('loginPassword');
 const toggleBtn = document.getElementById("togglePassword");
 const toggleIcon = toggleBtn.querySelector("i");
+
 
 btn.addEventListener('click', () =>{
     container.classList.remove('active');
@@ -19,7 +20,7 @@ loginForm.addEventListener('submit', async (e) => {
 
     try {
         // Backend API'ye giriş isteği gönder
-        const response = await fetch(`$http://127.0.0.1:8001//login`, {
+        const response = await fetch(`http://127.0.0.1:8001/login`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
