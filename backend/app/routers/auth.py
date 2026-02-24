@@ -1,9 +1,6 @@
- # Kimlik Doğrulama Modülü --- Token, şifre ve kimlik ile ilgili bölüm.
-
-
 from fastapi import APIRouter, Response, Depends
-from app.schemas.auth import InviteRequest, LoginRequest,ChangePasswordRequest,ForgotPasswordRequest,ResetPasswordRequest
-from app.services.auth_service import invite_user, login_user,change_password,forgot_password,reset_password
+from app.schemas.auth import InviteRequest, LoginRequest,ChangePasswordRequest, ForgotPasswordRequest, ResetPasswordRequest
+from app.services.auth_service import invite_user, login_user,change_password, forgot_password, reset_password
 from app.core import security
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
@@ -29,17 +26,17 @@ async def login(request: LoginRequest, response: Response):
 
     # JSON response
     return {
-    "access_token": access_token,
-    "token_type": "bearer",
-    "user": {
-        "id": user["id"],
-        "email": user["email"],
-        "full_name": f"{user['first_name']} {user['last_name']}", # ← EKLE
-        "first_name": user["first_name"],
-        "last_name": user["last_name"],
-        "role": user["role"],
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": {
+            "id": user["id"],
+            "email": user["email"],
+            "first_name": user["first_name"],
+            "last_name": user["last_name"],
+            "role": user["role"],
+        }
     }
-}
+
 
 @router.get("/me")
 async def get_current_user_info(
@@ -48,37 +45,37 @@ async def get_current_user_info(
     return {
         "id": current_user.id,
         "email": current_user.email,
-        "full_name": f"{current_user.first_name} {current_user.last_name}",
         "first_name": current_user.first_name,
         "last_name": current_user.last_name,
         "role": current_user.role,
-        "is_active": current_user.is_active,
         "department": current_user.department,
         "class": current_user.class_,
         "created_at": current_user.created_at,
         "university_department": current_user.university_department
     }
 
+
 # -----------------------------
-# Kullanıcı Ekleme (Sadece Email + Rol)
+# kullanıcı ekleme endpoint
 # -----------------------------
 @router.post("/invite")
 async def invite_endpoint(
     request: InviteRequest,
     current_user = Depends(security.require_lider_or_above)
 ):
-    """
-    Kullanıcı davet et (Sadece email ve rol)
-    Kullanıcı ilk girişte kalan bilgileri kendisi dolduracak
-    """
+    print(f"DEBUG: İstek geldi! Email: {request.email}") # <--- Bunu en başa ekle
     user = invite_user(
         email=request.email,
-        role=request.role
+        first_name=request.first_name,
+        last_name=request.last_name,
+        role=request.role,
+        department=request.department,
+        class_=request.class_,
+        university_department=request.university_department
     )
-    return {
-        "message": f"{request.email} için davet gönderildi.",
-        "note": "Kullanıcı ilk girişte şifre değiştirip profil bilgilerini tamamlamalı."
-    }
+    return {"message": f"{request.email} için davet gönderildi."}
+
+
 # -------------------------
 # Logout endpoint
 # -------------------------
@@ -90,7 +87,6 @@ async def logout(response: Response):
         samesite="lax"
     )
     return {"message": "Başarıyla çıkış yapıldı."}
-
 
 # -------------------------
 # Şifre Değiştirme

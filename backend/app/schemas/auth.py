@@ -15,7 +15,12 @@ class LoginRequest(BaseModel):
 # -------------------------
 class InviteRequest(BaseModel):
     email: EmailStr
-    role: str  # Sadece email ve rol yeterli!
+    first_name: str
+    last_name: str
+    role: str
+    department: Optional[str] = None
+    class_: Optional[int] = None
+    university_department: Optional[str] = None
 
 
 class ChangePasswordRequest(BaseModel):
