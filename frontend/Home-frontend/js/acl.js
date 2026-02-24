@@ -50,4 +50,11 @@ const Role_Permission = {
 export function buildPermissions(role) {
   return Role_Permission[role] || [];
 }
+export function hasPerm(user, perm) {
+  return user.permissions?.includes(perm);
+}
+export function hasAnyPerm(user, perms) {
+  if (!user?.permissions) return false;
 
+  return perms.some(perm => user.permissions.includes(perm));
+}

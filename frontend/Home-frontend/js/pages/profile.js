@@ -15,3 +15,10 @@ Butonlar
 “Çıkış Yap” (store.clearUser + login’e yönlendir)
 
 Bu sayfa backend gelince kullanıcı profilini API’den çekebilir. Şimdilik store’dan okur. */
+export function renderProfile() {
+  return `
+    <section class="page profile-page">
+      <h1>Profil</h1>
+    </section>
+  `;
+}

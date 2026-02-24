@@ -25,7 +25,26 @@ Etiket zorunluluğu burada:
 Etkinlik türü seçince zorunlu tag kontrolü
 
 Kaydetmeden önce validate*/
+import { hasAnyPerm } from "../acl.js";
+import { getUser } from "../store.js";
 
-export function renderEvents(user) {
-  return `<h1>Etkinlikler</h1>`;
+export function renderEvents() {
+
+  const user = getUser();
+
+  const canCreate = hasAnyPerm(user, ["events:create"]);
+
+  return `
+    <section class="page events-page">
+      <h1>Etkinlikler</h1>
+
+      ${canCreate ? `
+        <button id="addEventBtn">Etkinlik Ekle</button>
+      ` : ""}
+
+      <div class="event-list">
+        <p>Etkinlik listesi burada olacak</p>
+      </div>
+    </section>
+  `;
 }

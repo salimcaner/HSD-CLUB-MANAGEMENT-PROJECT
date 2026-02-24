@@ -13,4 +13,11 @@ Feedback ver (reports.feedback + scope)
 Etiket zorunluluğu:
 
 “Aylık rapor” gibi tiplerde tag zorunlu */
+export function renderReports() {
+  return `
+    <section class="page reports-page">
+      <h1>Raporlar</h1>
+    </section>
+  `;
+}
 

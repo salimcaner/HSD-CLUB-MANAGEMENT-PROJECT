@@ -22,12 +22,14 @@ location.hash = "#/home"
 
 Gerçek backend gelince bu dosya API çağıracak.*/
 
+import { buildPermissions } from "acl.js";
 const User = {
     id: "1",
     role: "UYE",
     first_name: "Sümeyye",
     last_name: "Köse",
-    departmen: "Proje"
+    departmen: "Proje",
+   permissions: buildPermissions(role)
 }
 
-localStorage.setItem("USer", JSON.stringify(user));
+localStorage.setItem("User", JSON.stringify(user));

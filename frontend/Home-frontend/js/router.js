@@ -28,19 +28,19 @@ import { renderMembers } from "./pages/members.js";
 import { renderProfile } from "./pages/profile.js";
 import { renderSettings } from "./pages/settings.js";
 
-const LOGIN_URL = "../../../login-frontend/login.html";
+//const LOGIN_URL = "../../../login-frontend/login.html";
 
 const ROUTES = {
-    "/login" : {render: renderLogin},
+    //"/login" : {render: renderLogin},
     "/home":      { render: renderHome, required: []},
     "/community": { render: renderCommunity, required: [] },
 
     "/events":    { render: renderEvents,   required: []},
     "/projects":  { render: renderProjects, required: []},
     "/reports":   { render: renderReports,  required: []},
-    "/calendar":  { render: renderCalendar, required: ["calendar.read"] },
-    "/finance":   { render: renderFinance,  required: ["finance.read"] },
-    "/members":   { render: renderMembers,  required: ["members.read"] },
+    "/calendar":  { render: renderCalendar, required: ["calendar:read"] },
+    "/finance":   { render: renderFinance,  required: ["finance:read"] },
+    "/members":   { render: renderMembers,  required: ["members:read"] },
 
     "/profile":   { render: renderProfile,  required: [] }, 
     "/settings":  { render: renderSettings, required: [] }
@@ -68,19 +68,19 @@ function renderForbidden(appEl) {
   `;
 }
 
-function redirectToLogin() {
+//function redirectToLogin() {
   // Nereye dönmesi gerektiğini de parametreyle taşıyalım
-  const returnTo = encodeURIComponent(location.href);
-  window.location.href = `${LOGIN_URL}?returnTo=${returnTo}`;
-}
+ // const returnTo = encodeURIComponent(location.href);
+  //window.location.href = `${LOGIN_URL}?returnTo=${returnTo}`;
+//}
 
 export function router() {
   const appEl = document.getElementById("app");
   const user = getUser();
-if (!user) {
-    redirectToLogin();
-    return;
-  }
+//if (!user) {
+  //  redirectToLogin();
+   // return;
+  //}
 
   const path = getPathFromHash();
   const route = ROUTES[path];

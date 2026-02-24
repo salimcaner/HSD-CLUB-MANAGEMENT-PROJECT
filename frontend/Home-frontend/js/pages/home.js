@@ -19,7 +19,11 @@ Proje ekle (projects.create)
 
 Üye ekle (members.create)*/
 
-export function renderHome(User) {
-  return `<h1>Ana Sayfa</h1>
-  <a href="#/events">Etkinlikler<a/>"`;
+export function renderHome() {
+  return `
+    <section class="page home-page">
+      <h1>Ana Sayfa</h1>
+      <p>Hoş geldiniz.</p>
+    </section>
+  `;
 }
