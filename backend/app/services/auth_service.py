@@ -49,6 +49,15 @@ def invite_user(email: str, first_name: str, last_name: str, role: str, departme
         response = supabase.auth.admin.invite_user_by_email(email)
     except Exception as e:
         print(f"!!! SUPABASE DAVET HATASI: {str(e)}")
+        print(f"!!! HATA TİPİ: {type(e).__name__}")
+        print(f"!!! HATA DETAYI: {repr(e)}")
+        print(f"!!! HATA ARGS: {e.args}")
+        
+        # Eğer httpx hatası ise detayları yazdır
+        if hasattr(e, 'response'):
+            print(f"!!! RESPONSE STATUS: {e.response.status_code if hasattr(e.response, 'status_code') else 'N/A'}")
+            print(f"!!! RESPONSE BODY: {e.response.text if hasattr(e.response, 'text') else 'N/A'}")
+        
         error_str = str(e).lower()
         if "already registered" in error_str or "already exists" in error_str:
             raise HTTPException(
