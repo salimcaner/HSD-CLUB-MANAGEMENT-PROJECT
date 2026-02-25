@@ -1,0 +1,153 @@
+app/
+ ├─ main.py
+ ├─ core/
+ │   ├─ config.py
+ │   ├─ security.py
+ │
+ ├─ models/
+ ├─ schemas/
+ ├─ routers/
+ ├─ services/
+ ├─ db/
+ ├─ .env
+
+Kısa Özet (Notluk)
+
+main → API başlatır
+
+core → ayar + security
+
+models → DB tabloları
+
+schemas → veri formatı
+
+routers → endpoint
+
+services → business logic
+
+db → bağlantı
+
+.env → gizli anahtarlar
+
+
+📁 main.py
+
+Projenin giriş noktası.
+
+Burada:
+
+FastAPI app oluşturulur
+
+Router’lar eklenir
+
+Middleware eklenir
+
+Uygulama ayağa kaldırılır
+
+Kısaca:
+
+“API’nin çalıştığı ana dosya”
+
+📁 core/
+config.py
+
+Ortam değişkenleri okunur (.env)
+
+API key
+
+Supabase URL
+
+JWT secret
+
+Kısaca:
+
+“Projenin ayar dosyası”
+
+security.py
+
+Burada:
+
+JWT token üretme
+
+Token doğrulama
+
+Şifre hashleme (bcrypt)
+
+Kısaca:
+
+“Güvenlik işlemleri”
+
+
+📁 schemas/
+
+API veri şemaları.
+
+Frontend → Backend veri formatı.
+
+Örnek:
+
+UserCreate
+
+UserResponse
+
+EventCreate
+
+Kısaca:
+
+“API veri giriş/çıkış formatı”
+
+📁 routers/
+
+Endpoint’ler burada.
+
+Örnek:
+
+auth.py → /login /register
+
+users.py → /users
+
+events.py → /events
+
+Kısaca:
+
+“API kapıları”
+
+📁 services/
+
+İş mantığı burada.
+
+Router sadece çağırır.
+
+Örnek:
+
+auth_service → login logic
+
+user_service → kullanıcı işlemleri
+
+Kısaca:
+
+“İş kuralları / logic katmanı”
+
+📁 db/
+session.py
+
+DB bağlantısı
+
+Supabase / PostgreSQL connection
+
+base.py
+
+Tüm modelleri toplar
+
+Migration için kullanılır
+
+Kısaca:
+
+“Veritabanı bağlantı katmanı”
+
+1 tane manuel elçi rolu oluşturuldu 
+{
+  "email": "admin@hsd.com",
+  "password": "Admin123!"
+}
+giriş yaparken kullanılıabilir 
