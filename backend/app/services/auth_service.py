@@ -3,6 +3,7 @@ import secrets
 from fastapi import HTTPException, status
 from app.services.user_service import create_user, get_user_by_email
 from app.core import security, config
+from app.logger import logger
 from app.core.supabase_client import supabase
 
 
@@ -48,15 +49,15 @@ def invite_user(email: str, first_name: str, last_name: str, role: str, departme
     try:
         response = supabase.auth.admin.invite_user_by_email(email)
     except Exception as e:
-        print(f"!!! SUPABASE DAVET HATASI: {str(e)}")
-        print(f"!!! HATA TİPİ: {type(e).__name__}")
-        print(f"!!! HATA DETAYI: {repr(e)}")
-        print(f"!!! HATA ARGS: {e.args}")
+        logger.error(f"Supabase invite error: {str(e)}")
+        logger.error(f"Error type: {type(e).__name__}")
+        logger.error(f"Error detail: {repr(e)}")
+        logger.error(f"Error args: {e.args}")
         
         # Eğer httpx hatası ise detayları yazdır
         if hasattr(e, 'response'):
-            print(f"!!! RESPONSE STATUS: {e.response.status_code if hasattr(e.response, 'status_code') else 'N/A'}")
-            print(f"!!! RESPONSE BODY: {e.response.text if hasattr(e.response, 'text') else 'N/A'}")
+            logger.error(f"Response status: {e.response.status_code if hasattr(e.response, 'status_code') else 'N/A'}")
+            logger.error(f"Response body: {e.response.text if hasattr(e.response, 'text') else 'N/A'}")
         
         error_str = str(e).lower()
         if "already registered" in error_str or "already exists" in error_str:
@@ -87,11 +88,16 @@ def invite_user(email: str, first_name: str, last_name: str, role: str, departme
         )
     except Exception as e:
         # Hatanın ne olduğunu terminale (Uvicorn loguna) yazdırıyoruz
-        print(f"!!! PROFİL OLUŞTURMA HATASI: {str(e)}")
+        logger.error(f"Profile creation error: {str(e)}")
+        logger.error(f"Error type: {type(e).__name__}")
+        logger.error(f"Error detail: {repr(e)}")
+        if hasattr(e, 'response'):
+            logger.error(f"Response status: {getattr(e.response, 'status_code', 'N/A')}")
+            logger.error(f"Response body: {getattr(e.response, 'text', 'N/A')}")
         supabase.auth.admin.delete_user(response.user.id)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Profil oluşturulamadı, davet iptal edildi. Lütfen tekrar deneyin."
+            detail=f"Profil oluşturulamadı, davet iptal edildi. Hata: {str(e)}"
         )
     return response.user
 

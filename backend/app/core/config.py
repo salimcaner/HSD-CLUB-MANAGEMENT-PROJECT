@@ -1,7 +1,13 @@
 import os
 from dotenv import load_dotenv
 
+# Load environment variables as early as possible
 load_dotenv()
+
+# Provide safe defaults to avoid None values
+SUPABASE_URL = os.getenv("SUPABASE_URL", "")
+SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")
+SECRET_KEY = os.getenv("SECRET_KEY", "")
 
 
 class Settings:
@@ -9,13 +15,13 @@ class Settings:
     PROJECT_VERSION: str = "1.0.0"
 
     # Security
-    SECRET_KEY: str = os.getenv("SECRET_KEY")
+    SECRET_KEY: str = SECRET_KEY
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
-    #supabase
-    SUPABASE_URL: str = os.getenv("SUPABASE_URL")
-    SUPABASE_SERVICE_KEY: str = os.getenv("SUPABASE_SERVICE_KEY")
+    # Supabase
+    SUPABASE_URL: str = SUPABASE_URL
+    SUPABASE_SERVICE_KEY: str = SUPABASE_SERVICE_KEY
 
    
 settings = Settings()
