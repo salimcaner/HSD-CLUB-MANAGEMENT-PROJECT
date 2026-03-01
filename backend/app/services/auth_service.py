@@ -45,6 +45,21 @@ def login_user(email: str, password: str):
 # Kullanıcı ekle 
 # -------------------------
 def invite_user(email: str, first_name: str, last_name: str, role: str, department: str = None, class_: int = None, university_department: str = None):
+    #Önce kontrol et
+    try:
+        users_response = supabase.auth.admin.list_users()
+        users = users_response if isinstance(users_response, list) else []
+        for u in users:
+            if u.email == email:
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"{email} zaten auth sisteminde kayıtlı!"
+                )
+    except HTTPException:
+        raise
+    except Exception:
+        pass
+    
     try:
         response = supabase.auth.admin.invite_user_by_email(email)
     except Exception as e:
