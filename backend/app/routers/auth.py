@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Response, Depends
+from fastapi import APIRouter, HTTPException, Response, Depends
 from app.schemas.auth import InviteRequest, LoginRequest,ChangePasswordRequest, ForgotPasswordRequest, ResetPasswordRequest
 from app.services.auth_service import invite_user, login_user,change_password, forgot_password, reset_password
 from app.core import security
+from app.services.user_service import get_user_by_email
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -42,16 +43,20 @@ async def login(request: LoginRequest, response: Response):
 async def get_current_user_info(
     current_user = Depends(security.get_current_user)
 ):
+    user_profil_detaylari = get_user_by_email(current_user.email)
+    
+    if not user_profil_detaylari:
+        raise HTTPException(status_code=404, detail="Kullanıcı profili bulunamadı")
     return {
         "id": current_user.id,
         "email": current_user.email,
-        "first_name": current_user.first_name,
-        "last_name": current_user.last_name,
-        "role": current_user.role,
-        "department": current_user.department,
-        "class": current_user.class_,
-        "created_at": current_user.created_at,
-        "university_department": current_user.university_department
+        "first_name": user_profil_detaylari.get("first_name"),
+        "last_name": user_profil_detaylari.get("last_name"),
+        "role": current_user.role, 
+        "department": user_profil_detaylari.get("department"),
+        "class": user_profil_detaylari.get("class_"),
+        "created_at": user_profil_detaylari.get("created_at"),
+        "university_department": user_profil_detaylari.get("university_department")
     }
 
 
@@ -63,7 +68,6 @@ async def invite_endpoint(
     request: InviteRequest,
     current_user = Depends(security.require_lider_or_above)
 ):
-    print(f"DEBUG: İstek geldi! Email: {request.email}") # <--- Bunu en başa ekle
     user = invite_user(
         email=request.email,
         first_name=request.first_name,

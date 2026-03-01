@@ -46,34 +46,28 @@ def login_user(email: str, password: str):
 # -------------------------
 def invite_user(email: str, first_name: str, last_name: str, role: str, department: str = None, class_: int = None, university_department: str = None):
     try:
+        # 1. ADIM: Davet Gönderimi 
         response = supabase.auth.admin.invite_user_by_email(email)
+        
     except Exception as e:
-        print(f"!!! SUPABASE DAVET HATASI: {str(e)}")
-        print(f"!!! HATA TİPİ: {type(e).__name__}")
-        print(f"!!! HATA DETAYI: {repr(e)}")
-        print(f"!!! HATA ARGS: {e.args}")
+        error_msg = str(e).lower()
+        print(f"!!! SUPABASE AUTH HATASI: {error_msg}")
         
-        # Eğer httpx hatası ise detayları yazdır
-        if hasattr(e, 'response'):
-            print(f"!!! RESPONSE STATUS: {e.response.status_code if hasattr(e.response, 'status_code') else 'N/A'}")
-            print(f"!!! RESPONSE BODY: {e.response.text if hasattr(e.response, 'text') else 'N/A'}")
-        
-        error_str = str(e).lower()
-        if "already registered" in error_str or "already exists" in error_str:
+        # User Not Allowed (Yetki Yok) veya diğer kısıtlamalar
+        if "not allowed" in error_msg:
             raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
+                status_code=403, 
+                detail="Supabase: Davet gönderme izni kapalı veya Service Role Key hatalı."
+            )
+        # Zaten kayıtlıysa
+        elif "already registered" in error_msg or "already exists" in error_msg:
+            raise HTTPException(
+                status_code=409, 
                 detail=f"{email} adresi zaten sistemde kayıtlı!"
             )
-        raise HTTPException(status_code=400, detail=f"Davet gönderilemedi: {str(e)}")
-
-   
-    if not response.user:
-         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Kullanıcı davet edilirken hata oluştu."
-        )
-    
-    #2️⃣ Profiles tablosuna ekle — hata olursa Auth'dan da sil (rollback)
+        else:
+            raise HTTPException(status_code=400, detail=f"Davet gönderilemedi: {error_msg}")
+    # 2. ADIM: Kullanıcı Oluşturma (Rollback Mekanizmalı)
     try:
         create_user(
             email=email,
@@ -85,13 +79,13 @@ def invite_user(email: str, first_name: str, last_name: str, role: str, departme
             university_department=university_department,
             user_id=response.user.id
         )
-    except Exception as e:
-        # Hatanın ne olduğunu terminale (Uvicorn loguna) yazdırıyoruz
-        print(f"!!! PROFİL OLUŞTURMA HATASI: {str(e)}")
+    except Exception as db_err:
+        print(f"!!! DB KAYIT HATASI: {str(db_err)}")
+        # Geri Al (Rollback): DB'ye eklenemediyse adamı Auth'dan da sil ki havada kalmasın
         supabase.auth.admin.delete_user(response.user.id)
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Profil oluşturulamadı, davet iptal edildi. Lütfen tekrar deneyin."
+            status_code=500, 
+            detail="Profil oluşturulamadı, davet geri çekildi."
         )
     return response.user
 

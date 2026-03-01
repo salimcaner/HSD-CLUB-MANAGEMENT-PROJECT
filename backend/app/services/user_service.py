@@ -4,12 +4,18 @@ from app.schemas.user import User
 
 
 def get_user_by_email(email: str):
-    response = supabase.table("profiles").select("*").eq("email", email).execute()
+    try:
+        response = supabase.table("profiles").select("*").eq("email", email).execute()
     
-    if response.data:
-        return response.data[0]
-    return None
-
+        if response.data:
+            return response.data[0]
+        return None
+    except Exception as e:
+        print(f"HATA- get_user_by_email fonksiyonu çöktü: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Kullanıcı bilgisi alınırken hata oluştu!"
+        )
 
 
 # -------------------------
@@ -59,16 +65,24 @@ def create_user(
 # Tüm Kullanıcıları Getir
 # -------------------------
 def get_all_users():
-    response = supabase.table("profiles").select("*").execute()
+    try:
+        response = supabase.table("profiles").select("*").execute()
     
-    if response.data:
-        users = []
-        for user_dict in response.data:
-            if "class" in user_dict:
-                user_dict["class_"] = user_dict.pop("class")
-            users.append(User(**user_dict))
-        return users
-    return []
+        if response.data:
+            users = []
+            for user_dict in response.data:
+                if "class" in user_dict:
+                    user_dict["class_"] = user_dict.pop("class")
+                users.append(User(**user_dict))
+            return users
+        return []
+    except Exception as e:
+        print(f"HATA - Kullanıcılar çekilirken: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Kullanıcı listesi şu an alınamıyor, daha sonra tekrar deneyin."
+        )
+
 
 
 # -------------------------

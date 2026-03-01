@@ -21,7 +21,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
 
-# ==========================================    
+# ==========================================
 # JWT TOKEN
 # ==========================================
 
@@ -64,14 +64,11 @@ def decode_access_token(token: str) -> dict:
 # ==========================================
 # DEPENDENCY - CURRENT USER (Cookie + Header Desteği)
 # ==========================================
-
 async def get_current_user(
     request: Request,
     credentials: Optional[Any] = Depends(security_scheme)
 ) -> UserInDB:
     """Token'dan mevcut kullanıcıyı çıkar (Header veya Cookie)"""
-    from app.schemas.user import UserInDB
-    from app.services.user_service import get_user_by_email
     token = None
     
     # 1. Önce Header'dan token al (Frontend)
@@ -95,27 +92,24 @@ async def get_current_user(
     # Token decode
     payload = decode_access_token(token)
     
+    user_id: str = payload.get("sub")
     user_email: str = payload.get("email")
-    if user_email is None:
+    user_role: str = payload.get("role")
+    
+    # Token'ın içinde email, sub (id) veya role yoksa token geçersiz demektir
+    if not user_email or not user_id or not user_role:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token geçersiz!",
+            detail="Token geçersiz veya eksik bilgi içeriyor!",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    # Veritabanına hiç GİTMEYİN. Direkt tokena göre 
+    user = UserInDB(
+        id=user_id,
+        email=user_email,
+        role=user_role
+    )
     
-    # Kullanıcı bul
-    user_dict = get_user_by_email(user_email)
-    
-    if user_dict is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Kullanıcı bulunamadı!"
-        )
-    # Supabase'den "class" gelir ama Python keyword, "class_" olarak değiştir
-    if "class" in user_dict:
-        user_dict["class_"] = user_dict.pop("class")
-    
-    user = UserInDB(**user_dict)
     return user
 
 # ==========================================
