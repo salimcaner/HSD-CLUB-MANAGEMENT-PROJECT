@@ -63,7 +63,7 @@ def invite_user(email: str, first_name: str, last_name: str, role: str, departme
                 "first_name": first_name,
                 "last_name": last_name
             },
-            "redirect_to": "http://127.0.0.1:5500/frontend/password/password.html"
+            "redirect_to": "http://127.0.0.1:5500/frontend/password/ConfirmPassword/password.html"
         }
         resp = requests.post(url, headers=headers, json=payload)
         
