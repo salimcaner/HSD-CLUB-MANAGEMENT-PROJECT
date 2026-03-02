@@ -45,33 +45,85 @@ def login_user(email: str, password: str):
 # Kullanıcı ekle 
 # -------------------------
 def invite_user(email: str, first_name: str, last_name: str, role: str, department: str = None, class_: int = None, university_department: str = None):
+    import requests
     try:
-        response = supabase.auth.admin.invite_user_by_email(email)
+        # Supabase'in 2 mail/saat sinirina takilmamak icin davet linkini arka planda API ile olusturuyoruz
+        # Global supabase objesi (client) baska kullanicilarin session'ini tutabilecegi icin yetki hatasi verebiliyor.
+        # Bu yuzden admin yetkilerini (service_key) her seferinde dogrudan HTTP ile gonderiyoruz:
+        url = f"{config.settings.SUPABASE_URL}/auth/v1/admin/generate_link"
+        headers = {
+            "apikey": config.settings.SUPABASE_SERVICE_KEY,
+            "Authorization": f"Bearer {config.settings.SUPABASE_SERVICE_KEY}",
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "type": "invite",
+            "email": email,
+            "data": {
+                "first_name": first_name,
+                "last_name": last_name
+            },
+            "redirect_to": "http://127.0.0.1:5500/frontend/password/password.html"
+        }
+        resp = requests.post(url, headers=headers, json=payload)
+        
+        if resp.status_code >= 400:
+            error_data = resp.json()
+            error_msg = error_data.get("message", resp.text)
+            error_str = error_msg.lower()
+            if "already registered" in error_str or "already exists" in error_str:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=f"{email} adresi zaten sistemde kayıtlı!"
+                )
+            raise HTTPException(status_code=400, detail=f"Davet oluşturulamadı: {error_msg}")
+            
+        response_data = resp.json()
+    except HTTPException:
+        raise
     except Exception as e:
-        print(f"!!! SUPABASE DAVET HATASI: {str(e)}")
-        print(f"!!! HATA TİPİ: {type(e).__name__}")
-        print(f"!!! HATA DETAYI: {repr(e)}")
-        print(f"!!! HATA ARGS: {e.args}")
-        
-        # Eğer httpx hatası ise detayları yazdır
-        if hasattr(e, 'response'):
-            print(f"!!! RESPONSE STATUS: {e.response.status_code if hasattr(e.response, 'status_code') else 'N/A'}")
-            print(f"!!! RESPONSE BODY: {e.response.text if hasattr(e.response, 'text') else 'N/A'}")
-        
-        error_str = str(e).lower()
-        if "already registered" in error_str or "already exists" in error_str:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail=f"{email} adresi zaten sistemde kayıtlı!"
-            )
-        raise HTTPException(status_code=400, detail=f"Davet gönderilemedi: {str(e)}")
+        print(f"!!! SUPABASE DAVET LİNKİ OLUŞTURMA HATASI: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Davet işlemi sırasında hata: {str(e)}")
 
-   
-    if not response.user:
+    # generate_link endpoint'i donen json: {"id": "...", "action_link": "..."} veya {"user": {"id": "..."}}
+    user_id = response_data.get("id")
+    if not user_id and "user" in response_data:
+        user_id = response_data["user"].get("id")
+        
+    if not user_id:
          raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Kullanıcı davet edilirken hata oluştu."
         )
+
+    action_link = response_data.get("action_link")
+    
+    def _delete_user_http(uid: str):
+        try:
+            requests.delete(
+                f"{config.settings.SUPABASE_URL}/auth/v1/admin/users/{uid}",
+                headers=headers
+            )
+        except:
+            pass
+            
+    if not action_link:
+        # Hata olustu veya beklenen format gelmedi
+        if user_id:
+            _delete_user_http(user_id)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Davet linki oluşturulamadı."
+        )
+
+    # Arka planda kendi Python E-posta servisimiz üzerinden maili gönder
+    from app.services.email_service import send_invite_email
+    try:
+        send_invite_email(email, action_link, first_name, last_name)
+    except Exception as e:
+        # Mail gonderilemediyse olusturulan kullaniciyi siliyoruz ki tekrar davet edilebilsin
+        _delete_user_http(user_id)
+        raise e
     
     #2️⃣ Profiles tablosuna ekle — hata olursa Auth'dan da sil (rollback)
     try:
@@ -83,17 +135,19 @@ def invite_user(email: str, first_name: str, last_name: str, role: str, departme
             department=department,
             class_=class_,
             university_department=university_department,
-            user_id=response.user.id
+            user_id=user_id
         )
     except Exception as e:
         # Hatanın ne olduğunu terminale (Uvicorn loguna) yazdırıyoruz
         print(f"!!! PROFİL OLUŞTURMA HATASI: {str(e)}")
-        supabase.auth.admin.delete_user(response.user.id)
+        if user_id:
+            _delete_user_http(user_id)
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=status.HTTP_400_BAD_REQUEST,
             detail="Profil oluşturulamadı, davet iptal edildi. Lütfen tekrar deneyin."
         )
-    return response.user
+        
+    return response_data.get("user", {"id": user_id, "email": email})
 
 
 # -------------------------
