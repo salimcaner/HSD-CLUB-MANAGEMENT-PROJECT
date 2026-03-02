@@ -18,7 +18,10 @@ rol atama, komite değiştirme (istersen ayrı permission)
 
 Sekme 4: Üye Sil (members.delete)
 
-Sadece Elçi gibi üst roller */
+Sadece Elçi gibi üst roller
+
+first_name /last_name /department /class /role /created_at / universty_department  silme_butonu 
+ */
 export function renderMembers() {
   return `
     <section class="page members-page">
