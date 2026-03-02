@@ -4,11 +4,17 @@ import { renderNav, initNavEvents } from "./nav.js";
 import { getUser } from "./store.js";
 import { startRouter } from "./router.js";
 
+
 const user = getUser();
 
 if (user) {
-  document.getElementById("sidebar").innerHTML = renderNav(user);//inner.HTML ile renderNav fonksiyonundan dönen HTML'i sidebar elementine ekliyoruz.
+  // Navigasyonu bas (Sidebar sabit kalır)
+  document.getElementById("sidebar").innerHTML = renderNav(user);
   initNavEvents();
+  
+  // Router'ı başlat (Hangi sayfada olduğumuzu o belirleyecek)
+  startRouter(); 
+} else {
+  // Kullanıcı yoksa login'e yönlendir
+  window.location.href = "/login.html";
 }
-
-startRouter();
