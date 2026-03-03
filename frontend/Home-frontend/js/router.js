@@ -21,7 +21,7 @@ import { renderHome } from "./pages/home.js";
 import { renderCommunity } from "./pages/community.js";
 import { renderEvents } from "./pages/events.js";
 import { renderProjects } from "./pages/projects.js";
-import { renderReports } from "./pages/reports.js";
+import { renderReports,initReports } from "./pages/reports.js";
 import { renderCalendar } from "./pages/calendar.js";
 import { renderFinance } from "./pages/finance.js";
 import { renderMembers } from "./pages/members.js";
@@ -75,12 +75,8 @@ function renderForbidden(appEl) {
 //}
 
 export function router() {
-  const appEl = document.getElementById("app");
+  const appEl = document.querySelector(".main-area"); // 👈 ÖNEMLİ
   const user = getUser();
-//if (!user) {
-  //  redirectToLogin();
-   // return;
-  //}
 
   const path = getPathFromHash();
   const route = ROUTES[path];
@@ -96,7 +92,13 @@ export function router() {
     return;
   }
 
+  // HTML render
   appEl.innerHTML = route.render(user);
+
+  // Reports ise init çalıştır
+  if (path === "/reports") {
+    initReports();
+  }
 }
 
 export function startRouter() {
