@@ -50,6 +50,38 @@ async def list_users(
 
 
 # -------------------------
+# Filtrelenmiş Kullanıcı Listesi
+# -------------------------
+@router.get("/filter", response_model=List[User])
+async def filter_users(
+    role: Optional[str] = None,
+    department: Optional[str] = None,
+    current_user = Depends(security.require_admin_or_elci)
+):
+    """
+    Rol veya departmana göre filtrelenmiş kullanıcı listesi
+    Örnek: /users/filter?role=elci&department=bilgisayar
+    """
+    users = get_filtered_users(role=role, department=department)
+    return users
+
+
+# -------------------------
+# Kullanıcı İstatistikleri
+# -------------------------
+@router.get("/stats")
+async def get_stats(
+    current_user = Depends(security.require_admin_or_elci)
+):
+    """
+    Sistem genelindeki kullanıcı istatistikleri
+    Dashboard için kullanılabilir
+    """
+    stats = get_user_stats()
+    return stats
+
+
+# -------------------------
 # Kullanıcı Detay
 # -------------------------
 @router.get("/{user_id}", response_model=User)
@@ -150,33 +182,3 @@ async def activate_user_endpoint(
     return activated_user
 
 
-# -------------------------
-# Filtrelenmiş Kullanıcı Listesi
-# -------------------------
-@router.get("/filter", response_model=List[User])
-async def filter_users(
-    role: Optional[str] = None,
-    department: Optional[str] = None,
-    current_user = Depends(security.require_admin_or_elci)
-):
-    """
-    Rol veya departmana göre filtrelenmiş kullanıcı listesi
-    Örnek: /users/filter?role=elci&department=bilgisayar
-    """
-    users = get_filtered_users(role=role, department=department)
-    return users
-
-
-# -------------------------
-# Kullanıcı İstatistikleri
-# -------------------------
-@router.get("/stats")
-async def get_stats(
-    current_user = Depends(security.require_admin_or_elci)
-):
-    """
-    Sistem genelindeki kullanıcı istatistikleri
-    Dashboard için kullanılabilir
-    """
-    stats = get_user_stats()
-    return stats

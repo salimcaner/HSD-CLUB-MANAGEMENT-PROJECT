@@ -44,6 +44,7 @@ def login_user(email: str, password: str):
 # -------------------------
 # Kullanıcı ekle 
 # -------------------------
+
 def invite_user(email: str, first_name: str, last_name: str, role: str, department: str = None, class_: int = None, university_department: str = None):
     import requests
     try:
@@ -125,6 +126,8 @@ def invite_user(email: str, first_name: str, last_name: str, role: str, departme
         _delete_user_http(user_id)
         raise e
     
+   
+
     #2️⃣ Profiles tablosuna ekle — hata olursa Auth'dan da sil (rollback)
     try:
         create_user(
