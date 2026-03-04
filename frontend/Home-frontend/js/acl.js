@@ -29,7 +29,7 @@ const Role_Permission = {
     INSAN_KAYNAKLARI: [
         "events:read", "events:create", "events:update", "events:delete",
         "projects:read", "projects:create", "projects:update", "projects:delete",
-        "reports:read", "reports:create", "report:delete",
+        "reports:read", "reports:create","report:update","report:delete",
         "members:read", "members:create", "members:update"
     ],
 

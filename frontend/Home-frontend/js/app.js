@@ -8,13 +8,7 @@ import { startRouter } from "./router.js";
 const user = getUser();
 
 if (user) {
-  // Navigasyonu bas (Sidebar sabit kalır)
-  document.getElementById("sidebar").innerHTML = renderNav(user);
+  document.getElementById("root").innerHTML = renderNav(user);
   initNavEvents();
-  
-  // Router'ı başlat (Hangi sayfada olduğumuzu o belirleyecek)
-  startRouter(); 
-} else {
-  // Kullanıcı yoksa login'e yönlendir
-  window.location.href = "/login.html";
+  startRouter();
 }
