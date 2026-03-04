@@ -102,7 +102,7 @@ passwordForm.addEventListener('submit', async (e) => {
         if (response.ok) {
             alert("Şifreniz başarıyla oluşturuldu! Giriş ekranına yönlendiriliyorsunuz...");
             // Kullanıcıyı login sayfasına yönlendir
-            window.location.href = '../login-frontend/login.html';
+            window.location.href = '../../login-frontend/login.html';
         } else {
             throw new Error(data.detail || 'Şifre sıfırlanırken bir hata oluştu');
         }
