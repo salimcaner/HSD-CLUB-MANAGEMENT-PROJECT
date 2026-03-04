@@ -86,7 +86,7 @@ passwordForm.addEventListener('submit', async (e) => {
     btn.disabled = true;
 
     try {
-        const response = await fetch(`http://127.0.0.1:8000/auth/reset-password`, {
+        const response = await fetch(`http://127.0.0.1:8001/auth/reset-password`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
