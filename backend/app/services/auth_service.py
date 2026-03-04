@@ -64,7 +64,7 @@ def invite_user(email: str, first_name: str, last_name: str, role: str, departme
                 "first_name": first_name,
                 "last_name": last_name
             },
-            "redirect_to": "http://127.0.0.1:5500/frontend/password/ConfirmPassword/password.html"
+            "redirect_to": "http://127.0.0.1:8000/frontend/password/ConfirmPassword/password.html"
         }
         resp = requests.post(url, headers=headers, json=payload)
         
@@ -208,9 +208,21 @@ def reset_password(token: str, new_password: str):
     Token ile şifre sıfırla
     """
     try:
-        supabase.auth.update_user(
-            {"password": new_password},
-            {"access_token": token}
+        from app.core.supabase_client import get_supabase
+        # Güvenlik için global istemciyi kirletmemek adına yeni bir client başlatıyoruz
+        local_supabase = get_supabase()
+        
+        # Token'dan user bilgisini al (Bu işlem client'in Authorization header'ını ezer)
+        user_resp = local_supabase.auth.get_user(token)
+        if not user_resp or not user_resp.user:
+            raise ValueError("Geçersiz veya süresi dolmuş token.")
+            
+        # Admin yetkisiyle kullanıcının şifresini güncelle
+        # Service Role (Admin) anahtarını kullanan TERTEMİZ yeni bir client ile yapıyoruz
+        admin_supabase = get_supabase()
+        admin_supabase.auth.admin.update_user_by_id(
+            user_resp.user.id,
+            {"password": new_password}
         )
         return {"message": "Şifreniz başarıyla değiştirildi!"}
     except Exception as e:

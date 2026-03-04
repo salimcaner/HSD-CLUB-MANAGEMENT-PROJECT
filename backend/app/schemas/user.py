@@ -13,6 +13,7 @@ class UserRole(str, Enum):
     LIDER = "lider"
     UYE = "uye"
     MEZUN = "mezun"
+    GENEL_SEKRETER = "genel_sekreter"
 
 
 # ==========================================
@@ -29,17 +30,40 @@ class UserBase(BaseModel):
     university_department: Optional[str] = None
 
 
-    @field_validator('role')
+    @field_validator('role', mode='before')
     @classmethod
     def validate_role(cls, v):
         """Rol validasyonu"""
         if isinstance(v, str):
-            # String gelirse Enum'a çevir
+            v_lower = v.lower()
+            # Eğer enum içinde yoksa fallback olarak 'uye' veya admin ataması vb. yapılabilir.
+            # Şimdilik sadece lower yapalım, enum kendisi hatalıysa yakalar.
             try:
-                return UserRole(v)
+                return UserRole(v_lower)
             except ValueError:
-                raise ValueError(f"Geçersiz rol: {v}. Geçerli roller: {[r.value for r in UserRole]}")
+                # Geçersiz roller için varsayılan bir rol atanabilir veya hata fırlatılır.
+                # 'Admin ' gibi boşluklu gelmişse strip yapalım.
+                v_clean = v_lower.strip()
+                try:
+                    return UserRole(v_clean)
+                except ValueError:
+                    return v_clean # Enum hatası fırlamasına izin ver
         return v
+
+    @field_validator('class_', mode='before')
+    @classmethod
+    def validate_class(cls, v):
+        """Sınıf validasyonu, '-' veya boşluk gelirse None yap"""
+        if isinstance(v, str):
+            v_clean = v.strip()
+            if v_clean in ('-', '', 'null', 'None'):
+                return None
+            try:
+                return int(v_clean)
+            except ValueError:
+                return None
+        return v
+
     class Config:
         populate_by_name = True   # class_ ile class eşleşsin 
 

@@ -19,10 +19,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+import os
+from fastapi.staticfiles import StaticFiles
+
 # Auth router
 
 app.include_router(auth.router)
 app.include_router(users.router)
+
+# Frontend klasörünü statik olarak sun (http://127.0.0.1:8000/frontend/...)
+frontend_path = os.path.join(os.path.dirname(__file__), "..", "..", "frontend")
+app.mount("/frontend", StaticFiles(directory=frontend_path), name="frontend")
 
 @app.get("/")
 async def root():
