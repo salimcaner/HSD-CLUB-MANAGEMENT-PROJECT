@@ -1,0 +1,31 @@
+KULÜP YÖNETİM SİSTEMİ - SUPABASE DAVET SİSTEMİ HATA ÇÖZÜM RAPORU
+Tarih: 02 Mart 2026
+
+1. E-POSTA GÖNDERİM LİMİTİ SORUNU (Supabase 2 Mail/Saat)
+Durum: Supabase ücretsiz planındaki saatlik e-posta gönderme limitine takılıyordu, mailler bazen gidip bazen gitmiyordu.
+Çözüm:
+- `auth_service.py` içerisindeki `invite_user_by_email` metodu iptal edildi.
+- Bunun yerine Supabase'in e-posta atmadan sadece bir davetiye/şifre belirleme linki üreten `generate_link` API metodu kullanıldı.
+- Üretilen bu linki kullanıcıya limiti olmadan gönderebilmek için `email_service.py` adında SMTP (Python stmlib tabanlı) kendi e-posta servisimiz yazıldı.
+- `.env` içerisine uygulamanın Gmail bilgileri (Uygulama şifresi ile) eklendi.
+
+2. GMAIL PORT 465 (SSL) BAĞLANTI HATASI
+Durum: `email_service.py` sadece Port 587 (STARTTLS) destekliyordu, kullanıcının 465 portu (SSL) girildiğinde kod TypeError veya 535 Authentication Error başlatıyordu.
+Çözüm: 
+- `email_service.py` güncellenerek `.env` dosyasında Port 465 varsa otomatik olarak `SMTP_SSL` destekleyecek şekilde dinamik bir altyapı oluşturuldu ve Google SMTP ile bağlantı başarıyla sağlandı.
+
+3. "USER NOT ALLOWED" YETKİLENDİRME (403 FORBIDDEN) ÇÖKME HATASI
+Durum: Swagger üzerinden API isteği atıldığında (`/auth/invite`), sistem e-postayı mükemmel olarak atmasına rağmen en son aşamada "User not allowed" diyerek çöküyordu. Hata arayüzde 500 koduyla dönüyordu.
+Sebep: Uygulamaya yetkili/lider hesabıyla oturum açıldığında (Login işlemi esnasında) backend üzerinde bulunan global `supabase` Python kütüphanesi aktif oturumu devralıyor. Bu yüzden "service_key" seviyesi denilen sonsuz yönetici yetkisi, sıradan bir kullanıcı yetkisi seviyesine indirgenmiş (Downgrade) oluyordu.
+Çözüm: 
+- `auth_service.py` dosyası içindeki "Davet Linki Oluşturma (Generate Link)" ve "Hatalı Daveti Geri Alma (Rollback / Delete User)" kodları standart Supabase Python kütüphanesinden çıkartılıp, `requests` kütüphanesiyle Supabase servisine doğrudan HTTP üzerinden `SUPABASE_SERVICE_KEY` ile gizlice gönderilecek yapıya çevrildi. Yetki çakışması tamamen yok edildi.
+
+4. POSTGRESQL "ENUM" VE RLS POLİTİKA (500) HATASI
+Durum: E-posta 400 veya 500 hata kodları fırlatsa da başarıyla kullanıcıya gidiyordu ancak işlem sonlanamadan sistem çöküyordu.
+Sebep: API'den veya Swagger /docs testlerinden gönderilen `Yönetici` veya `lider` gibi yeni roller `profiles` tablosuna kaydetmeye çalışılırken hata yaşanıyordu. Veritabanındaki "user_role" isimli Enum (Roller serisi) tipinin içinde `lider` kelimesi bulunmadığı (veya RLS Policy: 42501 gereği Tabloya Satır Ekleme (INSERT) yetkisi reddedildiği) zaman Postgres hata verip işlemi geri itiyordu. FastAPI ise bu durumu anlamayıp uygulamayı çökertiyordu (500 Internal Server Error).
+Çözüm:
+- `auth_service.py` kısmındaki veritabanı kayıt hataları (Try/Except ile) dikkatle ele alındı. Eklenemeyen veya başarısız olan kayıtlar yukarıda belirtilen "Direct HTTP Admin Request" yöntemiyle Supabase Auth sisteminden başarıyla temizlenir (Rollback) hale getirildi. 
+- Hata fırlatma kodu HTTP 500 (Uygulama Çöktü) yerine HTTP 400 (Gönderdiğiniz rol geçersiz veya veritabanı kayıt kuralları (RLS) nedeniyle profiliniz şu an oluşturulamadı) daha güvenli ve okunaklı uyarı koduna çevrildi.
+
+Sonuç Özeti:
+E-posta oluşturma ve yollama aşamasındaki tüm blokajlar, 403 izin problemleri ve limitler %100 oranında çözüldü. İşlem iptal ve Rollback altyapısı sağlamlaştırılıp server'ın çökmesi engellendi. Mevcut olan tek durum sistemin "profiles" tablosuna (veritabanına) yazabilmesi için Supabase panelinden RLS izinlerinizin ("Enable Insert") ve Role Enum değişkenlerinizin (lider rolü gibi) backend isteğiyle eşlenmesidir. E-posta limitine takılan hiçbir işlem kalmamıştır.

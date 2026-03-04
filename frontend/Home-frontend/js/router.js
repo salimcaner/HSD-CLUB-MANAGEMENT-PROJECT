@@ -31,19 +31,19 @@ import { renderSettings } from "./pages/settings.js";
 //const LOGIN_URL = "../../../login-frontend/login.html";
 
 const ROUTES = {
-    //"/login" : {render: renderLogin},
-    "/home":      { render: renderHome, required: []},
-    "/community": { render: renderCommunity, required: [] },
+  //"/login" : {render: renderLogin},
+  "/home": { render: renderHome, required: [] },
+  "/community": { render: renderCommunity, required: [] },
 
-    "/events":    { render: renderEvents,   required: []},
-    "/projects":  { render: renderProjects, required: []},
-    "/reports":   { render: renderReports,  required: []},
-    "/calendar":  { render: renderCalendar, required: ["calendar:read"] },
-    "/finance":   { render: renderFinance,  required: ["finance:read"] },
-    "/members":   { render: renderMembers,  required: ["members:read"] },
+  "/events": { render: renderEvents, required: [] },
+  "/projects": { render: renderProjects, required: [] },
+  "/reports": { render: renderReports, required: [] },
+  "/calendar": { render: renderCalendar, required: ["calendar:read"] },
+  "/finance": { render: renderFinance, required: ["finance:read"] },
+  "/members": { render: renderMembers, required: ["members:read"] },
 
-    "/profile":   { render: renderProfile,  required: [] }, 
-    "/settings":  { render: renderSettings, required: [] }
+  "/profile": { render: renderProfile, required: [] },
+  "/settings": { render: renderSettings, required: [] }
 };
 
 function getPathFromHash() {
@@ -69,14 +69,18 @@ function renderForbidden(appEl) {
 }
 
 //function redirectToLogin() {
-  // Nereye dönmesi gerektiğini de parametreyle taşıyalım
- // const returnTo = encodeURIComponent(location.href);
-  //window.location.href = `${LOGIN_URL}?returnTo=${returnTo}`;
+// Nereye dönmesi gerektiğini de parametreyle taşıyalım
+// const returnTo = encodeURIComponent(location.href);
+//window.location.href = `${LOGIN_URL}?returnTo=${returnTo}`;
 //}
 
 export function router() {
   const appEl = document.querySelector(".main-area"); // 👈 ÖNEMLİ
   const user = getUser();
+  //if (!user) {
+  //  redirectToLogin();
+  // return;
+  //}
 
   const path = getPathFromHash();
   const route = ROUTES[path];

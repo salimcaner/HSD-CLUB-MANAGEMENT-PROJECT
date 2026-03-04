@@ -8,16 +8,17 @@ export function setUser(user) {
 }
 
 export function getUser() {
- // const raw = localStorage.getItem(KEY);
+  // const raw = localStorage.getItem(KEY);
   //return raw ? JSON.parse(raw) : null;
- const role = "UYE";
+  const role = "ELCI";
 
   return {
     first_name: "Test",
     last_name: "User",
     role: role,
     permissions: buildPermissions(role)
-}}
+  }
+}
 
 export function clearUser() {
   localStorage.removeItem(KEY);
