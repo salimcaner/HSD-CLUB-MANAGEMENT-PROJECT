@@ -8,11 +8,11 @@ from enum import Enum
 
 class UserRole(str, Enum):
     """Kullanıcı rolleri - Değiştirilmez, güvenli"""
-    ADMIN = "admin"
+    GENEL_SEKRETER = "genel_sekreter"
     ELCI = "elci"
-    LIDER = "lider"
+    DEPARTMAN_LIDERI = "departman_lideri"
+    INSAN_KAYNAKLARI = "insan_kaynaklari"
     UYE = "uye"
-    MEZUN = "mezun"
 
 
 # ==========================================
