@@ -86,7 +86,7 @@ passwordForm.addEventListener('submit', async (e) => {
     btn.disabled = true;
 
     try {
-        const response = await fetch(`http://127.0.0.1:8000/auth/reset-password`, {
+        const response = await fetch(`/auth/reset-password`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -101,8 +101,8 @@ passwordForm.addEventListener('submit', async (e) => {
 
         if (response.ok) {
             alert("Şifreniz başarıyla oluşturuldu! Giriş ekranına yönlendiriliyorsunuz...");
-            // Kullanıcıyı login sayfasına yönlendir
-            window.location.href = '../login-frontend/login.html';
+            // Kullanıcıyı login sayfasına yönlendir (backend üzerinden sunulduğu için absolute path)
+            window.location.href = '/frontend/login-frontend/login.html';
         } else {
             throw new Error(data.detail || 'Şifre sıfırlanırken bir hata oluştu');
         }
