@@ -1,6 +1,7 @@
 from fastapi import HTTPException, status
-from app.core.supabase_client import supabase
 from app.schemas.user import User
+from app.core.supabase_client import get_supabase
+supabase = get_supabase()
 
 
 def get_user_by_email(email: str):
@@ -25,6 +26,7 @@ def create_user(
     class_: int = None,
     university_department: str = None
 ):
+    supabase = get_supabase()
     """
     Kullanıcı profili oluştur
     - Invite: Sadece email + role
