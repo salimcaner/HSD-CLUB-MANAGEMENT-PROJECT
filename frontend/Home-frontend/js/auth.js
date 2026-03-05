@@ -25,7 +25,7 @@ Gerçek backend gelince bu dosya API çağıracak.*/
 import { buildPermissions } from "acl.js";
 const User = {
     id: "1",
-    role: "UYE",
+    role: "ELCI",
     first_name: "Sümeyye",
     last_name: "Köse",
     departmen: "Proje",

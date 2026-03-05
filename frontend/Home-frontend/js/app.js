@@ -4,11 +4,11 @@ import { renderNav, initNavEvents } from "./nav.js";
 import { getUser } from "./store.js";
 import { startRouter } from "./router.js";
 
+
 const user = getUser();
 
 if (user) {
-  document.getElementById("sidebar").innerHTML = renderNav(user);//inner.HTML ile renderNav fonksiyonundan dönen HTML'i sidebar elementine ekliyoruz.
+  document.getElementById("root").innerHTML = renderNav(user);
   initNavEvents();
+  startRouter();
 }
-
-startRouter();

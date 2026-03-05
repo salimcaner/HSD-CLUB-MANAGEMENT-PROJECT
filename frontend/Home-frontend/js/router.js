@@ -21,7 +21,7 @@ import { renderHome } from "./pages/home.js";
 import { renderCommunity } from "./pages/community.js";
 import { renderEvents } from "./pages/events.js";
 import { renderProjects } from "./pages/projects.js";
-import { renderReports } from "./pages/reports.js";
+import { renderReports,initReports } from "./pages/reports.js";
 import { renderCalendar } from "./pages/calendar.js";
 import { renderFinance } from "./pages/finance.js";
 import { renderMembers } from "./pages/members.js";
@@ -31,19 +31,19 @@ import { renderSettings } from "./pages/settings.js";
 //const LOGIN_URL = "../../../login-frontend/login.html";
 
 const ROUTES = {
-    //"/login" : {render: renderLogin},
-    "/home":      { render: renderHome, required: []},
-    "/community": { render: renderCommunity, required: [] },
+  //"/login" : {render: renderLogin},
+  "/home": { render: renderHome, required: [] },
+  "/community": { render: renderCommunity, required: [] },
 
-    "/events":    { render: renderEvents,   required: []},
-    "/projects":  { render: renderProjects, required: []},
-    "/reports":   { render: renderReports,  required: []},
-    "/calendar":  { render: renderCalendar, required: ["calendar:read"] },
-    "/finance":   { render: renderFinance,  required: ["finance:read"] },
-    "/members":   { render: renderMembers,  required: ["members:read"] },
+  "/events": { render: renderEvents, required: [] },
+  "/projects": { render: renderProjects, required: [] },
+  "/reports": { render: renderReports, required: [] },
+  "/calendar": { render: renderCalendar, required: ["calendar:read"] },
+  "/finance": { render: renderFinance, required: ["finance:read"] },
+  "/members": { render: renderMembers, required: ["members:read"] },
 
-    "/profile":   { render: renderProfile,  required: [] }, 
-    "/settings":  { render: renderSettings, required: [] }
+  "/profile": { render: renderProfile, required: [] },
+  "/settings": { render: renderSettings, required: [] }
 };
 
 function getPathFromHash() {
@@ -69,17 +69,17 @@ function renderForbidden(appEl) {
 }
 
 //function redirectToLogin() {
-  // Nereye dönmesi gerektiğini de parametreyle taşıyalım
- // const returnTo = encodeURIComponent(location.href);
-  //window.location.href = `${LOGIN_URL}?returnTo=${returnTo}`;
+// Nereye dönmesi gerektiğini de parametreyle taşıyalım
+// const returnTo = encodeURIComponent(location.href);
+//window.location.href = `${LOGIN_URL}?returnTo=${returnTo}`;
 //}
 
 export function router() {
-  const appEl = document.getElementById("app");
+  const appEl = document.querySelector(".main-area"); // 👈 ÖNEMLİ
   const user = getUser();
-//if (!user) {
+  //if (!user) {
   //  redirectToLogin();
-   // return;
+  // return;
   //}
 
   const path = getPathFromHash();
@@ -96,7 +96,13 @@ export function router() {
     return;
   }
 
+  // HTML render
   appEl.innerHTML = route.render(user);
+
+  // Reports ise init çalıştır
+  if (path === "/reports") {
+    initReports();
+  }
 }
 
 export function startRouter() {
