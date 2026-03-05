@@ -147,12 +147,12 @@ export function renderMembers(user) {
               <div class="form-group">
                 <label>Rol</label>
                 <select id="memberRole" required>
-                  <option value="UYE">Üye</option>
-                  <option value="KOMITE_LIDERI">Komite Lideri</option>
-                  <option value="INSAN_KAYNAKLARI">İnsan Kaynakları</option>
-                  <option value="GENEL_SEKRETER">Genel Sekreter</option>
-                  <option value="ELCI_YARDIMCISI">Elçi Yardımcısı</option>
-                  <option value="ELCI">Elçi</option>
+                  <option value="uye">Üye</option>
+                  <option value="lider">Komite Lideri</option>
+                  <option value="genel_sekreter">İnsan Kaynakları</option>
+                  <option value="genel_sekreter">Genel Sekreter</option>
+                  <option value="elci">Elçi Yardımcısı</option>
+                  <option value="elci">Elçi</option>
                 </select>
               </div>
             </div>
@@ -266,15 +266,32 @@ function renderMembersContent() {
         actionsHtml += '</div>';
       }
 
+      // "Aktif" and "Pasif" depending on if they logged in or have missing fields
+      // Eğer kullanıcı profilini tamamlamışsa (sınıf bilgisi vs. varsa) "Aktif" diyelim ya da is_active var sayalım
+      let durum = "Aktif";
+      let durumClass = "status-active";
+      if (m.is_active === false || (!m.class_ && !m.university_department)) {
+        // Profil tablosunda "is_active" olmadığında, 
+        // ya da ilk girişte profil doldurma zorunlu olduğu için
+        // profil bilgisi boş olanların mail onayını henüz yapıp girmediğini varsayabiliriz.
+        durum = "Pasif";
+        durumClass = "status-passive";
+      }
+
       return `
         <tr>
           <td>
             <div class="member-name-cell">
-              <div class="name">${m.first_name || '-'} ${m.last_name || '-'}</div>
+              <div class="name">${m.first_name || '-'}</div>
             </div>
           </td>
+          <td>${m.last_name || '-'}</td>
+          <td>${m.email || '-'}</td>
           <td>${m.department || '-'}</td>
           <td><span class="role-badge role-${m.role || 'UYE'}">${(m.role || 'UYE').replace('_', ' ')}</span></td>
+          <td>${m.university_department || '-'}</td>
+          <td>${m.class_ ? m.class_ + '. Sınıf' : '-'}</td>
+          <td><span class="status-badge ${durumClass}">${durum}</span></td>
           <td>${date}</td>
           <td>${actionsHtml}</td>
         </tr>
@@ -282,13 +299,18 @@ function renderMembersContent() {
     }).join("");
 
     contentEl.innerHTML = `
-      <div class="members-table-wrap">
-        <table class="members-table">
+      <div class="members-table-wrap" style="overflow-x: auto;">
+        <table class="members-table" style="min-width: 1000px;">
           <thead>
             <tr>
-              <th>Ad Soyad</th>
+              <th>Ad</th>
+              <th>Soyad</th>
+              <th>E-posta</th>
               <th>Departman</th>
               <th style="padding-left: 24px;">Rol</th>
+              <th>Üni. Bölümü</th>
+              <th>Sınıf</th>
+              <th>Durum</th>
               <th>Katılım Tarihi</th>
               <th>İşlem</th>
             </tr>

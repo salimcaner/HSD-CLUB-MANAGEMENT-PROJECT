@@ -53,7 +53,9 @@ const Role_Permission = {
         "events:read",
         "projects:read",
         "reports:create", "report:delete", "report:update", "reports:read"
-    ]
+    ],
+
+    MEZUN: []
 }
 
 export function buildPermissions(role) {
