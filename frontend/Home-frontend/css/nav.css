@@ -1,0 +1,544 @@
+/* ============================================================
+   nav.css — Sidebar + Topbar
+   Renk paleti: gradyan.png'deki koyu-gri, soğuk ton esinlenerek
+
+   BAĞLAMA (her sayfanın HTML'inde <head> içine ekle):
+   <link rel="stylesheet" href="../css/nav.css">
+
+   nav.js import yolu (her sayfanın JS dosyasında):
+   import { renderNav, initNavEvents } from "../js/nav.js";
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&display=swap');
+
+/* ── CSS Değişkenleri ───────────────────────────────────────── */
+:root {
+  --sidebar-width: 240px;
+  --topbar-height: 60px;
+
+  /* Ana palet — gradyan.png tonları */
+  --bg-darkest:   #141618;   /* en koyu zemin */
+  --bg-dark:      #1c1e21;   /* sidebar arka planı */
+  --bg-mid:       #232629;   /* kartlar, hover */
+  --bg-light:     #2b2f35;   /* hafif yüzeyler */
+  --bg-topbar:    #18191c;   /* topbar */
+
+  --border:       rgba(255,255,255,0.06);
+  --border-hover: rgba(255,255,255,0.12);
+
+  --text-primary:  #e8eaed;
+  --text-secondary: #8a9099;
+  --text-muted:    #555d68;
+
+  --accent:        #7b8fa1;   /* soğuk çelik mavi-gri */
+  --accent-glow:   rgba(123,143,161, 0.18);
+  --accent-active: #a8bccf;
+
+  --logout-hover: rgba(200, 80, 80, 0.15);
+  --logout-color: #c07878;
+
+  font-family: 'Figtree', sans-serif;
+}
+
+/* ── Reset / Base ───────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg-darkest);
+  color: var(--text-primary);
+  font-family: 'Figtree', sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+a { text-decoration: none; color: inherit; }
+ul { list-style: none; }
+button { border: none; background: none; cursor: pointer; font-family: inherit; }
+svg { display: block; }
+
+/* ── Layout Wrapper ─────────────────────────────────────────── */
+.layout-wrapper {
+  display: flex;
+  min-height: 100vh;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SIDEBAR
+═══════════════════════════════════════════════════════════════ */
+.sidebar {
+  width: var(--sidebar-width);
+  min-width: var(--sidebar-width);
+  background: var(--bg-dark);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  position: fixed;
+  top: 0;
+  left: 0;
+  overflow: visible;
+  transition: width 0.3s ease, transform 0.3s ease;
+  z-index: 100;
+}
+
+/* ── Logo ─────────────────────────────────────────────────────── */
+.sidebar-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 18px 18px;
+}
+
+.logo-mark {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+}
+
+.logo-placeholder {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--bg-light), var(--bg-mid));
+  border: 1px solid var(--border-hover);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+}
+
+.logo-placeholder svg { width: 20px; height: 20px; }
+
+/* Eğer gerçek logo resmi kullanılacaksa: */
+.logo-img {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  border-radius: 8px;
+}
+
+.logo-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.logo-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: 0.02em;
+}
+
+.logo-sub {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* ── Sidebar Collapse Butonu ─────────────────────────────────── */
+.sidebar-collapse-btn {
+  position: absolute;
+  right: -14px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--bg-light);
+  border: 1px solid var(--border-hover);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  z-index: 110;
+  transition: background 0.18s, color 0.18s;
+}
+.sidebar-collapse-btn svg {
+  width: 18px;
+  height: 18px;
+  transition: transform 0.3s ease;
+}
+.sidebar-collapse-btn:hover {
+  background: var(--bg-mid);
+  color: var(--text-primary);
+}
+
+/* Collapsed modda ikon 180° döner */
+.sidebar--collapsed .sidebar-collapse-btn svg {
+  transform: rotate(180deg);
+}
+
+/* ── Collapsed Sidebar ───────────────────────────────────────── */
+.sidebar--collapsed {
+  width: 64px;
+  min-width: 64px;
+}
+
+.sidebar--collapsed .logo-text,
+.sidebar--collapsed .nav-label,
+.sidebar--collapsed .nav-indicator,
+.sidebar--collapsed .user-details {
+  display: none;
+}
+
+.sidebar--collapsed .sidebar-logo {
+  justify-content: center;
+  padding: 20px 0 18px;
+}
+
+.sidebar--collapsed .logo-mark {
+  margin: 0 auto;
+}
+
+.sidebar--collapsed .nav-link {
+  justify-content: center;
+  padding: 10px 0;
+}
+
+.sidebar--collapsed .nav-icon {
+  margin: 0 auto;
+  opacity: 0.8;
+}
+
+.sidebar--collapsed .user-card {
+  justify-content: center;
+  padding: 12px 0 4px;
+}
+
+.sidebar--collapsed .sidebar-menu {
+  padding: 4px 8px;
+}
+
+/* Tooltip collapsed modda */
+.sidebar--collapsed .nav-link::after {
+  content: attr(data-label);
+  position: absolute;
+  left: 70px;
+  background: var(--bg-light);
+  color: var(--text-primary);
+  font-size: 13px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  border: 1px solid var(--border-hover);
+  transition: opacity 0.15s;
+  z-index: 200;
+}
+.sidebar--collapsed .nav-link:hover::after {
+  opacity: 1;
+}
+
+/* ── Divider ─────────────────────────────────────────────────── */
+.sidebar-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 0 14px;
+}
+
+/* ── Nav ─────────────────────────────────────────────────────── */
+.sidebar-nav {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 10px 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--bg-light) transparent;
+}
+
+.sidebar-nav::-webkit-scrollbar { width: 4px; }
+.sidebar-nav::-webkit-scrollbar-track { background: transparent; }
+.sidebar-nav::-webkit-scrollbar-thumb { background: var(--bg-light); border-radius: 4px; }
+
+.sidebar-menu { padding: 4px 10px; }
+
+.nav-item + .nav-item { margin-top: 2px; }
+
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 10px 10px;
+  border-radius: 8px;
+  color: var(--text-secondary);
+  font-size: 15px;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  position: relative;
+  transition: background 0.18s, color 0.18s;
+}
+
+.nav-link:hover {
+  background: var(--bg-mid);
+  color: var(--text-primary);
+}
+
+.nav-link.active {
+  background: var(--accent-glow);
+  color: var(--accent-active);
+  font-weight: 500;
+}
+
+.nav-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  opacity: 0.75;
+  transition: opacity 0.18s;
+}
+.nav-icon svg { width: 20px; height: 20px; }
+
+.nav-link:hover .nav-icon,
+.nav-link.active .nav-icon { opacity: 1; }
+
+.nav-label { flex: 1; }
+
+/* Aktif çizgi göstergesi */
+.nav-indicator {
+  width: 3px;
+  height: 0;
+  border-radius: 3px;
+  background: var(--accent);
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  transition: height 0.2s;
+}
+.nav-link.active .nav-indicator { height: 18px; }
+
+/* ── Sidebar Footer (Kullanıcı Kartı) ────────────────────────── */
+.sidebar-footer {
+  padding: 10px 0 14px;
+}
+
+.user-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px 4px;
+}
+
+.user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--bg-light), #3a4048);
+  border: 1px solid var(--border-hover);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent-active);
+  flex-shrink: 0;
+  letter-spacing: 0.05em;
+}
+
+.user-details {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.user-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.user-role {
+  font-size: 11px;
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   MAIN AREA (Topbar + Content)
+═══════════════════════════════════════════════════════════════ */
+.main-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--bg-darkest);
+  margin-left: var(--sidebar-width);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TOPBAR
+═══════════════════════════════════════════════════════════════ */
+.topbar {
+  height: var(--topbar-height);
+  background: var(--bg-topbar);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  position: sticky;
+  top: 0;
+  z-index: 90;
+  gap: 16px;
+}
+
+/* ── Topbar Sol ──────────────────────────────────────────────── */
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.sidebar-toggle {
+  width: 34px;
+  height: 34px;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  transition: background 0.18s, color 0.18s;
+}
+.sidebar-toggle svg { width: 18px; height: 18px; }
+.sidebar-toggle:hover { background: var(--bg-mid); color: var(--text-primary); }
+
+/* Mobil dışında gizle (isteğe bağlı) */
+@media (min-width: 769px) {
+  .sidebar-toggle { display: none; }
+}
+
+.topbar-page-title {
+  font-size: 17px;
+  font-weight: 500;
+  color: var(--text-primary);
+  letter-spacing: 0.01em;
+}
+
+/* ── Topbar Sağ ──────────────────────────────────────────────── */
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.topbar-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  transition: background 0.18s, color 0.18s;
+  color: var(--text-secondary);
+}
+
+.topbar-icon-btn {
+  width: 36px;
+  height: 36px;
+}
+.topbar-icon-btn svg { width: 18px; height: 18px; }
+
+.topbar-btn:hover {
+  background: var(--bg-mid);
+  color: var(--text-primary);
+}
+
+/* Profil avatar — topbar */
+.topbar-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--bg-light), #3a4048);
+  border: 1px solid var(--border-hover);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent-active);
+  letter-spacing: 0.05em;
+  transition: border-color 0.18s;
+}
+.topbar-btn:hover .topbar-avatar { border-color: var(--accent); }
+
+/* Bildirim butonu */
+.topbar-notif {
+  position: relative;
+}
+
+.notif-badge {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: #c07878;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 16px;
+  text-align: center;
+  pointer-events: none;
+  border: 2px solid var(--bg-topbar);
+}
+
+/* Çıkış butonu */
+.topbar-logout {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  height: 36px;
+  width: auto;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-muted);
+  letter-spacing: 0.01em;
+  transition: background 0.18s, color 0.18s, border-color 0.18s;
+}
+.topbar-logout svg { width: 16px; height: 16px; }
+
+.topbar-logout:hover {
+  background: var(--logout-hover);
+  color: var(--logout-color);
+  border-color: rgba(200, 80, 80, 0.2);
+}
+
+.logout-label { display: inline; }
+
+/* ═══════════════════════════════════════════════════════════════
+   MOBİL RESPONSIVE
+═══════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    height: 100vh;
+    transform: translateX(-100%);
+    box-shadow: 4px 0 24px rgba(0,0,0,0.4);
+  }
+
+  .sidebar.sidebar--open {
+    transform: translateX(0);
+  }
+
+  .main-area {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .logout-label { display: none; }
+  .topbar-logout { width: 36px; padding: 0; justify-content: center; }
+}
