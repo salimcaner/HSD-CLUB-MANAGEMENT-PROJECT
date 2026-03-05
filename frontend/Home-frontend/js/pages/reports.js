@@ -1,30 +1,18 @@
-/*Burada:
-
-Rapor listesi (komite filtresi, tag filtresi)
-
-Rapor detayı (tıklayınca)
-
-Feedback paneli:
-
-Feedback ver (reports.feedback + scope)
-
-(Opsiyonel) “Rapor oluştur” (eğer kural koyacaksan reports.create)
-
-Etiket zorunluluğu:
-
-“Aylık rapor” gibi tiplerde tag zorunlu */
-//const API_BASE_URL = "   ";
- import { hasPerm } from '../acl.js';
+import { hasPerm } from '../acl.js';
 
 /* ================================
    MOCK DATA
 ================================ */
 
+// olusturan_id: Backend'den gelen raporu oluşturan kullanıcının ID'si.
+// Giriş yapan kullanıcının ID'si (user.id) ile karşılaştırılarak sahiplik kontrolü yapılır.
+// Backend entegrasyonunda bu alan API response'undan doldurulmalıdır.
 const mockReports = [
-  { id: 1, rapor_adi: 'Aylık Faaliyet Raporu', olusturan: 'Zeynep Çelik', tarih: '01.03.2024', komite: 'Proje Komitesi', tur_etiket: 'Proje Raporu', tur_renk: 'blue', tur_alt: 'Sosyal Sorumluluk Projesi', durum: 'Onaylandı', durum_renk: 'green', gizlilik: 'Genel', gizlilik_renk: 'green' },
-  { id: 2, rapor_adi: 'Sponsorluk Görüşmesi', olusturan: 'Mehmet Kaya', tarih: '28.02.2024', komite: 'Sponsorluk ve Organizasyon Komitesi', tur_etiket: 'Etkinlik Raporu', tur_renk: 'orange', tur_alt: 'Bahar Şenliği', durum: 'Onay Bekliyor', durum_renk: 'orange', gizlilik: 'Gizli', gizlilik_renk: 'red' },
-  { id: 3, rapor_adi: 'Webinar Değerlendirme', olusturan: 'Ayşe Yılmaz', tarih: '15.02.2024', komite: 'Akademi Komitesi', tur_etiket: 'Eğitim Raporu', tur_renk: 'purple', tur_alt: 'Kariyer Günleri', durum: 'Onaylandı', durum_renk: 'green', gizlilik: 'Genel', gizlilik_renk: 'green' },
-  { id: 4, rapor_adi: 'Yıllık Mali Rapor', olusturan: 'Ali Demir', tarih: '10.02.2024', komite: 'Yönetim Kurulu', tur_etiket: 'Finans Raporu', tur_renk: 'blue', tur_alt: 'Bütçe Planlaması', durum: 'Onay Bekliyor', durum_renk: 'orange', gizlilik: 'Çok Gizli', gizlilik_renk: 'red' },
+  { id: 1, rapor_adi: 'Aylık Faaliyet Raporu',    olusturan: 'Zeynep Çelik',  olusturan_id: 2, tarih: '01.03.2024', komite: 'Proje Komitesi',                        tur_etiket: 'Proje Raporu',    tur_renk: 'neutral', durum: 'Onaylandı',    durum_renk: 'green',  gizlilik: 'Genel',     gizlilik_renk: 'green' },
+  { id: 2, rapor_adi: 'Sponsorluk Görüşmesi',      olusturan: 'Mehmet Kaya',   olusturan_id: 3, tarih: '28.02.2024', komite: 'Sponsorluk ve Organizasyon Komitesi', tur_etiket: 'Etkinlik Raporu', tur_renk: 'neutral', durum: 'Onay Bekliyor', durum_renk: 'orange', gizlilik: 'Gizli',     gizlilik_renk: 'red'   },
+  { id: 3, rapor_adi: 'Webinar Değerlendirme',     olusturan: 'Ayşe Yılmaz',  olusturan_id: 4, tarih: '15.02.2024', komite: 'Akademi Komitesi',                     tur_etiket: 'Eğitim Raporu',   tur_renk: 'neutral', durum: 'Onaylandı',    durum_renk: 'green',  gizlilik: 'Genel',     gizlilik_renk: 'green' },
+  { id: 4, rapor_adi: 'Yıllık Mali Rapor',         olusturan: 'Ali Demir',     olusturan_id: 5, tarih: '10.02.2024', komite: 'Yönetim Kurulu',                       tur_etiket: 'Finans Raporu',   tur_renk: 'neutral', durum: 'Onay Bekliyor', durum_renk: 'orange', gizlilik: 'Çok Gizli', gizlilik_renk: 'red'   },
+  { id: 5, rapor_adi: 'Akademi Tanıtım Sunumu',    olusturan: 'Ceren Arslan',  olusturan_id: 6, tarih: '05.02.2024', komite: 'Akademi Komitesi',                     tur_etiket: 'Eğitim Raporu',   tur_renk: 'neutral', durum: 'Reddedildi',   durum_renk: 'red',    gizlilik: 'Genel',     gizlilik_renk: 'green' },
 ];
 
 /* ================================
@@ -48,45 +36,68 @@ const TUM_TURLER = [...new Set(Object.values(KOMITE_TUR).flat())].sort((a,b) => 
    HELPERS
 ================================ */
 
-function renderRows(reports, canDelete, canUpdate, canFeedback) {
+// ─────────────────────────────────────────────────────────────────
+// YETKİ MANTIĞI:
+//   canDelete → true ise kullanıcı ELÇİ'dir, tüm raporları silebilir.
+//               false ise sadece kendi raporunu silebilir (r.olusturan_id === user.id).
+//   canUpdate → true ise kullanıcı ELÇİ'dir, tüm raporları güncelleyebilir.
+//               false ise sadece kendi raporunu güncelleyebilir (r.olusturan_id === user.id).
+//   user.id   → giriş yapan kullanıcının ID'si (store.js'den gelir).
+//   r.olusturan_id → raporu oluşturan kullanıcının ID'si (backend'den gelir).
+// ─────────────────────────────────────────────────────────────────
+function renderRows(reports, canDelete, canUpdate, canFeedback, user) {
   if (!reports.length) {
     return `<tr><td colspan="8" class="rp-no-data">Gösterilecek rapor bulunamadı.</td></tr>`;
   }
   return reports.map(r => `
-    <tr class="rp-row" data-id="${r.id}">
+    <tr class="rp-row" data-id="${r.id}" data-rapor-adi="${r.rapor_adi.toLowerCase()}">
       <td class="rp-td"><span class="rp-report-name">${r.rapor_adi}</span></td>
       <td class="rp-td rp-td--muted">${r.olusturan}</td>
       <td class="rp-td rp-td--muted">${r.tarih}</td>
       <td class="rp-td rp-td--muted">${r.komite}</td>
       <td class="rp-td">
         <span class="rp-badge rp-badge--${r.tur_renk}">${r.tur_etiket}</span>
-        <span class="rp-tur-alt">${r.tur_alt}</span>
       </td>
       <td class="rp-td"><span class="rp-pill rp-pill--${r.durum_renk}">${r.durum}</span></td>
-      <td class="rp-td"><span class="rp-pill rp-pill--${r.gizlilik_renk}">${r.gizlilik}</span></td>
+      <td class="rp-td rp-td--gizlilik"><span class="rp-pill rp-pill--${r.gizlilik_renk}">${r.gizlilik}</span></td>
       <td class="rp-td">
-        <div class="rp-actions">
-          <button class="rp-btn-icon rp-btn-icon--view" title="Görüntüle" data-action="view" data-id="${r.id}">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        <div class="rp-dropdown" data-id="${r.id}">
+          <button class="rp-dropdown-toggle" data-id="${r.id}">
+            İşlemler
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
           </button>
-          <button class="rp-btn-icon rp-btn-icon--download" title="İndir" data-action="download" data-id="${r.id}">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          </button>
-          ${canUpdate ? `
-          <button class="rp-btn-icon rp-btn-icon--edit" title="Düzenle" data-action="edit" data-id="${r.id}">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-          </button>` : ""}
-          ${canDelete ? `
-          <button class="rp-btn-icon rp-btn-icon--delete" title="Sil" data-action="delete" data-id="${r.id}">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
-          </button>` : ""}
-          ${canFeedback ? `
-          <button class="rp-btn-icon rp-btn-icon--approve" title="Onayla" data-action="approve" data-id="${r.id}">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-          </button>
-          <button class="rp-btn-icon rp-btn-icon--reject" title="Reddet" data-action="reject" data-id="${r.id}">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </button>` : ""}
+          <div class="rp-dropdown-menu">
+            <button class="rp-dropdown-item" data-action="view" data-id="${r.id}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              Görüntüle
+            </button>
+            <button class="rp-dropdown-item" data-action="download" data-id="${r.id}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              İndir
+            </button>
+            ${ // GÜNCELLEME YETKİSİ: canUpdate=true → elçi (herkesi düzenler) | false → sadece kendi raporu (olusturan_id===user.id) | Backend: PUT /reports/:id 403 kontrolü ekle
+              (canUpdate || r.olusturan_id === user?.id) ? `
+            <button class="rp-dropdown-item" data-action="edit" data-id="${r.id}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              Düzenle
+            </button>` : ""}
+            ${canFeedback ? `
+            <button class="rp-dropdown-item rp-dropdown-item--approve" data-action="approve" data-id="${r.id}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+              Onayla
+            </button>
+            <button class="rp-dropdown-item rp-dropdown-item--reject" data-action="reject" data-id="${r.id}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              Reddet
+            </button>` : ""}
+            ${ // SİLME YETKİSİ: canDelete=true → elçi (herkesi siler) | false → sadece kendi raporu (olusturan_id===user.id) | Backend: DELETE /reports/:id 403 kontrolü ekle
+              (canDelete || r.olusturan_id === user?.id) ? `
+            <div class="rp-dropdown-divider"></div>
+            <button class="rp-dropdown-item rp-dropdown-item--delete" data-action="delete" data-id="${r.id}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+              Sil
+            </button>` : ""}
+          </div>
         </div>
       </td>
     </tr>
@@ -97,13 +108,27 @@ function renderRows(reports, canDelete, canUpdate, canFeedback) {
    RENDER
 ================================ */
 
+// 📌 TABLO ARKA PLAN RESMİ:
+// Tablonun arka planına eklemek istediğin fotoğrafı buraya ekle.
+// CSS'te .rp-table-wrap içine background-image olarak tanımlanabilir:
+//   background-image: url('../img/tablo-bg.jpg');
+//   background-size: cover;
+//   background-position: center;
+//   background-blend-mode: overlay;  /* renk üstüne bindirmek için */
 export function renderReports(user) {
   const canCreate   = hasPerm(user, 'reports:create');
+  // canDelete: 'report:delete' iznine sahip kullanıcı (elçi) tüm raporları silebilir.
+  //             Bu izin yoksa renderRows içinde r.olusturan_id === user.id kontrolü devreye girer.
+  //             → Backend: acl.js'de 'report:delete' iznini sadece elçi rolüne tanımla.
   const canDelete   = hasPerm(user, 'report:delete');
+
+  // canUpdate: 'report:update' iznine sahip kullanıcı (elçi) tüm raporları güncelleyebilir.
+  //            Bu izin yoksa renderRows içinde r.olusturan_id === user.id kontrolü devreye girer.
+  //            → Backend: acl.js'de 'report:update' iznini sadece elçi rolüne tanımla.
   const canUpdate   = hasPerm(user, 'report:update');
   const canFeedback = hasPerm(user, 'reports:feedback');
 
-  const rowsHTML = renderRows(mockReports, canDelete, canUpdate, canFeedback);
+  const rowsHTML = renderRows(mockReports, canDelete, canUpdate, canFeedback, user);
 
   // Filtre: komite options
   const komiteOptions = Object.keys(KOMITE_TUR)
@@ -151,6 +176,16 @@ export function renderReports(user) {
       <!-- TABLO -->
       <div class="rp-table-wrap">
         <table class="rp-table">
+          <colgroup>
+            <col style="width:22%"/>
+            <col style="width:13%"/>
+            <col style="width:10%"/>
+            <col style="width:18%"/>
+            <col style="width:14%"/>
+            <col style="width:11%"/>
+            <col style="width:0%"/>
+            <col style="width:12%"/>
+          </colgroup>
           <thead>
             <tr class="rp-thead-row">
               <th class="rp-th">RAPOR ADI</th>
@@ -159,7 +194,7 @@ export function renderReports(user) {
               <th class="rp-th">KOMİTE</th>
               <th class="rp-th">TÜR</th>
               <th class="rp-th">DURUM</th>
-              <th class="rp-th">GİZLİLİK</th>
+              <th class="rp-th rp-th--gizlilik">GİZLİLİK</th>
               <th class="rp-th">İŞLEMLER</th>
             </tr>
           </thead>
@@ -253,8 +288,14 @@ export function renderReports(user) {
    EVENTS
 ================================ */
 
-export function initReports() {
-    
+/* ================================
+   EVENTS & FILTERING LOGIC
+================================ */
+
+export function initReports(user) { // user parametresini eklemeyi unutma (yetkiler için)
+
+  // Türkçe karakterlere duyarlı küçük harf dönüştürücü
+  const toLowerTR = (str) => (str || '').toLocaleLowerCase('tr-TR');
 
   // Filtre: komite degisince tur filtresini de guncelle
   function updateTurFilter() {
@@ -268,76 +309,84 @@ export function initReports() {
     turSelect.innerHTML = '<option value="">Tüm Türler</option>' +
       turler.map(t => `<option value="${t}">${t}</option>`).join('');
 
-    // Onceki secim hala gecerliyse koru
     if (turler.includes(mevcutDeger)) turSelect.value = mevcutDeger;
 
     applyFilters();
   }
 
   function applyFilters() {
-    const search = (document.getElementById('searchInput')?.value || '').toLowerCase().trim();
+    const searchInputRaw = document.getElementById('searchInput')?.value || '';
+    const search = toLowerTR(searchInputRaw).trim();
+    
     const komite = document.getElementById('komiteSelect')?.value || '';
     const tur    = document.getElementById('turSelect')?.value || '';
     const sort   = document.getElementById('sortSelect')?.value || 'tarih-yeni';
 
     const tbody = document.getElementById('reportsTableBody');
     if (!tbody) return;
-    const rows = Array.from(tbody.querySelectorAll('.rp-row'));
 
-    rows.forEach(row => {
-      const ad        = (row.querySelector('.rp-report-name')?.textContent || '').trim();
-      const cells     = row.querySelectorAll('.rp-td');
-      const rowKomite = (cells[3]?.textContent || '').trim();
-      const rowTur    = (cells[4]?.querySelector('.rp-badge')?.textContent || '').trim();
-
-      const matchSearch = !search || ad.toLowerCase().includes(search);
-      const matchKomite = !komite || rowKomite === komite;
-      const matchTur    = !tur    || rowTur    === tur;
-
-      row.style.display = (matchSearch && matchKomite && matchTur) ? '' : 'none';
+    let filtered = mockReports.filter(r => {
+      const raporAdi = toLowerTR(r.rapor_adi);
+      
+      // DEĞİŞİKLİK BURADA: .includes(search) yerine .startsWith(search) 
+      // Böylece sadece yazdığın harfle BAŞLAYANLAR gelir.
+      const matchSearch = !search || raporAdi.startsWith(search);
+      
+      const matchKomite = !komite || r.komite === komite;
+      const matchTur    = !tur    || r.tur_etiket === tur;
+      
+      return matchSearch && matchKomite && matchTur;
     });
 
-    const visible = rows.filter(r => r.style.display !== 'none');
-
-    const parseDate = row => {
-      const txt = (row.querySelectorAll('.rp-td')[2]?.textContent || '').trim();
-      const parts = txt.split('.');
-      if (parts.length !== 3) return '00000000';
-      return parts[2] + parts[1] + parts[0];
+    // Sıralama Mantığı
+    const parseDate = str => {
+      const p = (str || '').split('.');
+      return p.length === 3 ? p[2] + p[1] + p[0] : '00000000';
     };
-    const getAd = row => (row.querySelector('.rp-report-name')?.textContent || '').trim();
 
-    visible.sort((a, b) => {
-      if (sort === 'tarih-yeni') return parseDate(b).localeCompare(parseDate(a));
-      if (sort === 'tarih-eski') return parseDate(a).localeCompare(parseDate(b));
-      if (sort === 'ad-az')      return getAd(a).localeCompare(getAd(b), 'tr', { sensitivity: 'base' });
-      if (sort === 'ad-za')      return getAd(b).localeCompare(getAd(a), 'tr', { sensitivity: 'base' });
+    filtered.sort((a, b) => {
+      if (sort === 'tarih-yeni') return parseDate(b.tarih).localeCompare(parseDate(a.tarih));
+      if (sort === 'tarih-eski') return parseDate(a.tarih).localeCompare(parseDate(b.tarih));
+      if (sort === 'ad-az') return a.rapor_adi.localeCompare(b.rapor_adi, 'tr');
+      if (sort === 'ad-za') return b.rapor_adi.localeCompare(a.rapor_adi, 'tr');
       return 0;
     });
 
-    visible.forEach(row => tbody.appendChild(row));
+    // Tabloyu DOM üzerinde güncelle
+    const rows = Array.from(tbody.querySelectorAll('.rp-row'));
+    rows.forEach(row => row.style.display = 'none');
+
+    filtered.forEach(r => {
+      const row = tbody.querySelector(`.rp-row[data-id="${r.id}"]`);
+      if (row) {
+        row.style.display = '';
+        tbody.appendChild(row); 
+      }
+    });
+
+    // Eğer hiç sonuç yoksa "Bulunamadı" mesajını göster
+    if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="rp-no-data">Arama kriterlerine uygun rapor bulunamadı.</td></tr>`;
+    } else {
+        // Eğer daha önce "Bulunamadı" yazdıysa ve şimdi veri geldiyse, 
+        // tabloyu temizleyip sadece mevcut satırları göstermek gerekebilir.
+        const noDataRow = tbody.querySelector('.rp-no-data');
+        if (noDataRow) {
+            // refresh yapıldığında tabloyu orijinal yetkilerle tekrar render et
+            document.dispatchEvent(new CustomEvent('reports:refresh'));
+        }
+    }
   }
 
-  // searchInput, turSelect, sortSelect -> applyFilters
-  // komiteSelect -> updateTurFilter (o da applyFilters cagiriyor)
+  // Dinleyiciler
   document.getElementById('searchInput')?.addEventListener('input', applyFilters);
   document.getElementById('sortSelect')?.addEventListener('change', applyFilters);
   document.getElementById('turSelect')?.addEventListener('change', applyFilters);
   document.getElementById('komiteSelect')?.addEventListener('change', updateTurFilter);
+  document.getElementById('createReportBtn')?.addEventListener('click', openReportModal);
 
+  // Sayfa yüklendiğinde çalıştır
   applyFilters();
-
-  const createBtn = document.getElementById('createReportBtn');
-  if (createBtn) createBtn.addEventListener('click', openReportModal);
-
-  const tbody = document.getElementById('reportsTableBody');
-  if (tbody) {
-    tbody.addEventListener('click', e => {
-      const btn = e.target.closest('[data-action]');
-      if (!btn) return;
-      console.log('Action:', btn.dataset.action, 'ID:', btn.dataset.id);
-    });
-  }
 }
 
 /* ================================
@@ -461,47 +510,48 @@ function bindModalEvents() {
       return;
     }
 
-    console.log('Yeni rapor:', { raporAdi, komite, tur, gizlilik, projeAdi: projeAdi || null });
+    // ─── BACKEND ENTEGRASYONU (bu yorumları backend hazır olunca uygula) ───
+    // 1) Asagidaki mockReports.unshift ve dispatchEvent satirlarini SIL.
+    // 2) Yerine su kodu yaz:
+    //      const res = await fetch('/api/reports', {
+    //        method: 'POST',
+    //        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + store.getToken() },
+    //        body: JSON.stringify({ rapor_adi: raporAdi, komite, tur, gizlilik, proje_adi: projeAdi || null })
+    //      });
+    //      if (!res.ok) { alert('Rapor kaydedilemedi.'); return; }
+    //      const yeniRapor = await res.json();
+    //      addReportToTable(yeniRapor);
+    // 3) Dosya icin FormData kullan:
+    //      const fd = new FormData();
+    //      fd.append('dosya', document.getElementById('modalFileInput').files[0]);
+    //      fd.append('rapor_id', yeniRapor.id);
+    //      await fetch('/api/reports/upload', { method: 'POST', headers: { 'Authorization': 'Bearer ' + store.getToken() }, body: fd });
+    // 4) olusturan ve olusturan_id icin: const u = store.getUser(); → u.name, u.id
+    // ─────────────────────────────────────────────────────────────────────────────
+
+    // Simdilik: mock olarak diziye ekle, tabloyu guncelle
+    const bugun = new Date();
+    const gg  = String(bugun.getDate()).padStart(2, '0');
+    const aa  = String(bugun.getMonth() + 1).padStart(2, '0');
+    const yyyy = bugun.getFullYear();
+
+    const yeniRapor = {
+      id:            mockReports.length + 1,
+      rapor_adi:     raporAdi,
+      olusturan:     'Sen',           // Backend gelince: store.getUser().name
+      olusturan_id:  window.__currentUserId || 0, // Backend gelince: store.getUser().id
+      tarih:         gg + '.' + aa + '.' + yyyy,
+      komite:        komite,
+      tur_etiket:    tur,
+      tur_renk:      'neutral',
+      durum:         'Onay Bekliyor',
+      durum_renk:    'orange',
+      gizlilik:      gizlilik,
+      gizlilik_renk: gizlilik === 'Genel' ? 'green' : 'red',
+    };
+
+    mockReports.unshift(yeniRapor);
     closeReportModal();
+    document.dispatchEvent(new CustomEvent('reports:refresh'));
   });
-  // TABLO BUTONLARI (Event Delegation)
-  const tbody = document.getElementById("reportsTableBody");
-
-  if (tbody) {
-    tbody.addEventListener("click", (e) => {
-      const btn = e.target.closest("button[data-action]");
-      if (!btn) return;
-
-      const action = btn.dataset.action;
-      const id = btn.dataset.id;
-
-      console.log("CLICK:", action, id);
-
-      switch (action) {
-        case "view":
-          alert("View: " + id);
-          break;
-
-        case "delete":
-          alert("Delete: " + id);
-          break;
-
-        case "approve":
-          alert("Approve: " + id);
-          break;
-
-        case "reject":
-          alert("Reject: " + id);
-          break;
-
-        case "edit":
-          alert("Edit: " + id);
-          break;
-
-        case "download":
-          alert("Download: " + id);
-          break;
-      }
-    });
-  }
 }
