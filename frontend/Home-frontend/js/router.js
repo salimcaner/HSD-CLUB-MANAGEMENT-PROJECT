@@ -20,7 +20,7 @@ import { hasAnyPerm } from "./acl.js";
 import { renderHome } from "./pages/home.js";
 import { renderCommunity } from "./pages/community.js";
 import { renderEvents } from "./pages/events.js";
-import { renderProjects } from "./pages/projects.js";
+import { renderProjects, initProjects } from "./pages/projects.js";
 import { renderReports, initReports } from "./pages/reports.js";
 import { renderCalendar } from "./pages/calendar.js";
 import { renderFinance } from "./pages/finance.js";
@@ -106,6 +106,10 @@ export function router() {
 
   if (path === "/members") {
     initMembers();
+  }
+
+  if (path === "/projects") {
+    initProjects();
   }
 }
 

@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import auth,users  
+from app.routers import auth,users,projects  
 app = FastAPI(
     title="Kulüp Yönetim Sistemi API",
     description="Üniversite kulüplerini yönetmek için geliştirilen API.",
@@ -33,6 +33,7 @@ from fastapi.staticfiles import StaticFiles
 
 app.include_router(auth.router)
 app.include_router(users.router)
+app.include_router(projects.router)
 
 # Frontend klasörünü statik olarak sun (http://127.0.0.1:8000/frontend/...)
 frontend_path = os.path.join(os.path.dirname(__file__), "..", "..", "frontend")
@@ -41,6 +42,5 @@ app.mount("/frontend", StaticFiles(directory=frontend_path), name="frontend")
 @app.get("/")
 async def root():
     return {"message": "Kulüp Yönetim Sistemi API'sine Hoşgeldiniz!"}
-
 
 
