@@ -12,6 +12,7 @@ supabase = get_supabase()
 def create_report_service(
     sender_id: str,
     report_name: str,
+    committee:str,
     report_type: str,
     project_name: str,
     privacy: str,
@@ -34,6 +35,7 @@ def create_report_service(
         report_data = {
             "report_name": report_name,
             "sender_id": sender_id,
+            "committee": committee,
             "report_type": report_type,
             "project_name": project_name, # Seçilmişse gelir, yoksa None olur (veya boş string)
             "privacy": privacy,
@@ -55,8 +57,9 @@ def create_report_service(
 # -------------------------
 def get_all_reports_service(user_role: str, search_name: str = None, limit: int = 50, offset: int = 0):
     try:
-        query = supabase.table("reports").select("*, users!reports_sender_id_fkey(first_name, last_name, email)")
-        
+        #query = supabase.table("reports").select("*, users(first_name, last_name, email)")
+        query = supabase.table("reports").select("*")
+
         # Yetki (Gizlilik) Kontrolü
         if user_role == "uye" or user_role == UserRole.UYE.value:
             query = query.in_("privacy", ["genel"])
@@ -80,7 +83,6 @@ def get_all_reports_service(user_role: str, search_name: str = None, limit: int 
         query = query.range(offset, end_index)     
        
         response = query.execute()
-        # -----------------------------------------------------------
        
         return response.data
     except Exception as e:
