@@ -13,6 +13,8 @@ class UserRole(str, Enum):
     DEPARTMAN_LIDERI = "departman_lideri"
     INSAN_KAYNAKLARI = "insan_kaynaklari"
     UYE = "uye"
+    ADMIN="admin"
+    MEZUN="mezun"
 
 
 # ==========================================

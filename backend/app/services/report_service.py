@@ -50,7 +50,7 @@ def create_report_service(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Rapor oluşturulurken hata: {str(e)}")
     
-# -------------------------
+## -------------------------
 #RAPOR LİSTELEME SERVİSİ
 # -------------------------
 def get_all_reports_service(user_role: str, search_name: str = None, limit: int = 50, offset: int = 0):
@@ -58,16 +58,19 @@ def get_all_reports_service(user_role: str, search_name: str = None, limit: int 
         query = supabase.table("reports").select("*, users!reports_sender_id_fkey(first_name, last_name, email)")
         
         # Yetki (Gizlilik) Kontrolü
-        if user_role == "uye":
+        if user_role == "uye" or user_role == UserRole.UYE.value:
             query = query.in_("privacy", ["genel"])
             
-        # Liderler ve İK "genel" ve "gizli" raporları görebilir
-        elif user_role in [UserRole.DEPARTMAN_LIDERI.value,UserRole.INSAN_KAYNAKLARI.value,UserRole.ELCI.value,UserRole.GENEL_SEKRETER.value]: 
-            query = query.in_("privacy", ["genel", "gizli"])
-                
-        elif user_role in [UserRole.ELCI.value, UserRole.GENEL_SEKRETER.value]:
+        # Çok gizli raporlar dahil TÜM raporları görebilenler
+        elif user_role in [UserRole.ELCI.value, UserRole.GENEL_SEKRETER.value, UserRole.ADMIN.value]:
             pass 
+            
+        # Sadece genel ve gizli raporları görebilenler 
+        elif user_role in [UserRole.DEPARTMAN_LIDERI.value, UserRole.INSAN_KAYNAKLARI.value]: 
+            query = query.in_("privacy", ["genel", "gizli"])
+            
         else:
+            # Diğer herkes sadece genel raporları görsün (güvenlik önlemi)
             query = query.in_("privacy", ["genel"])
      
         if search_name:
@@ -77,7 +80,7 @@ def get_all_reports_service(user_role: str, search_name: str = None, limit: int 
         query = query.range(offset, end_index)     
        
         response = query.execute()
-        
+        # -----------------------------------------------------------
        
         return response.data
     except Exception as e:
@@ -116,7 +119,7 @@ def delete_report_service(report_id: int, current_user_id: str, user_role: str):
         report_owner_id = report_data.get("sender_id") 
         
         #KİMLER SİLEBİLİR? (SAHİP VEYA YÖNETİM EKİBİ)
-        admin_roles = [UserRole.ELCI.value, UserRole.GENEL_SEKRETER.value]
+        admin_roles = [UserRole.ELCI.value, UserRole.GENEL_SEKRETER.value, UserRole.ADMIN.value]
         
         is_owner = (report_owner_id == current_user_id)
         is_admin = (user_role in admin_roles)
@@ -125,7 +128,7 @@ def delete_report_service(report_id: int, current_user_id: str, user_role: str):
         if not (is_owner or is_admin):
              return {
                  "success": False, 
-                 "message": "Silme yetkiniz yok. Sadece rapor sahibi veya Yönetim Ekibi (Elçi/Genel Sekreter) bu raporu silebilir."
+                 "message": "Bu raporu silme yetkiniz yok. Sadece kendi raporlarınızı silebilirsiniz"
              }
              
         file_url = report_data.get("file_url")

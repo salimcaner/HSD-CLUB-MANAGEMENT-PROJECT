@@ -27,13 +27,13 @@ async def create_report_endpoint(
             detail="Desteklenmeyen dosya formatı. Lütfen PDF, DOC, JPG veya PNG yükleyin."
         )
     # DOSYA BOYUTU KONTROLÜ (RAM KORUMASI)
-    MAX_FILE_SIZE = 5 * 1024 * 1024  # Maksimum 5 MB limit
+    MAX_FILE_SIZE = 10 * 1024 * 1024  # Maksimum 10 MB limit
     file_bytes = await file.read()
     
     if len(file_bytes) > MAX_FILE_SIZE:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, 
-            detail="Dosya boyutu çok büyük. Maksimum 5 MB desteklenmektedir."
+            detail="Dosya boyutu çok büyük. Maksimum 10 MB desteklenmektedir."
         )
     
     # Dosya servisine gönder
@@ -134,7 +134,7 @@ async def delete_report_endpoint(
         result = delete_report_service(
             report_id=report_id, 
             current_user_id=str(current_user.id),
-            user_role=role_str # <-- YENİ EKLENDİ
+            user_role=role_str 
         )
        
         if not result.get("success"):
@@ -182,12 +182,12 @@ async def update_report_endpoint(
                     detail="Desteklenmeyen dosya formatı. Lütfen PDF, DOC, JPG veya PNG yükleyin."
                 )
                 
-            MAX_FILE_SIZE = 5 * 1024 * 1024
+            MAX_FILE_SIZE =10 * 1024 * 1024
             file_bytes = await file.read()
             if len(file_bytes) > MAX_FILE_SIZE:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST, 
-                    detail="Dosya boyutu çok büyük. Maksimum 5 MB desteklenmektedir."
+                    detail="Dosya boyutu çok büyük. Maksimum 10 MB desteklenmektedir."
                 )
             file_name = file.filename
             content_type = file.content_type

@@ -154,14 +154,15 @@ def require_roles(allowed_roles: List[UserRole]):
 require_elci = require_roles([UserRole.ELCI])
 
 # Yönetim Ekibi (Genel Sekreter veya Elçi) çok gizli raporlara erişebilir
-require_yonetim = require_roles([UserRole.GENEL_SEKRETER, UserRole.ELCI])
+require_yonetim = require_roles([UserRole.GENEL_SEKRETER, UserRole.ELCI, UserRole.ADMIN])
 
 #lider ve üzeri gizli raporlara erişebilir
 require_lider_or_above = require_roles([
     UserRole.GENEL_SEKRETER, 
     UserRole.ELCI, 
     UserRole.DEPARTMAN_LIDERI,
-    UserRole.INSAN_KAYNAKLARI
+    UserRole.INSAN_KAYNAKLARI,
+    UserRole.ADMIN
 ])
 
 # Herkes (login olmuş) genel raporlara erişebilir
