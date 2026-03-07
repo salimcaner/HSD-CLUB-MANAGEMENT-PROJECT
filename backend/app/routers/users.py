@@ -40,10 +40,10 @@ async def update_self(
 # -------------------------
 @router.get("/", response_model=List[User])
 async def list_users(
-    current_user = Depends(security.require_admin_or_elci)
+    current_user = Depends(security.require_yonetim)
 ):
     """
-    Tüm kullanıcıları listele (Admin ve Elçi yetkisi gerekli)
+    Tüm kullanıcıları listele (Yönetim yetkisi gerekli)
     """
     users = get_all_users()
     return users
@@ -56,7 +56,7 @@ async def list_users(
 async def filter_users(
     role: Optional[str] = None,
     department: Optional[str] = None,
-    current_user = Depends(security.require_admin_or_elci)
+    current_user = Depends(security.require_yonetim)
 ):
     """
     Rol veya departmana göre filtrelenmiş kullanıcı listesi
@@ -71,7 +71,7 @@ async def filter_users(
 # -------------------------
 @router.get("/stats")
 async def get_stats(
-    current_user = Depends(security.require_admin_or_elci)
+    current_user = Depends(security.require_yonetim)
 ):
     """
     Sistem genelindeki kullanıcı istatistikleri
@@ -108,17 +108,34 @@ async def get_user(
 async def update_user_endpoint(
     user_id: str,
     user_data: UserBase,
-    current_user = Depends(security.require_admin_or_elci)
+    current_user = Depends(security.require_authenticated) # <--- Sadece login olması yeterli
 ):
     """
-    Kullanıcı bilgilerini güncelle (Admin ve Elçi yetkisi gerekli)
+    Kullanıcı bilgilerini güncelle
+    (Kişi sadece KENDİ profilini güncelleyebilir, Yönetim ise HERKESİ güncelleyebilir)
     """
+    
+    # 1. YETKİ KONTROLÜ
+    # Kullanıcının rolünü al
+    role_str = current_user.role if isinstance(current_user.role, str) else current_user.role.value
+    admin_roles = [security.UserRole.ELCI.value, security.UserRole.GENEL_SEKRETER.value, security.UserRole.INSAN_KAYNAKLARI.value]
+    
+    is_owner = (str(current_user.id) == str(user_id))
+    is_admin = (role_str in admin_roles)
+    
+    if not (is_owner or is_admin):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Güncelleme yetkiniz yok. Sadece kendi profilinizi veya Yönetim yetkiniz varsa diğer profilleri güncelleyebilirsiniz."
+        )
+    # 2. GÜNCELLEME İŞLEMİ
     updated_user = update_user(user_id, user_data.dict(exclude_unset=True))
     if not updated_user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Kullanıcı bulunamadı!"
         )
+        
     return updated_user
 
 
@@ -128,10 +145,10 @@ async def update_user_endpoint(
 @router.delete("/{user_id}")
 async def delete_user_endpoint(
     user_id: str,
-    current_user = Depends(security.require_admin)
+    current_user = Depends(security.require_yonetim)
 ):
     """
-    Kullanıcıyı sil (Sadece Admin yetkisi)
+    Kullanıcıyı sil (Sadece Yönetim yetkisi)
     """
     success = delete_user(user_id)
     if not success:
@@ -147,7 +164,7 @@ async def delete_user_endpoint(
 @router.put("/{user_id}/deactivate", response_model=User)
 async def deactivate_user_endpoint(
     user_id: str,
-    current_user = Depends(security.require_admin_or_elci)
+    current_user = Depends(security.require_yonetim)
 ):
     """
     Kullanıcıyı pasif yap (silmeden devre dışı bırak)
@@ -168,7 +185,7 @@ async def deactivate_user_endpoint(
 @router.put("/{user_id}/activate", response_model=User)
 async def activate_user_endpoint(
     user_id: str,
-    current_user = Depends(security.require_admin_or_elci)
+    current_user = Depends(security.require_yonetim)
 ):
     """
     Pasif kullanıcıyı tekrar aktif yap

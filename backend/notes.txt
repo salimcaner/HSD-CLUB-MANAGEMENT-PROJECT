@@ -145,9 +145,23 @@ Kısaca:
 
 “Veritabanı bağlantı katmanı”
 
-1 tane manuel elçi rolu oluşturuldu 
+2 tane manuel elçi rolu oluşturuldu 
 {
   "email": "admin@hsd.com",
   "password": "Admin123!"
 }
+{
+  "email": "admin1@hsd.com",
+  "password": "Admin1234!"
+}
+
 giriş yaparken kullanılıabilir 
+{
+  "email": "jrsjtg65+test1@gmail.com",
+  "first_name": "gül",
+  "last_name": "kıray",
+  "role": "uye",
+  "department": "string",
+  "class_": 2,
+  "university_department": "string"
+}

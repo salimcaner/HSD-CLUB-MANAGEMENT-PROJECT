@@ -7,12 +7,13 @@ from app.core.supabase_client import supabase
 
 
 def login_user(email: str, password: str):
-
-    # 1️⃣ Supabase Auth ile giriş yap (şifre kontrolü Supabase'de olur)
+     # 1️⃣ Supabase Auth ile giriş yap (şifre kontrolü Supabase'de olur)
     auth_response = supabase.auth.sign_in_with_password({
         "email": email,
         "password": password
     })
+
+    
 
     if not auth_response.user:
         raise HTTPException(
