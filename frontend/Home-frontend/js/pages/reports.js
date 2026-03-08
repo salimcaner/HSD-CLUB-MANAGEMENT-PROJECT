@@ -632,6 +632,14 @@ export async function initReports(userParam) {
 
     const fileDrop = document.getElementById('modalFileDrop');
     if (fileDrop) {
+      // Tıklanınca input'u tetikle
+      fileDrop.addEventListener('click', (e) => {
+        // Eğer linkin kendisine tıklandıysa zaten input tetiklenecektir, tekrar tetiklemeye gerek yok
+        if (e.target.tagName.toLowerCase() !== 'label') {
+          fileInput.click();
+        }
+      });
+
       fileDrop.addEventListener('dragover', e => { e.preventDefault(); fileDrop.classList.add('rp-file-drop--active'); });
       fileDrop.addEventListener('dragleave', () => fileDrop.classList.remove('rp-file-drop--active'));
       fileDrop.addEventListener('drop', e => {
