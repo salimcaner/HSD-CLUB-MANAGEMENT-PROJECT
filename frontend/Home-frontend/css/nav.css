@@ -34,10 +34,33 @@
   --accent-glow:   rgba(123,143,161, 0.18);
   --accent-active: #a8bccf;
 
-  --logout-hover: rgba(200, 80, 80, 0.15);
-  --logout-color: #c07878;
+  --logout-hover: rgba(255, 255, 255, 0.05);
+  --logout-hover: rgba(255, 255, 255, 0.05);
+  --logout-color: var(--text-primary);
 
   font-family: 'Figtree', sans-serif;
+}
+
+/* ── Light Theme Variables ───────────────────────────────────── */
+body.light-theme {
+  --bg-darkest:   #f8fafc;   /* açık gri zemin */
+  --bg-dark:      #ffffff;   /* sidebar arka planı beyaz */
+  --bg-mid:       #f1f5f9;   /* kartlar, hover grimsi */
+  --bg-light:     #e2e8f0;   /* hafif yüzeyler */
+  --bg-topbar:    #ffffff;   /* topbar beyaz */
+
+  --border:       rgba(0, 0, 0, 0.08);
+  --border-hover: rgba(0, 0, 0, 0.15);
+
+  --text-primary:  #0f172a;  /* koyu gri-siyah metin */
+  --text-secondary: #475569; /* ikincil metin */
+  --text-muted:    #64748b;  /* soluk metin */
+
+  --accent:        #3b82f6;   /* vurgu (mavi) */
+  --accent-glow:   rgba(59, 130, 246, 0.15);
+  --accent-active: #2563eb;   /* aktif durum */
+
+  --logout-hover: rgba(0, 0, 0, 0.05);
 }
 
 /* ── Reset / Base ───────────────────────────────────────────── */
@@ -248,7 +271,7 @@ svg { display: block; }
   overflow-x: hidden;
   padding: 10px 0;
   scrollbar-width: thin;
-  scrollbar-color: var(--bg-light) transparent;
+  scrollbar-color: var(--border) transparent;
 }
 
 .sidebar-nav::-webkit-scrollbar { width: 4px; }
@@ -510,9 +533,9 @@ svg { display: block; }
 .topbar-logout svg { width: 16px; height: 16px; }
 
 .topbar-logout:hover {
-  background: var(--logout-hover);
-  color: var(--logout-color);
-  border-color: rgba(200, 80, 80, 0.2);
+  background: var(--bg-mid);
+  color: var(--text-primary);
+  border-color: rgba(255,255,255,0.1);
 }
 
 .logout-label { display: inline; }
