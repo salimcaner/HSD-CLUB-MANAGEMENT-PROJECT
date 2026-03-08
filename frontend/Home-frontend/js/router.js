@@ -22,7 +22,7 @@ import { renderCommunity } from "./pages/community.js";
 import { renderEvents } from "./pages/events.js";
 import { renderProjects, initProjects } from "./pages/projects.js";
 import { renderReports, initReports } from "./pages/reports.js";
-import { renderCalendar } from "./pages/calendar.js";
+import { renderCalendar, initCalendar } from "./pages/calendar.js";
 import { renderFinance } from "./pages/finance.js";
 import { renderMembers, initMembers } from "./pages/members.js";
 import { renderProfile } from "./pages/profile.js";
@@ -110,6 +110,10 @@ export function router() {
 
   if (path === "/projects") {
     initProjects();
+  }
+
+  if (path === "/calendar") {
+    initCalendar();
   }
 }
 

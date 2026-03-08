@@ -14,6 +14,22 @@ function formtDate(dateString) {
   if (!dateString) return "-";
   return new Date(dateString).toLocaleDateString("tr-TR");
 }
+
+const ROLE_LABELS = {
+  elci: "Elçi",
+  elci_yardimcisi: "Elçi Yardımcısı",
+  genel_sekreter: "Genel Sekreter",
+  insan_kaynaklari: "İnsan Kaynakları",
+  lider: "Komite Lideri",
+  uye: "Üye",
+  mezun: "Mezun",
+  admin: "Admin"
+};
+
+function getRoleLabel(role) {
+  if (!role) return "Üye";
+  return ROLE_LABELS[role.toLowerCase()] || role;
+}
 const banuBolumler = [
   "Antrenörlük Eğitimi",
   "Beden Eğitimi ve Spor Öğretmenliği",
@@ -68,40 +84,35 @@ export function renderMembers(user) {
 
   return `
     <section class="members-page">
-      <div class="members-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 20px; margin-bottom: 20px;">
+      <div class="members-header">
         <div class="members-title-block">
-          <h1 style="font-family: 'DM Sans', sans-serif; font-size: 20px; font-weight: 700; letter-spacing: normal;">Üye Listesi</h1>
+          <h1>Üye <span>İşlemleri</span></h1>
+          <p>Topluluk üyelerini yönetin ve düzenleyin</p>
         </div>
-        ${canCreate ? `<button class="btn btn-red" id="btnAddMember">
-          + Üye Ekle
+        ${canCreate ? `<button class="btn btn-primary" id="btnAddMember">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Üye Ekle
         </button>` : ''}
       </div>
 
-      <div class="members-toolbar" style="display: none;">
-        <!-- Hidden for design match, can be toggled by JS later if needed -->
+      <div class="members-toolbar">
         <div class="search-box">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
           <input type="text" id="memberSearch" placeholder="İsim veya e-posta ara...">
         </div>
         <select class="filter-select" id="roleFilter">
           <option value="">Tüm Roller</option>
-          <option value="ELCI">Elçi</option>
-          <option value="ELCI_YARDIMCISI">Elçi Yardımcısı</option>
-          <option value="GENEL_SEKRETER">Genel Sekreter</option>
-          <option value="INSAN_KAYNAKLARI">İnsan Kaynakları</option>
-          <option value="KOMITE_LIDERI">Komite Lideri</option>
-          <option value="UYE">Üye</option>
+          <option value="elci">Elçi</option>
+          <option value="elci_yardimcisi">Elçi Yardımcısı</option>
+          <option value="genel_sekreter">Genel Sekreter</option>
+          <option value="insan_kaynaklari">İnsan Kaynakları</option>
+          <option value="lider">Komite Lideri</option>
+          <option value="uye">Üye</option>
         </select>
-        
-        <!-- View Toggle Removed to force Table View -->
-
-        ${canCreate ? `<button class="btn btn-red" id="btnAddMember">
-          + Üye Ekle
-        </button>` : ''}
       </div>
 
       <div id="membersContent">
-        <!-- Table or Grid will be rendered here -->
+        <!-- Table rendered here -->
       </div>
     </section>
 
@@ -203,6 +214,7 @@ export function renderMembers(user) {
   `;
 }
 
+
 function renderMembersContent() {
   const contentEl = document.getElementById("membersContent");
   if (!contentEl) return;
@@ -224,7 +236,7 @@ function renderMembersContent() {
   }
 
   if (roleFilter) {
-    filtered = filtered.filter(m => m.role === roleFilter);
+    filtered = filtered.filter(m => (m.role || '').toLowerCase() === roleFilter.toLowerCase());
   }
 
   const totalMembersEl = document.getElementById("totalMembersCount");
@@ -260,22 +272,10 @@ function renderMembersContent() {
         }
         if (canDelete) {
           actionsHtml += `<button class="icon-btn-simple delete" onclick="deleteMemberConfirm('${m.id}')" title="Sil">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="#e11d48" stroke="#e11d48" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2-2v2"></path></svg>
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2-2v2"></path></svg>
             </button>`;
         }
         actionsHtml += '</div>';
-      }
-
-      // "Aktif" and "Pasif" depending on if they logged in or have missing fields
-      // Eğer kullanıcı profilini tamamlamışsa (sınıf bilgisi vs. varsa) "Aktif" diyelim ya da is_active var sayalım
-      let durum = "Aktif";
-      let durumClass = "status-active";
-      if (m.is_active === false || (!m.class_ && !m.university_department)) {
-        // Profil tablosunda "is_active" olmadığında, 
-        // ya da ilk girişte profil doldurma zorunlu olduğu için
-        // profil bilgisi boş olanların mail onayını henüz yapıp girmediğini varsayabiliriz.
-        durum = "Pasif";
-        durumClass = "status-passive";
       }
 
       return `
@@ -288,10 +288,9 @@ function renderMembersContent() {
           <td>${m.last_name || '-'}</td>
           <td>${m.email || '-'}</td>
           <td>${m.department || '-'}</td>
-          <td><span class="role-badge role-${m.role || 'UYE'}">${(m.role || 'UYE').replace('_', ' ')}</span></td>
+          <td><span class="role-badge role-${(m.role || 'uye').toLowerCase()}">${getRoleLabel(m.role)}</span></td>
           <td>${m.university_department || '-'}</td>
           <td>${m.class_ ? m.class_ + '. Sınıf' : '-'}</td>
-          <td><span class="status-badge ${durumClass}">${durum}</span></td>
           <td>${date}</td>
           <td>${actionsHtml}</td>
         </tr>
@@ -300,17 +299,16 @@ function renderMembersContent() {
 
     contentEl.innerHTML = `
       <div class="members-table-wrap" style="overflow-x: auto;">
-        <table class="members-table" style="min-width: 1000px;">
+        <table class="members-table" style="min-width: 900px;">
           <thead>
             <tr>
               <th>Ad</th>
               <th>Soyad</th>
               <th>E-posta</th>
               <th>Departman</th>
-              <th style="padding-left: 24px;">Rol</th>
+              <th>Rol</th>
               <th>Üni. Bölümü</th>
               <th>Sınıf</th>
-              <th>Durum</th>
               <th>Katılım Tarihi</th>
               <th>İşlem</th>
             </tr>

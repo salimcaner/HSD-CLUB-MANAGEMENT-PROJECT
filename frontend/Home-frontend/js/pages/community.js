@@ -1,14 +1,166 @@
-/*Komite listesi (Proje, Akademi, Pazarlama…)
+import { getToken } from "../store.js";
 
-Topluluk açıklaması, linkler, duyurular
+const API_URL = "http://localhost:8000";
 
-(Opsiyonel) Komite detayına tıklayınca filtreli etkinlik/proje listesi
+// Rol hiyerarşisi ve Türkçe etiketler
+const ROLE_ORDER = ["elci", "elci_yardimcisi", "genel_sekreter", "insan_kaynaklari", "lider", "uye", "mezun", "admin"];
 
-Yetki gerektirmez (genelde public).*/
+const ROLE_META = {
+  elci: { label: "Elçi", color: "#a78bfa", icon: "👑" },
+  elci_yardimcisi: { label: "Elçi Yardımcısı", color: "#818cf8", icon: "🌟" },
+  genel_sekreter: { label: "Genel Sekreter", color: "#60a5fa", icon: "📋" },
+  insan_kaynaklari: { label: "İnsan Kaynakları", color: "#34d399", icon: "🤝" },
+  lider: { label: "Komite Lideri", color: "#fb923c", icon: "🎯" },
+  uye: { label: "Üye", color: "#94a3b8", icon: "👤" },
+  mezun: { label: "Mezun", color: "#64748b", icon: "🎓" },
+  admin: { label: "Admin", color: "#f472b6", icon: "⚙️" },
+};
+
 export function renderCommunity() {
   return `
-    <section class="page community-page">
-      <h1>Topluluk</h1>
+    <section class="community-page">
+      <div class="comm-header">
+        <div>
+          <h1>Topluluk</h1>
+          <p class="comm-subtitle">Tüm üyeler — rol sırasına göre</p>
+        </div>
+        <div class="comm-search-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input type="text" id="commSearch" placeholder="İsim veya e-posta ara...">
+        </div>
+      </div>
+
+      <div id="communityContent">
+        <div class="comm-loading">
+          <div class="comm-spinner"></div>
+          <p>Üyeler yükleniyor...</p>
+        </div>
+      </div>
     </section>
+  `;
+}
+
+export async function initCommunity() {
+  await fetchAndRender();
+
+  document.getElementById("commSearch")?.addEventListener("input", (e) => {
+    renderList(window._commAllMembers || [], e.target.value.trim().toLowerCase());
+  });
+}
+
+async function fetchAndRender() {
+  const token = getToken();
+  const contentEl = document.getElementById("communityContent");
+  try {
+    const res = await fetch(`${API_URL}/users/`, {
+      headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
+      credentials: "include"
+    });
+    if (!res.ok) throw new Error("Yüklenemedi");
+    const members = await res.json();
+    window._commAllMembers = members;
+    renderList(members, "");
+  } catch (e) {
+    contentEl.innerHTML = `<div class="comm-error">Üyeler yüklenirken hata oluştu.</div>`;
+  }
+}
+
+function renderList(members, query) {
+  const contentEl = document.getElementById("communityContent");
+  if (!contentEl) return;
+
+  // Filtrele
+  let filtered = members;
+  if (query) {
+    filtered = members.filter(m =>
+      (m.first_name || "").toLowerCase().includes(query) ||
+      (m.last_name || "").toLowerCase().includes(query) ||
+      (m.email || "").toLowerCase().includes(query)
+    );
+  }
+
+  if (filtered.length === 0) {
+    contentEl.innerHTML = `<div class="comm-empty">Eşleşen üye bulunamadı.</div>`;
+    return;
+  }
+
+  // Role göre grupla ve sırala
+  const grouped = {};
+  filtered.forEach(m => {
+    const role = (m.role || "uye").toLowerCase();
+    if (!grouped[role]) grouped[role] = [];
+    grouped[role].push(m);
+  });
+
+  // Rol sırasına göre render
+  const roleKeys = ROLE_ORDER.filter(r => grouped[r]?.length > 0);
+
+  const html = roleKeys.map(role => {
+    const meta = ROLE_META[role] || { label: role, color: "#94a3b8", icon: "👤" };
+    const membersHtml = grouped[role]
+      .sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0))
+      .map(m => memberRow(m, meta))
+      .join("");
+
+    return `
+      <div class="comm-group">
+        <div class="comm-group-header">
+          <span class="comm-role-icon">${meta.icon}</span>
+          <span class="comm-role-label" style="color: ${meta.color}">${meta.label}</span>
+          <span class="comm-role-count">${grouped[role].length} kişi</span>
+          <div class="comm-role-line" style="background: ${meta.color}"></div>
+        </div>
+        <div class="comm-members">
+          ${membersHtml}
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  contentEl.innerHTML = `
+    <div class="comm-stats">
+      <span>${filtered.length} üye</span>
+      <span>${roleKeys.length} farklı rol</span>
+    </div>
+    ${html}
+  `;
+}
+
+function memberRow(m, meta) {
+  const fullName = [m.first_name, m.last_name].filter(Boolean).join(" ") || "—";
+  const initials = [m.first_name?.[0], m.last_name?.[0]].filter(Boolean).join("").toUpperCase() || "?";
+  const joinDate = m.created_at
+    ? new Date(m.created_at).toLocaleDateString("tr-TR", { year: "numeric", month: "long", day: "numeric" })
+    : "—";
+  const dept = m.department || "—";
+  const uniDept = m.university_department || null;
+  const classYear = m.class_ ? `${m.class_}. Sınıf` : null;
+
+  return `
+    <div class="comm-member-row">
+      <div class="comm-avatar" style="background: ${meta.color}22; border-color: ${meta.color}55; color: ${meta.color}">
+        ${initials}
+      </div>
+      <div class="comm-member-info">
+        <div class="comm-member-name">${fullName}</div>
+        <div class="comm-member-email">${m.email || "—"}</div>
+      </div>
+      <div class="comm-member-meta">
+        <span class="comm-meta-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          ${joinDate}
+        </span>
+        <span class="comm-meta-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          ${dept}
+        </span>
+        ${uniDept ? `<span class="comm-meta-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+          ${uniDept}${classYear ? ` · ${classYear}` : ""}
+        </span>` : ""}
+      </div>
+    </div>
   `;
 }

@@ -114,8 +114,15 @@ export function renderNav(user) {
             <div class="user-avatar">${initials}</div>
             <div class="user-details">
               <span class="user-name">${user.first_name} ${user.last_name}</span>
-              <span class="user-role">Üye</span>
+              <span class="user-role">${user.role}</span>
             </div>
+            <button id="sidebarLogoutBtn" class="sidebar-logout-btn" title="Çıkış Yap">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
+                <polyline points="16 17 21 12 16 7"/>
+                <line x1="21" y1="12" x2="9" y2="12"/>
+              </svg>
+            </button>
           </div>
         </div>
 
@@ -184,10 +191,10 @@ export function renderNav(user) {
 
 export function initNavEvents() {
   const currentPath = window.location.hash.replace("#", "") || "/home";
-  
+
   // 2. NAV_ITEMS içinden bu yola ait olan objeyi bul
   const currentItem = NAV_ITEMS.find(item => item.path === currentPath);
-  
+
   // 3. Sayfa başlığını (Toplar'daki yazı) mevcut öğeye göre güncelle
   const titleEl = document.getElementById("pageTitle");
   if (titleEl && currentItem) {
@@ -204,13 +211,13 @@ export function initNavEvents() {
     link.addEventListener("click", (e) => {
       document.querySelectorAll(".nav-link").forEach(l => l.classList.remove("active"));
       link.classList.add("active");
-      
+
       // Tıklanan linkin etiketini başlığa yaz
       const label = link.dataset.label; // buildNavLinks içinde data-label eklemiştik
       if (titleEl && label) titleEl.textContent = label;
     });
   });
- 
+
 
   // Sidebar Kapat/Aç (collapse butonu — sidebar içindeki ok)
   const collapseBtn = document.getElementById("sidebarCollapseBtn");
@@ -253,15 +260,30 @@ export function initNavEvents() {
     });
   }
 
-  // Çıkış Yap
+  // Çıkış Yap (ortak logout fonksiyonu)
+  async function handleLogout() {
+    try {
+      await fetch("http://localhost:8000/auth/logout", {
+        method: "POST",
+        credentials: "include"
+      });
+    } catch (e) {
+      console.warn("Logout isteği başarısız (sunucu kapalı olabilir):", e);
+    } finally {
+      clearUser();
+      window.location.href = "../../login-frontend/login.html";
+    }
+  }
+
+  // Topbar logout butonu
   const logoutBtn = document.getElementById("logoutBtn");
   if (logoutBtn) {
-    logoutBtn.addEventListener("click", () => {
-    
-      clearUser(); 
+    logoutBtn.addEventListener("click", handleLogout);
+  }
 
-      // TODO: Login sayfasına yönlendirme — gerçek login.html path'ini aşağıya yaz
-      // window.location.href = "../../login-frontend/html/login.html";
-    });
+  // Sidebar footer logout butonu
+  const sidebarLogoutBtn = document.getElementById("sidebarLogoutBtn");
+  if (sidebarLogoutBtn) {
+    sidebarLogoutBtn.addEventListener("click", handleLogout);
   }
 }
