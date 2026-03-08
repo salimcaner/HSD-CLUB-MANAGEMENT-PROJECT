@@ -150,8 +150,8 @@ function getStatusLabel(status) {
 }
 
 function getPrivacyColor(privacy) {
-    if (privacy === 'Genel') return 'green';
-    if (privacy === 'Gizli' || privacy === 'Çok Gizli') return 'red';
+    if (privacy === 'genel') return 'green';
+    if (privacy === 'gizli' || privacy === 'cok_gizli') return 'red';
     return 'blue';
 }
 
@@ -182,7 +182,11 @@ function renderRows(reports, isSuperUser, canCreate, canFeedback, user) {
         <span class="rp-badge rp-badge--neutral">${r.report_type || ''}</span>
       </td>
       <td class="rp-td"><span class="rp-pill rp-pill--${durum_renk}">${durum_etiket}</span></td>
-      <td class="rp-td rp-td--gizlilik"><span class="rp-pill rp-pill--${gizlilik_renk}">${r.privacy || ''}</span></td>
+      <td class="rp-td rp-td--gizlilik">
+  <span class="rp-pill rp-pill--${gizlilik_renk}">
+    ${r.privacy === 'genel' ? 'Genel' : (r.privacy === 'cok_gizli' ? 'Çok Gizli' : (r.privacy === 'gizli' ? 'Gizli' : (r.privacy || '')))}
+  </span>
+</td>
       <td class="rp-td">
         <div class="rp-dropdown" data-id="${r.id}">
           <button class="rp-dropdown-toggle" data-id="${r.id}">
@@ -684,9 +688,9 @@ export async function initReports(userParam) {
             const isElci = document.getElementById('modalGizlilikElci')?.checked;
             const isUye = document.getElementById('modalGizlilikUye')?.checked;
             
-            let gizlilik = 'Genel';
-            if (isElci) gizlilik = 'Çok Gizli';
-            else if (isUye) gizlilik = 'Gizli';
+            let gizlilik = 'genel';
+            if (isElci) gizlilik = 'cok_gizli';
+            else if (isUye) gizlilik = 'gizli';
             
             const projeGroup = document.getElementById('modalProjeGroup');
             const projeAdi  = document.getElementById('modalProjeAdi')?.value;
