@@ -173,6 +173,7 @@ export function renderNav(user) {
         <!-- ===== TOPBAR BİTİŞ ===== -->
 
         <!-- Sayfa içeriği bu navbar'ın dışında, her sayfanın kendi dosyasında render edilecek -->
+        <main id="page-content"></main>
 
       </div>
       <!-- ===== SAĞ TARAF BİTİŞ ===== -->
@@ -260,8 +261,8 @@ export function initNavEvents() {
     
       clearUser(); 
 
-      // TODO: Login sayfasına yönlendirme — gerçek login.html path'ini aşağıya yaz
-      // window.location.href = "../../login-frontend/html/login.html";
+      // Login sayfasına yönlendirme
+      window.location.href = "../../login-frontend/html/login.html";
     });
   }
 }

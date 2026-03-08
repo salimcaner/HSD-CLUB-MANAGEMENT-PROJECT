@@ -17,25 +17,25 @@ renderNotFound()*/
 import { getUser } from "./store.js";
 import { hasAnyPerm } from "./acl.js";
 
-import { renderHome } from "./pages/home.js";
+import { renderHome, initHome } from "./pages/home.js";
 import { renderCommunity } from "./pages/community.js";
-import { renderEvents } from "./pages/events.js";
+import { renderEvents, initEvents } from "./pages/events.js";
 import { renderProjects, initProjects } from "./pages/projects.js";
 import { renderReports, initReports } from "./pages/reports.js";
 import { renderCalendar } from "./pages/calendar.js";
 import { renderFinance } from "./pages/finance.js";
 import { renderMembers, initMembers } from "./pages/members.js";
 import { renderProfile } from "./pages/profile.js";
-import { renderSettings } from "./pages/settings.js";
+import { renderSettings, initSettings } from "./pages/settings.js";
 
 //const LOGIN_URL = "../../../login-frontend/login.html";
 
 const ROUTES = {
   //"/login" : {render: renderLogin},
-  "/home": { render: renderHome, required: [] },
+  "/home": { render: renderHome, initHome, required: [] },
   "/community": { render: renderCommunity, required: [] },
 
-  "/events": { render: renderEvents, required: [] },
+  "/events": { render: renderEvents,initEvents, required: [] },
   "/projects": { render: renderProjects, required: [] },
   "/reports": { render: renderReports, required: [] },
   "/calendar": { render: renderCalendar, required: ["calendar:read"] },
@@ -43,7 +43,7 @@ const ROUTES = {
   "/members": { render: renderMembers, required: ["members:read"] },
 
   "/profile": { render: renderProfile, required: [] },
-  "/settings": { render: renderSettings, required: [] }
+  "/settings": { render: renderSettings, initSettings, required: [] }
 };
 
 function getPathFromHash() {
@@ -75,7 +75,7 @@ function renderForbidden(appEl) {
 //}
 
 export function router() {
-  const appEl = document.querySelector(".main-area"); // 👈 ÖNEMLİ
+  const appEl = document.getElementById("page-content") || document.querySelector(".main-area"); // 👈 ÖNEMLİ
   const user = getUser();
   //if (!user) {
   //  redirectToLogin();
@@ -99,6 +99,10 @@ export function router() {
   // HTML render
   appEl.innerHTML = route.render(user);
 
+  if (path === "/home") {
+    initHome();
+  }
+
   // Reports ise init çalıştır
   if (path === "/reports") {
     initReports();
@@ -110,6 +114,14 @@ export function router() {
 
   if (path === "/projects") {
     initProjects();
+  }
+
+  if (path === "/events") {
+    initEvents();
+  }
+
+  if (path === "/settings") {
+    initSettings();
   }
 }
 

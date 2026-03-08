@@ -1,4 +1,5 @@
 import { hasPerm } from '../acl.js';
+import { getUser } from '../store.js';
 
 /* ================================
    MOCK DATA
@@ -7,13 +8,15 @@ import { hasPerm } from '../acl.js';
 // olusturan_id: Backend'den gelen raporu oluşturan kullanıcının ID'si.
 // Giriş yapan kullanıcının ID'si (user.id) ile karşılaştırılarak sahiplik kontrolü yapılır.
 // Backend entegrasyonunda bu alan API response'undan doldurulmalıdır.
-const mockReports = [
+let mockReports = [
   { id: 1, rapor_adi: 'Aylık Faaliyet Raporu',    olusturan: 'Zeynep Çelik',  olusturan_id: 2, tarih: '01.03.2024', komite: 'Proje Komitesi',                        tur_etiket: 'Proje Raporu',    tur_renk: 'neutral', durum: 'Onaylandı',    durum_renk: 'green',  gizlilik: 'Genel',     gizlilik_renk: 'green' },
   { id: 2, rapor_adi: 'Sponsorluk Görüşmesi',      olusturan: 'Mehmet Kaya',   olusturan_id: 3, tarih: '28.02.2024', komite: 'Sponsorluk ve Organizasyon Komitesi', tur_etiket: 'Etkinlik Raporu', tur_renk: 'neutral', durum: 'Onay Bekliyor', durum_renk: 'orange', gizlilik: 'Gizli',     gizlilik_renk: 'red'   },
   { id: 3, rapor_adi: 'Webinar Değerlendirme',     olusturan: 'Ayşe Yılmaz',  olusturan_id: 4, tarih: '15.02.2024', komite: 'Akademi Komitesi',                     tur_etiket: 'Eğitim Raporu',   tur_renk: 'neutral', durum: 'Onaylandı',    durum_renk: 'green',  gizlilik: 'Genel',     gizlilik_renk: 'green' },
   { id: 4, rapor_adi: 'Yıllık Mali Rapor',         olusturan: 'Ali Demir',     olusturan_id: 5, tarih: '10.02.2024', komite: 'Yönetim Kurulu',                       tur_etiket: 'Finans Raporu',   tur_renk: 'neutral', durum: 'Onay Bekliyor', durum_renk: 'orange', gizlilik: 'Çok Gizli', gizlilik_renk: 'red'   },
   { id: 5, rapor_adi: 'Akademi Tanıtım Sunumu',    olusturan: 'Ceren Arslan',  olusturan_id: 6, tarih: '05.02.2024', komite: 'Akademi Komitesi',                     tur_etiket: 'Eğitim Raporu',   tur_renk: 'neutral', durum: 'Reddedildi',   durum_renk: 'red',    gizlilik: 'Genel',     gizlilik_renk: 'green' },
 ];
+
+let editingReportId = null;
 
 /* ================================
    KOMİTE → TÜR MAPPING
@@ -45,7 +48,7 @@ const TUM_TURLER = [...new Set(Object.values(KOMITE_TUR).flat())].sort((a,b) => 
 //   user.id   → giriş yapan kullanıcının ID'si (store.js'den gelir).
 //   r.olusturan_id → raporu oluşturan kullanıcının ID'si (backend'den gelir).
 // ─────────────────────────────────────────────────────────────────
-function renderRows(reports, canDelete, canUpdate, canFeedback, user) {
+function renderRows(reports, isSuperUser, canCreate, canFeedback, user) {
   if (!reports.length) {
     return `<tr><td colspan="8" class="rp-no-data">Gösterilecek rapor bulunamadı.</td></tr>`;
   }
@@ -75,8 +78,8 @@ function renderRows(reports, canDelete, canUpdate, canFeedback, user) {
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
               İndir
             </button>
-            ${ // GÜNCELLEME YETKİSİ: canUpdate=true → elçi (herkesi düzenler) | false → sadece kendi raporu (olusturan_id===user.id) | Backend: PUT /reports/:id 403 kontrolü ekle
-              (canUpdate || r.olusturan_id === user?.id) ? `
+            ${ // GÜNCELLEME YETKİSİ
+              (isSuperUser || (canCreate && (r.olusturan_id === user?.id || r.olusturan === user?.name))) ? `
             <button class="rp-dropdown-item" data-action="edit" data-id="${r.id}">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
               Düzenle
@@ -90,8 +93,8 @@ function renderRows(reports, canDelete, canUpdate, canFeedback, user) {
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               Reddet
             </button>` : ""}
-            ${ // SİLME YETKİSİ: canDelete=true → elçi (herkesi siler) | false → sadece kendi raporu (olusturan_id===user.id) | Backend: DELETE /reports/:id 403 kontrolü ekle
-              (canDelete || r.olusturan_id === user?.id) ? `
+            ${ // SİLME YETKİSİ
+              (isSuperUser || (canCreate && (r.olusturan_id === user?.id || r.olusturan === user?.name))) ? `
             <div class="rp-dropdown-divider"></div>
             <button class="rp-dropdown-item rp-dropdown-item--delete" data-action="delete" data-id="${r.id}">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
@@ -116,19 +119,11 @@ function renderRows(reports, canDelete, canUpdate, canFeedback, user) {
 //   background-position: center;
 //   background-blend-mode: overlay;  /* renk üstüne bindirmek için */
 export function renderReports(user) {
+  const isSuperUser = ["ADMIN", "GENEL_SEKRETER", "ELCI"].includes(user?.role?.toUpperCase());
   const canCreate   = hasPerm(user, 'reports:create');
-  // canDelete: 'report:delete' iznine sahip kullanıcı (elçi) tüm raporları silebilir.
-  //             Bu izin yoksa renderRows içinde r.olusturan_id === user.id kontrolü devreye girer.
-  //             → Backend: acl.js'de 'report:delete' iznini sadece elçi rolüne tanımla.
-  const canDelete   = hasPerm(user, 'report:delete');
-
-  // canUpdate: 'report:update' iznine sahip kullanıcı (elçi) tüm raporları güncelleyebilir.
-  //            Bu izin yoksa renderRows içinde r.olusturan_id === user.id kontrolü devreye girer.
-  //            → Backend: acl.js'de 'report:update' iznini sadece elçi rolüne tanımla.
-  const canUpdate   = hasPerm(user, 'report:update');
   const canFeedback = hasPerm(user, 'reports:feedback');
 
-  const rowsHTML = renderRows(mockReports, canDelete, canUpdate, canFeedback, user);
+  const rowsHTML = renderRows(mockReports, isSuperUser, canCreate, canFeedback, user);
 
   // Filtre: komite options
   const komiteOptions = Object.keys(KOMITE_TUR)
@@ -246,17 +241,19 @@ export function renderReports(user) {
             </div>
 
             <div class="rp-form-group">
-              <label class="rp-label">Gizlilik Seviyesi <span class="rp-required">*</span></label>
-              <select class="rp-modal-select" id="modalGizlilik">
-                <option value="">Seçiniz</option>
-                <option value="Genel">Genel</option>
-                <option value="Gizli">Gizli</option>
-                <option value="Çok Gizli">Çok Gizli</option>
-              </select>
+              <label class="rp-label">Gizlilik Seviyesi</label>
+              <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 4px;">
+                <label style="display: flex; align-items: center; gap: 8px; color: #fff; font-size: 13.5px; cursor: pointer;">
+                  <input type="checkbox" id="modalGizlilikElci" class="rp-checkbox" style="width: 16px; height: 16px; cursor: pointer;">
+                  Sadece Elçi Görsün
+                </label>
+                <label style="display: flex; align-items: center; gap: 8px; color: #fff; font-size: 13.5px; cursor: pointer;">
+                  <input type="checkbox" id="modalGizlilikUye" class="rp-checkbox" style="width: 16px; height: 16px; cursor: pointer;">
+                  Sadece Üye Görmesin
+                </label>
+              </div>
               <div class="rp-hint">
-                <span><strong>Genel:</strong> Tüm kullanıcılar görüntüleyebilir.</span>
-                <span><strong>Gizli:</strong> Üye rolü hariç tüm yetkililer görüntüleyebilir.</span>
-                <span><strong>Çok Gizli:</strong> Sadece Elçi görüntüleyebilir.</span>
+                <span>İkisi de seçilmezse rapor herkes tarafından görüntülenebilir.</span>
               </div>
             </div>
 
@@ -265,6 +262,7 @@ export function renderReports(user) {
               <div class="rp-file-drop" id="modalFileDrop">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                 <span>Dosyayı sürükleyin veya <label class="rp-file-link" for="modalFileInput">seçin</label></span>
+                <span style="font-size: 11px; opacity: 0.7;">En fazla 10MB büyüklüğünde dosya yükleyiniz.</span>
                 <input type="file" id="modalFileInput" accept=".pdf,.doc,.docx" style="display:none;" />
                 <span class="rp-file-name" id="modalFileName"></span>
               </div>
@@ -292,7 +290,11 @@ export function renderReports(user) {
    EVENTS & FILTERING LOGIC
 ================================ */
 
-export function initReports(user) { // user parametresini eklemeyi unutma (yetkiler için)
+export function initReports(userParam) { 
+  const user = userParam || getUser();
+  const isSuperUser = ["ADMIN", "GENEL_SEKRETER", "ELCI"].includes(user?.role?.toUpperCase());
+  const canCreate   = hasPerm(user, 'reports:create');
+  const canFeedback = hasPerm(user, 'reports:feedback');
 
   // Türkçe karakterlere duyarlı küçük harf dönüştürücü
   const toLowerTR = (str) => (str || '').toLocaleLowerCase('tr-TR');
@@ -327,14 +329,9 @@ export function initReports(user) { // user parametresini eklemeyi unutma (yetki
 
     let filtered = mockReports.filter(r => {
       const raporAdi = toLowerTR(r.rapor_adi);
-      
-      // DEĞİŞİKLİK BURADA: .includes(search) yerine .startsWith(search) 
-      // Böylece sadece yazdığın harfle BAŞLAYANLAR gelir.
       const matchSearch = !search || raporAdi.startsWith(search);
-      
       const matchKomite = !komite || r.komite === komite;
       const matchTur    = !tur    || r.tur_etiket === tur;
-      
       return matchSearch && matchKomite && matchTur;
     });
 
@@ -352,30 +349,8 @@ export function initReports(user) { // user parametresini eklemeyi unutma (yetki
       return 0;
     });
 
-    // Tabloyu DOM üzerinde güncelle
-    const rows = Array.from(tbody.querySelectorAll('.rp-row'));
-    rows.forEach(row => row.style.display = 'none');
-
-    filtered.forEach(r => {
-      const row = tbody.querySelector(`.rp-row[data-id="${r.id}"]`);
-      if (row) {
-        row.style.display = '';
-        tbody.appendChild(row); 
-      }
-    });
-
-    // Eğer hiç sonuç yoksa "Bulunamadı" mesajını göster
-    if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" class="rp-no-data">Arama kriterlerine uygun rapor bulunamadı.</td></tr>`;
-    } else {
-        // Eğer daha önce "Bulunamadı" yazdıysa ve şimdi veri geldiyse, 
-        // tabloyu temizleyip sadece mevcut satırları göstermek gerekebilir.
-        const noDataRow = tbody.querySelector('.rp-no-data');
-        if (noDataRow) {
-            // refresh yapıldığında tabloyu orijinal yetkilerle tekrar render et
-            document.dispatchEvent(new CustomEvent('reports:refresh'));
-        }
-    }
+    // Tabloyu DOM üzerinde güncelle (Tümünü yeniden render ediyoruz)
+    tbody.innerHTML = renderRows(filtered, isSuperUser, canCreate, canFeedback, user);
   }
 
   // Dinleyiciler
@@ -384,6 +359,48 @@ export function initReports(user) { // user parametresini eklemeyi unutma (yetki
   document.getElementById('turSelect')?.addEventListener('change', applyFilters);
   document.getElementById('komiteSelect')?.addEventListener('change', updateTurFilter);
   document.getElementById('createReportBtn')?.addEventListener('click', openReportModal);
+
+  // İşlemler Dropdown Dinleyicisi (Delegated Pattern)
+  document.body.addEventListener('click', (e) => {
+    // Tüm dropdownları önce kapat, ancak tıklanılan yerin kendisi değilse
+    if (!e.target.closest('.rp-dropdown')) {
+      document.querySelectorAll('.rp-dropdown--open').forEach(el => el.classList.remove('rp-dropdown--open'));
+    }
+
+    const toggleBtn = e.target.closest('.rp-dropdown-toggle');
+    if (toggleBtn) {
+      const dropdown = toggleBtn.closest('.rp-dropdown');
+      
+      // Eğer tıklanılan açıksa onu da kapat, değilse önce hepsini kapat sonra tıklanılanı aç
+      const isOpen = dropdown.classList.contains('rp-dropdown--open');
+      document.querySelectorAll('.rp-dropdown--open').forEach(el => el.classList.remove('rp-dropdown--open'));
+      
+      if (!isOpen) {
+        dropdown.classList.add('rp-dropdown--open');
+      }
+    }
+
+    // İşlem Düğmeleri Yönetimi
+    const actionBtn = e.target.closest('.rp-dropdown-item');
+    if (actionBtn) {
+      const action = actionBtn.getAttribute('data-action');
+      const id = parseInt(actionBtn.getAttribute('data-id'), 10);
+      
+      if (action === 'edit') {
+        openEditReportModal(id);
+      } else if (action === 'delete') {
+        if(confirm("Bu raporu silmek istediğinize emin misiniz?")) {
+           deleteReport(id);
+        }
+      } else if (action === 'approve') {
+        updateReportStatus(id, 'Onaylandı', 'green');
+      } else if (action === 'reject') {
+        updateReportStatus(id, 'Reddedildi', 'red');
+      }
+      
+      document.querySelectorAll('.rp-dropdown--open').forEach(el => el.classList.remove('rp-dropdown--open'));
+    }
+  });
 
   // Sayfa yüklendiğinde çalıştır
   applyFilters();
@@ -394,6 +411,12 @@ export function initReports(user) { // user parametresini eklemeyi unutma (yetki
 ================================ */
 
 function openReportModal() {
+  editingReportId = null;
+  const titleEl = document.querySelector('.rp-modal-title');
+  if(titleEl) titleEl.innerText = "Yeni Rapor Oluştur";
+  const submitBtn = document.getElementById('modalSubmitBtn');
+  if(submitBtn) submitBtn.innerText = "Rapor Oluştur";
+
   const modal = document.getElementById('createReportModal');
   if (!modal) return;
   modal.style.display = 'flex';
@@ -419,6 +442,78 @@ function closeReportModal() {
   // Proje alanini gizle
   const projeGroup = document.getElementById('modalProjeGroup');
   if (projeGroup) projeGroup.style.display = 'none';
+}
+
+function openEditReportModal(id) {
+  const r = mockReports.find(x => x.id === id);
+  if (!r) return;
+
+  editingReportId = id;
+
+  const titleEl = document.querySelector('.rp-modal-title');
+  if(titleEl) titleEl.innerText = "Raporu Düzenle";
+  const submitBtn = document.getElementById('modalSubmitBtn');
+  if(submitBtn) submitBtn.innerText = "Kaydet";
+
+  const modal = document.getElementById('createReportModal');
+  if (!modal) return;
+  modal.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+  
+  // Fill values
+  setTimeout(() => {
+    document.getElementById('modalRaporAdi').value = r.rapor_adi;
+    
+    const elciCheck = document.getElementById('modalGizlilikElci');
+    const uyeCheck = document.getElementById('modalGizlilikUye');
+    
+    if (r.gizlilik === 'Çok Gizli') {
+      if (elciCheck) elciCheck.checked = true;
+      if (uyeCheck) uyeCheck.checked = false;
+    } else if (r.gizlilik === 'Gizli') {
+      if (elciCheck) elciCheck.checked = false;
+      if (uyeCheck) uyeCheck.checked = true;
+    } else {
+      if (elciCheck) elciCheck.checked = false;
+      if (uyeCheck) uyeCheck.checked = false;
+    }
+
+    const komiteSel = document.getElementById('modalKomite');
+    if (komiteSel) {
+      komiteSel.value = r.komite;
+      komiteSel.dispatchEvent(new Event('change')); // trigger tur load
+    }
+    
+    setTimeout(() => {
+      const turSel = document.getElementById('modalTur');
+      if (turSel) {
+        turSel.value = r.tur_etiket;
+        turSel.dispatchEvent(new Event('change')); // trigger proje load if needed
+      }
+    }, 50);
+  }, 50);
+
+  bindModalEvents();
+}
+
+function deleteReport(id) {
+  mockReports = mockReports.filter(r => r.id !== id);
+  const searchInput = document.getElementById('searchInput');
+  if(searchInput) {
+      searchInput.dispatchEvent(new Event('input')); 
+  }
+}
+
+function updateReportStatus(id, newStatus, newColor) {
+  const r = mockReports.find(x => x.id === id);
+  if (r) {
+    r.durum = newStatus;
+    r.durum_renk = newColor;
+    const searchInput = document.getElementById('searchInput');
+    if(searchInput) {
+        searchInput.dispatchEvent(new Event('input')); 
+    }
+  }
 }
 
 function bindModalEvents() {
@@ -491,16 +586,43 @@ function bindModalEvents() {
     });
   }
 
+  // Checkbox mutual exclusivity
+  const elciCheck = document.getElementById('modalGizlilikElci');
+  const uyeCheck = document.getElementById('modalGizlilikUye');
+  
+  if (elciCheck && uyeCheck) {
+      elciCheck.addEventListener('change', function() {
+          if (this.checked) {
+              uyeCheck.checked = false;
+          }
+      });
+      uyeCheck.addEventListener('change', function() {
+          if (this.checked) {
+              elciCheck.checked = false;
+          }
+      });
+  }
+
   document.getElementById('modalSubmitBtn')?.addEventListener('click', () => {
     const raporAdi  = document.getElementById('modalRaporAdi')?.value.trim();
     const komite    = document.getElementById('modalKomite')?.value;
     const tur       = document.getElementById('modalTur')?.value;
-    const gizlilik  = document.getElementById('modalGizlilik')?.value;
+    
+    const isElci = document.getElementById('modalGizlilikElci')?.checked;
+    const isUye = document.getElementById('modalGizlilikUye')?.checked;
+    
+    let gizlilik = 'Genel';
+    if (isElci) {
+        gizlilik = 'Çok Gizli';
+    } else if (isUye) {
+        gizlilik = 'Gizli';
+    }
+    
     const projeGroup = document.getElementById('modalProjeGroup');
     const projeAdi  = document.getElementById('modalProjeAdi')?.value;
 
-    if (!raporAdi || !komite || !tur || !gizlilik) {
-      alert('Lütfen tüm zorunlu alanları doldurunuz.');
+    if (!raporAdi || !komite || !tur) {
+      alert('Lütfen rapor adını, komiteyi ve türü doldurunuz.');
       return;
     }
 
@@ -530,28 +652,47 @@ function bindModalEvents() {
     // ─────────────────────────────────────────────────────────────────────────────
 
     // Simdilik: mock olarak diziye ekle, tabloyu guncelle
-    const bugun = new Date();
-    const gg  = String(bugun.getDate()).padStart(2, '0');
-    const aa  = String(bugun.getMonth() + 1).padStart(2, '0');
-    const yyyy = bugun.getFullYear();
+    if (editingReportId) {
+      const r = mockReports.find(x => x.id === editingReportId);
+      if (r) {
+        r.rapor_adi = raporAdi;
+        r.komite = komite;
+        r.tur_etiket = tur;
+        r.gizlilik = gizlilik;
+        r.gizlilik_renk = gizlilik === 'Genel' ? 'green' : 'red';
+      }
+      editingReportId = null;
+    } else {
+      const bugun = new Date();
+      const gg  = String(bugun.getDate()).padStart(2, '0');
+      const aa  = String(bugun.getMonth() + 1).padStart(2, '0');
+      const yyyy = bugun.getFullYear();
+      const currentUser = getUser(); // Kullanıcı verisini al
 
-    const yeniRapor = {
-      id:            mockReports.length + 1,
-      rapor_adi:     raporAdi,
-      olusturan:     'Sen',           // Backend gelince: store.getUser().name
-      olusturan_id:  window.__currentUserId || 0, // Backend gelince: store.getUser().id
-      tarih:         gg + '.' + aa + '.' + yyyy,
-      komite:        komite,
-      tur_etiket:    tur,
-      tur_renk:      'neutral',
-      durum:         'Onay Bekliyor',
-      durum_renk:    'orange',
-      gizlilik:      gizlilik,
-      gizlilik_renk: gizlilik === 'Genel' ? 'green' : 'red',
-    };
+      const yeniRapor = {
+        id:            mockReports.length > 0 ? Math.max(...mockReports.map(m=>m.id)) + 1 : 1,
+        rapor_adi:     raporAdi,
+        olusturan:     currentUser?.name || 'Sen',           // Backend gelince: store.getUser().name
+        olusturan_id:  currentUser?.id || 0, // Backend gelince: store.getUser().id
+        tarih:         gg + '.' + aa + '.' + yyyy,
+        komite:        komite,
+        tur_etiket:    tur,
+        tur_renk:      'neutral',
+        durum:         'Onay Bekliyor',
+        durum_renk:    'orange',
+        gizlilik:      gizlilik,
+        gizlilik_renk: gizlilik === 'Genel' ? 'green' : 'red',
+      };
 
-    mockReports.unshift(yeniRapor);
+      mockReports.unshift(yeniRapor);
+    }
+    
     closeReportModal();
-    document.dispatchEvent(new CustomEvent('reports:refresh'));
+    // Filtreleri uygulayarak tabloyu yenile!
+    const searchInput = document.getElementById('searchInput');
+    if(searchInput) {
+        // Yeni bir Event tetikleyerek applyFilters'ın çalışmasını sağla
+        searchInput.dispatchEvent(new Event('input')); 
+    }
   });
 }
