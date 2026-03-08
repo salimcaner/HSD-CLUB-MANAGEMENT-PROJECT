@@ -11,7 +11,7 @@ def create_project(data: ProjectCreate, current_user: User):
     insert_data = {
         "name": data.name,
         "description": data.description,
-        "manager_id": str(data.manager_id) if data.manager_id else None
+        "manager_id": str(data.manager_id) if data.manager_id else str(current_user.id)
     }
     
     response = supabase.table("projects").insert(insert_data).execute()
@@ -20,56 +20,59 @@ def create_project(data: ProjectCreate, current_user: User):
     return response.data[0]
 
 def get_all_projects():
-    # Fetch projects
-    projects_res = supabase.table("projects").select("*").execute()
+    # 1. Projeleri ve Yöneticilerin profil bilgilerini JOIN ile çekiyoruz
+    projects_res = supabase.table("projects").select("*, profiles(first_name, last_name)").execute()
     projects_data = projects_res.data or []
     
-    # Fetch members and tasks for nesting
+    # 2. Üyeleri ve üyelerin profil bilgilerini JOIN ile çekiyoruz
     members_res = supabase.table("project_members").select("*, profiles(first_name, last_name)").execute()
-    tasks_res = supabase.table("project_tasks").select("*").execute()
     
-    # Fetch all profiles just to map manager names and task assignee names easily
-    profiles_res = supabase.table("profiles").select("id, first_name, last_name").execute()
-    profiles_dict = {p["id"]: f"{p.get('first_name') or ''} {p.get('last_name') or ''}".strip() for p in (profiles_res.data or [])}
-
+    # 3. Görevleri çekiyoruz (Mevcut yapıda görevliye ait isim dönmüyor, sadece assignee_id dönüyor, bu yüzden JOIN gerekmez)
+    tasks_res = supabase.table("project_tasks").select("*").execute()
     result = []
     for p in projects_data:
-        p_id = p["id"]
+        p_id = p.get("id")
         
-        # Members list
-        p_members = [
-            {
-                "id": m["user_id"], 
-                "name": profiles_dict.get(m["user_id"], "Bilinmiyor"), 
-                "role": m["role"]
-            } 
-            for m in (members_res.data or []) if m["project_id"] == p_id
-        ]
+        # --- Üyeler Listesi (Members) ---
+        p_members = []
+        for m in (members_res.data or []):
+            if m.get("project_id") == p_id:
+                prof = m.get("profiles") or {}
+                m_name = f"{prof.get('first_name') or ''} {prof.get('last_name') or ''}".strip()
+                
+                p_members.append({
+                    "id": m.get("user_id"), 
+                    "name": m_name if m_name else "Bilinmiyor", 
+                    "role": m.get("role")
+                })
         
-        # Tasks list
-        p_tasks = [
-            {
-                "id": t["id"],
-                "title": t["title"],
-                "status": t["status"],
-                "assigneeId": t["assignee_id"],
-                "createdAt": t["created_at"]
-            }
-            for t in (tasks_res.data or []) if t["project_id"] == p_id
-        ]
-
-        manager_name = profiles_dict.get(p.get("manager_id"), "Bilinmiyor")
-
+        # --- Görevler Listesi (Tasks) ---
+        p_tasks = []
+        for t in (tasks_res.data or []):
+            if t.get("project_id") == p_id:
+                p_tasks.append({
+                    "id": t.get("id"),
+                    "title": t.get("title"),
+                    "status": t.get("status"),
+                    "assigneeId": t.get("assignee_id"),
+                    "createdAt": t.get("created_at")
+                })
+        # --- Proje Yöneticisi (Manager) İsim Çözümleme ---
+        manager_prof = p.get("profiles") or {}
+        manager_name = f"{manager_prof.get('first_name') or ''} {manager_prof.get('last_name') or ''}".strip()
+        # Sonucu Listemize Ekliyoruz
         result.append({
             "id": p_id,
-            "name": p["name"],
+            "name": p.get("name"),
             "description": p.get("description"),
-            "manager": manager_name,
+            "manager": manager_name if manager_name else "Bilinmiyor",
             "managerId": p.get("manager_id"),
             "members": p_members,
             "tasks": p_tasks,
         })
+        
     return result
+
 
 def delete_project(project_id: str):
     response = supabase.table("projects").delete().eq("id", project_id).execute()
