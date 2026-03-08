@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Path, Query, UploadFile, File, Form, Depends, status
 from typing import Optional
-from app.services.report_service import create_report_service, get_all_reports_service, update_report_status_service, delete_report_service, update_report_service
+from fastapi.responses import RedirectResponse
+from app.services.report_service import create_report_service, get_all_reports_service, update_report_status_service, delete_report_service, update_report_service, get_report_download_url_service
 from app.core.security import get_current_user
 from app.core.security import require_lider_or_above
 from app.schemas.report import ReportStatusUpdate
@@ -70,6 +71,7 @@ async def get_all_reports_endpoint(
         
         reports = get_all_reports_service(
             user_role=role_str,
+            current_user_id=str(current_user.id),  # <--- BURAYI YENİ EKLEDİK
             search_name=search_name,
             limit=limit,
             offset=offset
@@ -83,8 +85,7 @@ async def get_all_reports_endpoint(
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-
+    
 
 # ==========================================
 # durum güncelleme (onay/reddetme)
@@ -220,3 +221,26 @@ async def update_report_endpoint(
         raise
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+    
+
+# ==========================================
+# RAPOR İNDİRME 
+# ==========================================
+@router.get("/{report_id}/download")
+async def download_report_endpoint(
+    report_id: int = Path(..., title="İndirilecek Rapor ID'si"),
+    current_user = Depends(get_current_user) # Sistemi sadece üyeler kullanabildiği için güvenlik kontrolü
+):
+    try:
+        result = get_report_download_url_service(report_id)
+        
+        # Eğer bir hata döndüyse (Rapor yok vs.) 404 fırlat
+        if not result.get("success"):
+            raise HTTPException(status_code=404, detail=result.get("message"))
+            
+        return RedirectResponse(url=result.get("url"))
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

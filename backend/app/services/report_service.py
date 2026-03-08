@@ -6,8 +6,9 @@ from app.core.supabase_client import get_supabase
 from app.schemas.user import UserRole
 
 supabase = get_supabase()
+
 # -------------------------
-#RAPOR YÜKLEME SERVİSİ
+# RAPOR YÜKLEME SERVİSİ
 # -------------------------
 def create_report_service(
     sender_id: str,
@@ -21,7 +22,10 @@ def create_report_service(
     content_type: str
 ):
     try:
-        unique_filename = f"{uuid.uuid4()}_{filename}"
+        safe_filename = filename.replace(" ", "_").replace("ı", "i").replace("ğ", "g").replace("ü", "u").replace("ş", "s").replace("ö", "o").replace("ç", "c").replace("İ", "I").replace("Ğ", "G").replace("Ü", "U").replace("Ş", "S").replace("Ö", "O").replace("Ç", "C")
+            
+        unique_filename = f"{uuid.uuid4()}_{safe_filename}"
+        
         
         upload_response = supabase.storage.from_("reports").upload(
             file=file_bytes,
@@ -31,7 +35,7 @@ def create_report_service(
         
         public_url = supabase.storage.from_("reports").get_public_url(unique_filename)
         
-        # 2. Veritabanına (Database) Kaydet
+        # 3. Veritabanına (Database) Kaydet
         report_data = {
             "report_name": report_name,
             "sender_id": sender_id,
@@ -52,17 +56,18 @@ def create_report_service(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Rapor oluşturulurken hata: {str(e)}")
     
-## -------------------------
-#RAPOR LİSTELEME SERVİSİ
-# -------------------------
-def get_all_reports_service(user_role: str, search_name: str = None, limit: int = 50, offset: int = 0):
-    try:
-        #query = supabase.table("reports").select("*, users(first_name, last_name, email)")
-        query = supabase.table("reports").select("*")
 
-        # Yetki (Gizlilik) Kontrolü
+# -------------------------
+# RAPOR LİSTELEME SERVİSİ
+# -------------------------
+def get_all_reports_service(user_role: str, current_user_id: str, search_name: str = None, limit: int = 50, offset: int = 0):
+    try:
+        query = supabase.table("reports").select("*, profiles!reports_sender_id_fkey(first_name, last_name, email)")
+        
+        # Yetki (Gizlilik) Kontrolü ve SAHİPLİK Kontrolü (Aynı Anda)
         if user_role == "uye" or user_role == UserRole.UYE.value:
-            query = query.in_("privacy", ["genel"])
+            # Rapor 'genel' ise VEYA raporu yatatan benim id'mse bana göster.
+            query = query.or_(f"privacy.eq.genel,sender_id.eq.{current_user_id}")
             
         # Çok gizli raporlar dahil TÜM raporları görebilenler
         elif user_role in [UserRole.ELCI.value, UserRole.GENEL_SEKRETER.value, UserRole.ADMIN.value]:
@@ -70,11 +75,11 @@ def get_all_reports_service(user_role: str, search_name: str = None, limit: int 
             
         # Sadece genel ve gizli raporları görebilenler 
         elif user_role in [UserRole.DEPARTMAN_LIDERI.value, UserRole.INSAN_KAYNAKLARI.value]: 
-            query = query.in_("privacy", ["genel", "gizli"])
+            query = query.or_(f"privacy.in.(genel,gizli),sender_id.eq.{current_user_id}")
             
         else:
-            # Diğer herkes sadece genel raporları görsün (güvenlik önlemi)
-            query = query.in_("privacy", ["genel"])
+            # Diğer herkes (Güvenlik önlemi)
+            query = query.or_(f"privacy.eq.genel,sender_id.eq.{current_user_id}")
      
         if search_name:
             query = query.ilike("report_name", f"%{search_name}%")
@@ -87,6 +92,7 @@ def get_all_reports_service(user_role: str, search_name: str = None, limit: int 
         return response.data
     except Exception as e:
         raise Exception(f"Raporlar getirilirken hata: {str(e)}")
+    
     
 # -------------------------
 #RAPOR durum güncelleme servisi
@@ -182,15 +188,17 @@ def update_report_service(
         unique_filename = None
         
         if new_file_bytes and new_filename:
-            unique_filename = f"{uuid.uuid4()}_{new_filename}"
-
+            # 1. Buradan İngilizce harflere çevirdik ve safe_filename değişkenine koyduk.
+            safe_filename = new_filename.replace(" ", "_").replace("ı", "i").replace("ğ", "g").replace("ü", "u").replace("ş", "s").replace("ö", "o").replace("ç", "c").replace("İ", "I").replace("Ğ", "G").replace("Ü", "U").replace("Ş", "S").replace("Ö", "O").replace("Ç", "C")
+            
+            # 2. uuid ile yan yana koyarken de new_filename DEĞİL, safe_filename kullanmalıyız!
+            unique_filename = f"{uuid.uuid4()}_{safe_filename}"
             supabase.storage.from_("reports").upload(
                 file=new_file_bytes,
                 path=unique_filename,
                 file_options={"content-type": new_content_type}
             )
             updated_file_url = supabase.storage.from_("reports").get_public_url(unique_filename)
-       
 
         update_data = {
             "report_name": new_report_name,
@@ -226,3 +234,40 @@ def update_report_service(
                 pass 
                 
         return {"success": False, "message": f"Güncelleme işlemi sırasında bir hata oluştu: {str(e)}"}
+    
+
+
+# -------------------------
+# RAPOR İNDİRME (GÜVENLİ İMZALI URL ALMA) SERVİSİ
+# -------------------------
+def get_report_download_url_service(report_id: int):
+    try:
+        # 1. Veritabanından raporu bul
+        response = supabase.table("reports").select("file_url").eq("id", report_id).execute()
+        
+        if not response.data or not response.data[0].get("file_url"):
+            raise Exception("Rapor dosyası bulunamadı.")
+            
+        file_url = response.data[0].get("file_url")
+        
+        if not file_url:
+            return {"success": False, "message": "Bu rapora ait yüklü bir dosya bulunamadı."}
+            
+        # 2. Dosyanın adını URL'in sonundan çek (Örn: 123-abc_rapor.pdf)
+        filename = file_url.split("/")[-1]
+        
+        # 3. SUPABASE PRIVATE BUCKET GÜVENLİĞİ: 
+        # Public URL yerine sadece 60 saniye geçerli bir "Signed (İmzalı) URL" üretiyoruz.
+        # Bu sayede kova (bucket) gizli bile olsa, backend izniyle dosya indirilebilir.
+        signed_url_response = supabase.storage.from_("reports").create_signed_url(filename, 60)
+        
+        # Supabase Python kütüphanesi genelde sözlük (dict) içinde "signedURL" değerini döner
+        secure_url = signed_url_response.get("signedURL")
+        
+        if not secure_url:
+            raise Exception("Güvenli indirme linki oluşturulamadı.")
+            
+        return {"success": True, "url": secure_url}
+        
+    except Exception as e:
+        raise Exception(f"İndirme linki alınırken hata: {str(e)}")
