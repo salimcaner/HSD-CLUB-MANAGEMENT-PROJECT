@@ -24,6 +24,10 @@
   font-family: 'Figtree', sans-serif;
 }
 
+.rp-title span {
+  color: #7c3aed;
+}
+
 .rp-btn-new {
   background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
   color: #fff;
