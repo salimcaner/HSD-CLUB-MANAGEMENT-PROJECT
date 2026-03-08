@@ -1,6 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+<<<<<<< HEAD
 from app.routers import auth, users, reports, events
+=======
+from app.routers import auth,users,projects  
+>>>>>>> projects
 app = FastAPI(
     title="Kulüp Yönetim Sistemi API",
     description="Üniversite kulüplerini yönetmek için geliştirilen API.",
@@ -43,6 +47,5 @@ app.mount("/frontend", StaticFiles(directory=frontend_path), name="frontend")
 @app.get("/")
 async def root():
     return {"message": "Kulüp Yönetim Sistemi API'sine Hoşgeldiniz!"}
-
 
 
