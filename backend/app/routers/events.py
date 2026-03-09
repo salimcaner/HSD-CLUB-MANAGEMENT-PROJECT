@@ -23,6 +23,7 @@ def require_create_event_permission(current_user: UserInDB = Depends(get_current
              detail="Bu işlemi gerçekleştirmek için yetkiniz yok"
          )
     return current_user
+
 # ==========================================
 # SIKIŞTIRMALI ETKİNLİK OLUŞTURMA
 # ==========================================
@@ -33,60 +34,68 @@ async def create_event_endpoint(
     event_date: datetime = Form(...),  
     location: str = Form(...),
     committee: str = Form(...),
-    image: UploadFile = File(...),     
+    event_type: str = Form(...),                                 
+    participant_count: Optional[int] = Form(None),                
+    image: Optional[UploadFile] = File(None),                     
     current_user: UserInDB = Depends(require_create_event_permission) 
 ):
     try:
-        # 1. Dosya Güvenliği
-        allowed_types = ["image/jpeg", "image/png", "image/webp", "image/jpg"]
-        if image.content_type not in allowed_types:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, 
-                detail="Sadece resim dosyası (JPG, PNG, WEBP) yükleyebilirsiniz."
-            )
-            
-        file_bytes = await image.read()
+        optimized_file_bytes = None
+        final_filename = None
+        final_content_type = None
+        default_image_url = None
         
-        # 2. OPTİMİZASYON (Pillow ile Sıkıştırma)
-        try:
-            img = Image.open(io.BytesIO(file_bytes))
+        # 1. Dosya Yüklendiyse (Belki görevlinin elinde başta da resim vardır) Onu Sıkıştır/Al
+        if image and image.filename:
+            allowed_types = ["image/jpeg", "image/png", "image/webp", "image/jpg"]
+            if image.content_type not in allowed_types:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Sadece resim dosyası (JPG, PNG, WEBP) yükleyebilirsiniz.")
+            file_bytes = await image.read()
             
-            if img.mode in ("RGBA", "P"):
-                img = img.convert("RGB")
+            # Pillow ile Sıkıştırma
+            try:
+                img = Image.open(io.BytesIO(file_bytes))
+                if img.mode in ("RGBA", "P"): img = img.convert("RGB")
+                img.thumbnail((1200, 1200), Image.Resampling.LANCZOS)
+                output_buffer = io.BytesIO()
+                img.save(output_buffer, format="WEBP", quality=75, method=6)
                 
-            img.thumbnail((1200, 1200), Image.Resampling.LANCZOS)
-            output_buffer = io.BytesIO()
-            img.save(output_buffer, format="WEBP", quality=75, method=6)
-            
-            optimized_file_bytes = output_buffer.getvalue()
-            final_filename = f"evt_{uuid.uuid4().hex[:8]}.webp"
-            final_content_type = "image/webp"
-            
-        except Exception as e:
-            raise HTTPException(status_code=400, detail=f"Resim optimize edilirken hata oluştu: {str(e)}")
-            
-        # 3. KÜÇÜLTÜLMÜŞ DOSYAYI SUPABASE'E GÖNDER!
+                optimized_file_bytes = output_buffer.getvalue()
+                final_filename = f"evt_{uuid.uuid4().hex[:8]}.webp"
+                final_content_type = "image/webp"
+            except Exception as e:
+                raise HTTPException(status_code=400, detail=f"Resim optimize edilirken hata oluştu: {str(e)}")
+                
+        
+        else:
+            optimized_file_bytes = None
+            final_filename = None
+
+
         created_event = create_event_service(
             title=title,
             description=description,
             event_date=event_date.isoformat(), 
             location=location,
             committee=committee,
+            event_type=event_type,                      
+            participant_count=participant_count,        
             created_by=str(current_user.id),
             file_bytes=optimized_file_bytes, 
             filename=final_filename,         
-            content_type=final_content_type  
+            content_type=final_content_type,
+            default_image_url=default_image_url         
         )
         
         return {
-            "message": "Etkinlik başarıyla oluşturuldu ve görsel web için optimize edildi!",
+            "message": "Etkinlik başarıyla oluşturuldu!",
             "data": created_event
         }
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
+    
 
 # ==========================================
 # GÜÇLENDİRİLMİŞ ETKİNLİK LİSTELEME
@@ -148,7 +157,9 @@ async def update_event_endpoint(
     event_date: datetime = Form(...),
     location: str = Form(...),
     committee: str = Form(...),
-    image: Optional[UploadFile] = File(None),
+    event_type: str = Form(...),                        # <-- EKLENDİ
+    participant_count: Optional[int] = Form(None),      # <-- EKLENDİ (Frontend, etkinlik bitince girdirecek)
+    image: Optional[UploadFile] = File(None),           # <-- Gerçek resim buradan gelecek (Eski default resmi ezecek)
     current_user: UserInDB = Depends(get_current_user) 
 ):
     try:
@@ -159,24 +170,16 @@ async def update_event_endpoint(
         if image and image.filename:
             allowed_types = ["image/jpeg", "image/png", "image/webp", "image/jpg"]
             if image.content_type not in allowed_types:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST, 
-                    detail="Sadece resim dosyası (JPG, PNG, WEBP) yükleyebilirsiniz."
-                )
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Sadece resim dosyası (JPG, PNG, WEBP) yükleyebilirsiniz.")
                 
             MAX_FILE_SIZE = 8 * 1024 * 1024
             file_bytes = await image.read()
             if len(file_bytes) > MAX_FILE_SIZE:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST, 
-                    detail="Görsel boyutu maksimum 8 MB olabilir."
-                )
+                raise HTTPException(status_code=400, detail="Görsel boyutu maksimum 8 MB olabilir.")
                 
             try:
                 img = Image.open(io.BytesIO(file_bytes))
-                if img.mode in ("RGBA", "P"):
-                    img = img.convert("RGB")
-                    
+                if img.mode in ("RGBA", "P"): img = img.convert("RGB")
                 img.thumbnail((1200, 1200), Image.Resampling.LANCZOS)
                 output_buffer = io.BytesIO()
                 img.save(output_buffer, format="WEBP", quality=75, method=6)
@@ -184,9 +187,9 @@ async def update_event_endpoint(
                 optimized_file_bytes = output_buffer.getvalue()
                 final_filename = f"evt_{uuid.uuid4().hex[:8]}.webp"
                 final_content_type = "image/webp"
-                
             except Exception as e:
                 raise HTTPException(status_code=400, detail=f"Resim optimize edilirken hata oluştu: {str(e)}")
+                
         role_str = current_user.role if isinstance(current_user.role, str) else current_user.role.value
         
         result = update_event_service(
@@ -198,6 +201,8 @@ async def update_event_endpoint(
             event_date=event_date.isoformat(),
             location=location,
             committee=committee,
+            event_type=event_type,                  # <-- Gönderiyoruz
+            participant_count=participant_count,    # <-- Gönderiyoruz
             new_file_bytes=optimized_file_bytes,
             new_filename=final_filename,
             new_content_type=final_content_type
@@ -205,20 +210,16 @@ async def update_event_endpoint(
         
         if not result.get("success"):
             hata_mesaji = result.get("message", "")
-            if "yetkiniz yok" in hata_mesaji.lower():
-                 raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=hata_mesaji)
-            elif "bulunamadı" in hata_mesaji.lower():
-                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=hata_mesaji)
-            else:
-                 raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=hata_mesaji)
+            if "yetkiniz yok" in hata_mesaji.lower(): raise HTTPException(status_code=403, detail=hata_mesaji)
+            elif "bulunamadı" in hata_mesaji.lower(): raise HTTPException(status_code=404, detail=hata_mesaji)
+            else: raise HTTPException(status_code=400, detail=hata_mesaji)
                  
         return result
         
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
-    
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ==========================================

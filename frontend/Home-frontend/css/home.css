@@ -232,6 +232,22 @@ body.light-theme {
   list-style: none;
   padding: 0;
   margin: 0;
+  max-height: 300px; /* Align with countdown height */
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.activity-list::-webkit-scrollbar {
+  width: 5px;
+}
+
+.activity-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.activity-list::-webkit-scrollbar-thumb {
+  background: var(--accent);
+  border-radius: 10px;
 }
 
 .activity-item {
@@ -479,6 +495,26 @@ body.light-theme {
 .form-control:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
+}
+
+.form-divider {
+  border-top: 1px solid var(--border-light);
+  margin: 20px 0;
+  position: relative;
+  text-align: center;
+}
+
+.form-divider span {
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-card);
+  padding: 0 10px;
+  font-size: 11px;
+  color: var(--text-dim);
+  font-weight: 600;
+  text-transform: uppercase;
 }
 
 .modal-footer {

@@ -68,7 +68,24 @@ function buildNavLinks(user) {
 
 export function renderNav(user) {
   const navLinks = buildNavLinks(user);
-  const initials = (user.first_name?.[0] || "") + (user.last_name?.[0] || "");
+  let initials = "??";
+  let fullName = "Bilinmeyen Kullanıcı";
+
+  if (user) {
+    if (user.first_name || user.last_name) {
+      initials = (user.first_name?.[0] || "") + (user.last_name?.[0] || "");
+      fullName = `${user.first_name || ""} ${user.last_name || ""}`.trim();
+    } else if (user.full_name) {
+      fullName = user.full_name;
+      initials = user.full_name.split(" ").map(n => n[0]).join("").toUpperCase();
+    } else if (user.name) {
+      fullName = user.name;
+      initials = user.name.split(" ").map(n => n[0]).join("").toUpperCase();
+    } else if (user.username) {
+      fullName = user.username;
+      initials = user.username.slice(0, 2).toUpperCase();
+    }
+  }
 
   return `
     <!-- ===== LAYOUT WRAPPER BAŞLANGIÇ ===== -->

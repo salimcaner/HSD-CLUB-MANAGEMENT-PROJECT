@@ -157,41 +157,32 @@ function getPrivacyColor(privacy) {
 
 function renderRows(reports, isSuperUser, canCreate, canFeedback, user) {
   if (!reports.length) {
-    return `<tr><td colspan="8" class="rp-no-data">Gösterilecek rapor bulunamadı.</td></tr>`;
+    return `<tr><td colspan="8" style="text-align: center; padding: 40px; color: var(--text-dim);">Gösterilecek rapor bulunamadı.</td></tr>`;
   }
   
   return reports.map(r => {
-      
     const formattedDate = new Date(r.created_at).toLocaleDateString('tr-TR');
-    // Backend DB strings vs frontend expectations
     const durum_renk = getStatusColor(r.status);
     const durum_etiket = getStatusLabel(r.status);
-    const gizlilik_renk = getPrivacyColor(r.privacy);
-
-    // Kendi raporu mu? r.sender_id = uuid
     const isOwner = r.sender_id === user?.id;
     const senderName = r.profiles ? `${r.profiles.first_name || ''} ${r.profiles.last_name || ''}`.trim() : r.sender_id;
 
     return `
-    <tr class="rp-row" data-id="${r.id}" data-rapor-adi="${(r.report_name || "").toLowerCase()}">
-      <td class="rp-td"><span class="rp-report-name">${r.report_name || ''}</span></td>
-      <td class="rp-td rp-td--muted">${senderName}</td>
-      <td class="rp-td rp-td--muted">${formattedDate}</td>
-      <td class="rp-td rp-td--muted">${r.committee || ''}</td>
-      <td class="rp-td">
-        <span class="rp-badge rp-badge--neutral">${r.report_type || ''}</span>
+    <tr class="report-row" data-id="${r.id}">
+      <td><span class="report-name" style="font-weight: 600; color: var(--text-main);">${r.report_name || ''}</span></td>
+      <td style="color: var(--text-dim);">${senderName}</td>
+      <td style="color: var(--text-dim);">${formattedDate}</td>
+      <td style="color: var(--text-dim);">${r.committee || ''}</td>
+      <td>
+        <span class="type-badge" style="background: rgba(255,255,255,0.05); color: var(--text-dim); padding: 4px 8px; border-radius: 4px; font-size: 11px; border: 1px solid var(--border-light);">${r.report_type || ''}</span>
       </td>
-      <td class="rp-td"><span class="rp-pill rp-pill--${durum_renk}">${durum_etiket}</span></td>
-      <td class="rp-td rp-td--gizlilik">
-  <span class="rp-pill rp-pill--${gizlilik_renk}">
-    ${r.privacy === 'genel' ? 'Genel' : (r.privacy === 'cok_gizli' ? 'Çok Gizli' : (r.privacy === 'gizli' ? 'Gizli' : (r.privacy || '')))}
-  </span>
-</td>
-      <td class="rp-td">
-        <div class="rp-dropdown" data-id="${r.id}">
-          <button class="rp-dropdown-toggle" data-id="${r.id}">
+      <td><span class="status-badge ${durum_renk}">${durum_etiket}</span></td>
+      <td style="visibility: hidden; width: 0; padding: 0;">${r.privacy}</td>
+      <td>
+        <div class="rp-dropdown">
+          <button class="rp-dropdown-toggle">
             İşlemler
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
           </button>
           <div class="rp-dropdown-menu">
             <button class="rp-dropdown-item" data-action="download" data-id="${r.id}">
@@ -202,8 +193,10 @@ function renderRows(reports, isSuperUser, canCreate, canFeedback, user) {
             <button class="rp-dropdown-item" data-action="edit" data-id="${r.id}">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
               Düzenle
-            </button>` : ""}
+            </button>
+            ` : ""}
             ${canFeedback ? `
+            <div class="rp-dropdown-divider"></div>
             <button class="rp-dropdown-item rp-dropdown-item--approve" data-action="approve" data-id="${r.id}">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
               Onayla
@@ -211,21 +204,22 @@ function renderRows(reports, isSuperUser, canCreate, canFeedback, user) {
             <button class="rp-dropdown-item rp-dropdown-item--reject" data-action="reject" data-id="${r.id}">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               Reddet
-            </button>` : ""}
+            </button>
+            ` : ""}
             ${ (isSuperUser || (canCreate && isOwner)) ? `
             <div class="rp-dropdown-divider"></div>
             <button class="rp-dropdown-item rp-dropdown-item--delete" data-action="delete" data-id="${r.id}">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
               Sil
-            </button>` : ""}
+            </button>
+            ` : ""}
           </div>
         </div>
       </td>
     </tr>
-  `
+    `;
   }).join('');
 }
-
 
 export function renderReports(user) {
   const isSuperUser = ["ADMIN", "GENEL_SEKRETER", "ELCI"].includes(user?.role?.toUpperCase());
@@ -237,55 +231,49 @@ export function renderReports(user) {
   const modalKomiteOptions = Object.keys(KOMITE_TUR).map(k => `<option value="${k}">${k}</option>`).join('');
 
   return `
-    <div class="rp-page">
-      <div class="rp-header">
-        <h1 class="rp-title">Rapo<span style="color:var(--accent);">rlar</span></h1>
-        ${canCreate ? `<button class="rp-btn-new" id="createReportBtn">Yeni Rapor</button>` : ''}
+    <div class="reports-page">
+      <div class="reports-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-light); padding-bottom: 20px; margin-bottom: 20px;">
+        <div class="reports-title-block">
+          <h1 style="font-family: 'Figtree', sans-serif; font-size: 28px; font-weight: 700; margin: 0;">Rapo<span>rlar</span></h1>
+        </div>
+        ${canCreate ? `<button class="btn btn-primary" id="createReportBtn">
+          + Yeni Rapor
+        </button>` : ''}
       </div>
 
-      <div class="rp-filters">
-        <div class="rp-search-wrap">
-          <svg class="rp-search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input class="rp-search" type="text" id="searchInput" placeholder="Rapor adı ara..." />
+      <div class="reports-toolbar" style="display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; align-items: center;">
+        <div class="search-box" style="position: relative; flex: 1; min-width: 250px;">
+          <svg style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-dim);" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <input type="text" id="searchInput" placeholder="Rapor adı ara..." style="width: 100%; padding: 10px 14px 10px 40px; background: var(--bg-dark); border: 1px solid var(--border-light); border-radius: 6px; color: var(--text-main); font-family: 'Figtree', sans-serif; font-size: 14px; outline: none;">
         </div>
-        <select class="rp-select" id="sortSelect">
+        <select class="filter-select" id="sortSelect">
           <option value="tarih-yeni">En Yeni</option>
           <option value="tarih-eski">En Eski</option>
           <option value="ad-az">Ad (A-Z)</option>
           <option value="ad-za">Ad (Z-A)</option>
         </select>
-        <select class="rp-select" id="komiteSelect">
+        <select class="filter-select" id="komiteSelect">
           <option value="">Tüm Komiteler</option>
           ${komiteOptions}
         </select>
-        <select class="rp-select" id="turSelect">
+        <select class="filter-select" id="turSelect">
           <option value="">Tüm Türler</option>
           ${turOptions}
         </select>
       </div>
 
-      <div class="rp-table-wrap">
-        <table class="rp-table">
-          <colgroup>
-            <col style="width:22%"/>
-            <col style="width:13%"/>
-            <col style="width:10%"/>
-            <col style="width:18%"/>
-            <col style="width:14%"/>
-            <col style="width:11%"/>
-            <col style="width:0%"/>
-            <col style="width:12%"/>
-          </colgroup>
+      <div class="reports-table-wrap">
+        <table class="reports-table">
           <thead>
-            <tr class="rp-thead-row">
-              <th class="rp-th">RAPOR ADI</th>
-              <th class="rp-th">EKLEYEN (ID)</th>
-              <th class="rp-th">TARİH</th>
-              <th class="rp-th">KOMİTE</th>
-              <th class="rp-th">TÜR</th>
-              <th class="rp-th">DURUM</th>
-              <th class="rp-th rp-th--gizlilik">GİZLİLİK</th>
-              <th class="rp-th">İŞLEMLER</th>
+            <tr>
+              <th>Rapor Adı</th>
+              <th>Ekleyen</th>
+              <th>Tarih</th>
+              <th>Komite</th>
+              <th>Tür</th>
+              <th>Durum</th>
+              <th style="visibility: hidden; width: 0; padding: 0;">Gizlilik</th>
+              <th>İşlem</th>
             </tr>
           </thead>
           <tbody id="reportsTableBody">
@@ -433,18 +421,27 @@ export async function initReports(userParam) {
   document.getElementById('createReportBtn')?.addEventListener('click', openReportModal);
 
   document.body.addEventListener('click', async (e) => {
-    if (!e.target.closest('.rp-dropdown')) {
-      document.querySelectorAll('.rp-dropdown--open').forEach(el => el.classList.remove('rp-dropdown--open'));
-    }
-
+    // Dropdown toggle logic
     const toggleBtn = e.target.closest('.rp-dropdown-toggle');
     if (toggleBtn) {
       const dropdown = toggleBtn.closest('.rp-dropdown');
       const isOpen = dropdown.classList.contains('rp-dropdown--open');
+      
+      // Close all other open dropdowns
       document.querySelectorAll('.rp-dropdown--open').forEach(el => el.classList.remove('rp-dropdown--open'));
-      if (!isOpen) dropdown.classList.add('rp-dropdown--open');
+      
+      if (!isOpen) {
+        dropdown.classList.add('rp-dropdown--open');
+      }
+      return;
     }
 
+    // Close dropdowns when clicking outside
+    if (!e.target.closest('.rp-dropdown')) {
+      document.querySelectorAll('.rp-dropdown--open').forEach(el => el.classList.remove('rp-dropdown--open'));
+    }
+
+    // Action item click logic
     const actionBtn = e.target.closest('.rp-dropdown-item');
     if (actionBtn) {
       const action = actionBtn.getAttribute('data-action');
@@ -491,6 +488,7 @@ export async function initReports(userParam) {
          }
       }
       
+      // Close the dropdown after action
       document.querySelectorAll('.rp-dropdown--open').forEach(el => el.classList.remove('rp-dropdown--open'));
     }
   });

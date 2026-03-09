@@ -21,15 +21,27 @@ const EVENT_TYPES = [
   "Sosyal Etkinlik"
 ];
 
+// --- Frontend Default Images (Professional Fallback) ---
+const COMMITTEE_DEFAULTS = {
+  "Yönetim Kurulu": "https://dummyimage.com/1200x800/000/fff&text=Yönetim+Kurulu",
+  "Proje Komitesi": "https://dummyimage.com/1200x800/0b0b0b/7c3aed&text=Proje+Komitesi",
+  "Pazarlama ve Sosyal Medya Komitesi": "https://dummyimage.com/1200x800/0b0b0b/ec4899&text=Pazarlama+Komitesi",
+  "Sponsorluk ve Organizasyon Komitesi": "https://dummyimage.com/1200x800/0b0b0b/3b82f6&text=Sponsorluk+Komitesi",
+  "Akademi Komitesi": "https://dummyimage.com/1200x800/0b0b0b/10b981&text=Akademi+Komitesi",
+  "default": "https://dummyimage.com/1200x800/1c1d21/64748b&text=HSD+Etkinlik"
+};
+
 // --- State Variables ---
 let currentSearch = "";
 let currentCommittee = "";
 let currentType = "";
+let currentPeriod = ""; // "upcoming", "past"
 let currentSort = "newest"; // "newest" or "oldest"
 let selectedImageFile = null; // Modal'daki eklenecek resim dosyası nesnesi
 let base64PreviewString = ""; // Moda'da resmin önizlemesini göstermek için
 let editingEventId = null;
 let eventsData = []; // Backend'den çekilen verilerin kopyası (frontend filtreleri için)
+let isEventInitDone = false; // Event listener'lar eklendi mi?
 
 // ==============================================================================
 // 0. BACKEND API ETKİLEŞİM İŞLEMLERİ (FETCH)
@@ -40,18 +52,18 @@ async function fetchEventsFromBackend() {
   try {
     const token = getToken();
     const headers = token ? { "Authorization": `Bearer ${token}` } : {};
-    
+
     // Arama textini URL parametresi olarak ekle 
     let url = `${API_URL}/?limit=100`;
     if (currentSearch) {
-        url += `&search_name=${encodeURIComponent(currentSearch)}`;
+      url += `&search_name=${encodeURIComponent(currentSearch)}`;
     }
-    
+
     const response = await fetch(url, {
       method: "GET",
       headers: headers
     });
-    
+
     if (response.ok) {
       const data = await response.json();
       eventsData = data.data || [];
@@ -76,14 +88,14 @@ async function createEventBackend(formData) {
       },
       body: formData // Content-Type multipart/form-data otomatik ayarlanır!
     });
-    
+
     if (response.ok) {
-        showToast("Etkinlik başarıyla oluşturuldu!", "success");
-        return true;
+      showToast("Etkinlik başarıyla oluşturuldu!", "success");
+      return true;
     } else {
-        const errData = await response.json();
-        showToast(`Hata: ${errData.detail || 'Etkinlik oluşturulamadı.'}`, "error");
-        return false;
+      const errData = await response.json();
+      showToast(`Hata: ${errData.detail || 'Etkinlik oluşturulamadı.'}`, "error");
+      return false;
     }
   } catch (error) {
     console.error("Create Event Error:", error);
@@ -94,7 +106,7 @@ async function createEventBackend(formData) {
 
 // Etkinlik Güncelleme (PUT)
 async function updateEventBackend(eventId, formData) {
-   try {
+  try {
     const token = getToken();
     const response = await fetch(`${API_URL}/${eventId}`, {
       method: "PUT",
@@ -103,14 +115,14 @@ async function updateEventBackend(eventId, formData) {
       },
       body: formData
     });
-    
+
     if (response.ok) {
-        showToast("Etkinlik başarıyla güncellendi!", "success");
-        return true;
+      showToast("Etkinlik başarıyla güncellendi!", "success");
+      return true;
     } else {
-        const errData = await response.json();
-        showToast(`Hata: ${errData.detail || 'Etkinlik güncellenemedi.'}`, "error");
-        return false;
+      const errData = await response.json();
+      showToast(`Hata: ${errData.detail || 'Etkinlik güncellenemedi.'}`, "error");
+      return false;
     }
   } catch (error) {
     console.error("Update Event Error:", error);
@@ -121,28 +133,28 @@ async function updateEventBackend(eventId, formData) {
 
 // Etkinlik Silme (DELETE)
 async function deleteEventBackend(eventId) {
-    try {
-        const token = getToken();
-        const response = await fetch(`${API_URL}/${eventId}`, {
-            method: "DELETE",
-            headers: {
-               "Authorization": `Bearer ${token}`
-            }
-        });
-        
-        if (response.ok) {
-            showToast("Etkinlik başarıyla silindi.", "success");
-            return true;
-        } else {
-            const errData = await response.json();
-            showToast(`Silemezsiniz: ${errData.detail || 'Hata'}`, "error");
-            return false;
-        }
-    } catch (error) {
-         console.error("Delete Event Error:", error);
-         showToast("Sunucuyla iletişim hatası.", "error");
-         return false;
+  try {
+    const token = getToken();
+    const response = await fetch(`${API_URL}/${eventId}`, {
+      method: "DELETE",
+      headers: {
+        "Authorization": `Bearer ${token}`
+      }
+    });
+
+    if (response.ok) {
+      showToast("Etkinlik başarıyla silindi.", "success");
+      return true;
+    } else {
+      const errData = await response.json();
+      showToast(`Silemezsiniz: ${errData.detail || 'Hata'}`, "error");
+      return false;
     }
+  } catch (error) {
+    console.error("Delete Event Error:", error);
+    showToast("Sunucuyla iletişim hatası.", "error");
+    return false;
+  }
 }
 
 
@@ -180,6 +192,12 @@ export function renderEvents(user) {
           <select class="filter-select" id="typeFilter">
             <option value="">Tüm Türler</option>
             ${EVENT_TYPES.map(t => `<option value="${t}">${t}</option>`).join("")}
+          </select>
+
+          <select class="filter-select" id="periodFilter">
+            <option value="">Tüm Dönemler</option>
+            <option value="upcoming">İleri Tarihli</option>
+            <option value="past">Geçmiş Etkinlikler</option>
           </select>
 
           <select class="filter-select" id="sortFilter">
@@ -275,8 +293,12 @@ function buildModalHtml(committeeOptions) {
               ${EVENT_TYPES.map(t => `<option value="${t}">${t}</option>`).join("")}
             </select>
           </div>
+          <div class="form-group" id="evParticipantGroup" style="display: none;">
+            <label>Katılımcı Sayısı <span style="font-size:11px; color:#888;">(Opsiyonel)</span></label>
+            <input type="number" id="evParticipantCount" placeholder="Örn: 50" min="0">
+          </div>
           <div class="form-group">
-            <label>Etkinlik Görseli <span style="font-size:11px; color:#888;">(Zorunlu)</span></label>
+            <label>Etkinlik Görseli <span style="font-size:11px; color:#888;">(Opsiyonel)</span></label>
              <input type="file" id="evImage" accept="image/*" style="display:block; width:100%; border:none; padding:5px 0;">
             <div id="imagePreview" style="margin-top:10px; display:none;">
                <img src="" style="max-height:100px; border-radius:6px; background:#111; object-fit:cover;">
@@ -311,8 +333,8 @@ export async function initEvents() {
       currentSearch = e.target.value;
       // Backend araması için 500ms gecikme
       searchTimeout = setTimeout(async () => {
-         await fetchEventsFromBackend();
-         renderEventList();
+        await fetchEventsFromBackend();
+        renderEventList();
       }, 500);
     });
   }
@@ -333,6 +355,14 @@ export async function initEvents() {
     });
   }
 
+  const periodFilter = document.getElementById("periodFilter");
+  if (periodFilter) {
+    periodFilter.addEventListener("change", (e) => {
+      currentPeriod = e.target.value;
+      renderEventList();
+    });
+  }
+
   const sortFilter = document.getElementById("sortFilter");
   if (sortFilter) {
     sortFilter.addEventListener("change", (e) => {
@@ -341,86 +371,92 @@ export async function initEvents() {
     });
   }
 
-  document.body.addEventListener("click", async (e) => {
-    if (isAuthorized) {
-      const addBtn = e.target.closest("#addEventBtn");
-      const closeBtn = e.target.closest("#modalCloseBtn");
-      const cancelBtn = e.target.closest("#modalCancelBtn");
-      const saveBtn = e.target.closest("#modalSaveBtn");
-      const overlay = e.target.closest("#eventModalOverlay");
-      const overlayDirect = e.target.id === "eventModalOverlay";
+  if (!isEventInitDone) {
+    document.body.addEventListener("click", async (e) => {
+      if (isAuthorized) {
+        const addBtn = e.target.closest("#addEventBtn");
+        const closeBtn = e.target.closest("#modalCloseBtn");
+        const cancelBtn = e.target.closest("#modalCancelBtn");
+        const saveBtn = e.target.closest("#modalSaveBtn");
+        const overlay = e.target.closest("#eventModalOverlay");
+        const overlayDirect = e.target.id === "eventModalOverlay";
 
-      if (addBtn) {
-        editingEventId = null;
-        const titleSpan = document.querySelector("#eventModalOverlay h2 span");
-        if(titleSpan) titleSpan.innerText = "Ekle";
-        showModal();
-      }
-      if (closeBtn || cancelBtn || (overlayDirect && !e.target.closest(".modal"))) {
-        hideModal();
-      }
-      if (saveBtn) await handleFormSubmit(user);
-      
-      const editBtn = e.target.closest(".edit-event-btn");
-      if (editBtn) {
-        e.stopPropagation();
-        const id = editBtn.getAttribute("data-id");
-        openEditModal(id);
-        return;
-      }
+        if (addBtn) {
+          editingEventId = null;
+          const titleSpan = document.querySelector("#eventModalOverlay h2 span");
+          if (titleSpan) titleSpan.innerText = "Ekle";
+          showModal();
+        }
+        if (closeBtn || cancelBtn || (overlayDirect && !e.target.closest(".modal"))) {
+          hideModal();
+        }
+        if (saveBtn) await handleFormSubmit(user);
 
-      const deleteBtn = e.target.closest(".delete-event-btn");
-      if (deleteBtn) {
-        e.stopPropagation(); 
-        const id = deleteBtn.getAttribute("data-id");
-        if(confirm("Bu etkinliği silmek istediğinize emin misiniz? Geri alınamaz.")) {
-           const ok = await deleteEventBackend(id);
-           if(ok) {
+        const editBtn = e.target.closest(".edit-event-btn");
+        if (editBtn) {
+          e.stopPropagation();
+          const id = editBtn.getAttribute("data-id");
+          openEditModal(id);
+          return;
+        }
+
+        const deleteBtn = e.target.closest(".delete-event-btn");
+        if (deleteBtn) {
+          e.stopPropagation();
+          const id = deleteBtn.getAttribute("data-id");
+          if (confirm("Bu etkinliği silmek istediğinize emin misiniz? Geri alınamaz.")) {
+            const ok = await deleteEventBackend(id);
+            if (ok) {
               await fetchEventsFromBackend();
               renderEventList();
-           }
-        }
-        return; 
-      }
-    }
-
-    const clickedCard = e.target.closest(".event-card-clickable");
-    if (clickedCard) {
-      const id = clickedCard.getAttribute("data-id");
-      showDetailModal(id);
-    }
-    
-    const detailCloseBtn = e.target.closest("#detailCloseBtn");
-    if (detailCloseBtn || e.target.id === "eventDetailOverlay") {
-      hideDetailModal();
-    }
-  });
-
-  if (isAuthorized) {
-    document.body.addEventListener("change", (e) => {
-      if (e.target.id === "evImage") {
-        const file = e.target.files[0];
-        if (file) {
-          selectedImageFile = file; // Global değişkene gerçek dosyayı kayıt et (BACKEND GÖNDERİMİ İÇİN)
-          const reader = new FileReader();
-          reader.onload = (evt) => {
-            base64PreviewString = evt.target.result;
-            const previewDiv = document.getElementById("imagePreview");
-            if (previewDiv) {
-              previewDiv.style.display = "block";
-              const img = previewDiv.querySelector("img");
-              if (img) img.src = base64PreviewString;
             }
-          };
-          reader.readAsDataURL(file);
-        } else {
-          selectedImageFile = null;
-          base64PreviewString = "";
-          const previewDiv = document.getElementById("imagePreview");
-          if (previewDiv) previewDiv.style.display = "none";
+          }
+          return;
         }
+      }
+
+      const clickedCard = e.target.closest(".event-card-clickable");
+      if (clickedCard) {
+        const id = clickedCard.getAttribute("data-id");
+        showDetailModal(id);
+      }
+
+      const detailCloseBtn = e.target.closest("#detailCloseBtn");
+      if (detailCloseBtn || e.target.id === "eventDetailOverlay") {
+        hideDetailModal();
       }
     });
+
+    if (isAuthorized) {
+      document.body.addEventListener("change", (e) => {
+        if (e.target.id === "evImage") {
+          const file = e.target.files[0];
+          if (file) {
+            selectedImageFile = file;
+            const reader = new FileReader();
+            reader.onload = (evt) => {
+              base64PreviewString = evt.target.result;
+              const previewDiv = document.getElementById("imagePreview");
+              if (previewDiv) {
+                previewDiv.style.display = "block";
+                const img = previewDiv.querySelector("img");
+                if (img) img.src = base64PreviewString;
+              }
+            };
+            reader.readAsDataURL(file);
+          } else {
+            selectedImageFile = null;
+            base64PreviewString = "";
+            const previewDiv = document.getElementById("imagePreview");
+            if (previewDiv) previewDiv.style.display = "none";
+          }
+        }
+
+      });
+    }
+
+    // İşaretle ki sayfaya tekrar girildiğinde olay dinleyicileri tekrar eklenmesin
+    isEventInitDone = true;
   }
 }
 
@@ -441,6 +477,15 @@ function renderEventList() {
 
   if (currentType) {
     filtered = filtered.filter(ev => ev.event_type === currentType);
+  }
+
+  if (currentPeriod) {
+    const now = new Date();
+    if (currentPeriod === "upcoming") {
+      filtered = filtered.filter(ev => new Date(ev.event_date) >= now);
+    } else if (currentPeriod === "past") {
+      filtered = filtered.filter(ev => new Date(ev.event_date) < now);
+    }
   }
 
   filtered.sort((a, b) => {
@@ -464,23 +509,33 @@ function renderEventList() {
 
     container.innerHTML = filtered.map(ev => {
       const dateObj = new Date(ev.event_date);
+      // ... (tarih formatlama aynı)
       const formattedDate = dateObj.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
       const timeStr = dateObj.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
 
-      // Sahibi veya admin mi?
-      // Not: created_by db de text/UUID tutuluyor. Eğer user id si numeric string yapmıyorsanız dikkat.
+      // PROFESYONEL FALLBACK: Resim yoksa veya backend'in eski default URL'lerini içeriyorsa local default'u bas
+      let displayImageUrl = ev.image_url;
+      const isBackendDefault = displayImageUrl && (displayImageUrl.includes("dummyimage.com") || !displayImageUrl.includes("supabase"));
+
+      if (!displayImageUrl || isBackendDefault) {
+        displayImageUrl = COMMITTEE_DEFAULTS[ev.committee] || COMMITTEE_DEFAULTS["default"];
+      }
+
       const canManageEvent = isSuperUser || (hasPerm(sessionUser, "events:create") && String(ev.created_by) === String(sessionUser.id));
 
       return `
         <div class="event-card event-card-clickable" data-id="${ev.id}">
-          ${ev.image_url 
-             ? `<img src="${ev.image_url}" class="event-card-image" alt="Event Cover">` 
-             : `<div class="event-card-image-placeholder">Resim Yok</div>`
-          }
+          <img src="${displayImageUrl}" class="event-card-image" alt="Event Cover" onerror="this.src='${COMMITTEE_DEFAULTS["default"]}'">
           <div class="event-card-body">
             <h3 class="event-card-title">${ev.title}</h3>
             <p class="event-card-desc">${ev.description}</p>
             <div class="event-meta">
+              <div class="event-meta-row" style="margin-bottom:8px;">
+                ${dateObj >= new Date()
+          ? `<span class="period-badge upcoming" style="background:#dcfce7; color:#166534; padding:2px 8px; border-radius:4px; font-size:10px; font-weight:600;">İleri Tarihli</span>`
+          : `<span class="period-badge past" style="background:#f1f5f9; color:#475569; padding:2px 8px; border-radius:4px; font-size:10px; font-weight:600;">Geçmiş Etkinlik</span>`
+        }
+              </div>
               <div class="event-meta-row">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                    <rect x="3" y="4" width="18" height="18" rx="2"></rect>
@@ -536,16 +591,13 @@ async function handleFormSubmit(user) {
   const location = document.getElementById("evLocation").value.trim();
   const committee = document.getElementById("evCommittee").value;
   const event_type = document.getElementById("evType")?.value;
+  const participant_count = document.getElementById("evParticipantCount")?.value;
+
 
   if (!title || !dateTimeParam || !committee || !event_type || !location || !desc) {
-     showToast("Lütfen (Fotoğraf hariç) tüm (*) alanları doldurun.", "error");
-     return;
-  }
-  
-  // Eğer YENİ etkinlikse fotoğraf kesin zorunludur!
-  if (!editingEventId && !selectedImageFile) {
-     showToast("Lütfen etkinlik fotoğrafı yükleyin.", "error");
-     return;
+    showToast("Lütfen (Fotoğraf hariç) tüm (*) alanları doldurun.", "error");
+    return;
+
   }
 
   // Frontend verisini ISO stringe çevir 
@@ -559,28 +611,31 @@ async function handleFormSubmit(user) {
   form.append("location", location);
   form.append("committee", committee);
   form.append("event_type", event_type);
-  
+  if (participant_count) {
+    form.append("participant_count", participant_count);
+  }
+
   if (selectedImageFile) {
-      form.append("image", selectedImageFile); 
+    form.append("image", selectedImageFile);
   }
 
   showToast("Kaydediliyor...", "info"); // Kısa bilgilendirme
 
   if (editingEventId) {
-     const success = await updateEventBackend(editingEventId, form);
-     if(success) {
-         editingEventId = null;
-         hideModal();
-         await fetchEventsFromBackend(); // veritabanından tekrar çek resim güncellendi
-         renderEventList();
-     }
+    const success = await updateEventBackend(editingEventId, form);
+    if (success) {
+      editingEventId = null;
+      hideModal();
+      await fetchEventsFromBackend(); // veritabanından tekrar çek resim güncellendi
+      renderEventList();
+    }
   } else {
-     const success = await createEventBackend(form);
-     if(success) {
-         hideModal();
-         await fetchEventsFromBackend();
-         renderEventList();
-     }
+    const success = await createEventBackend(form);
+    if (success) {
+      hideModal();
+      await fetchEventsFromBackend();
+      renderEventList();
+    }
   }
 }
 
@@ -592,18 +647,26 @@ function openEditModal(idString) {
 
   document.getElementById("evTitle").value = ev.title;
   document.getElementById("evDesc").value = ev.description;
-  
+
   // Date'ı local datetime-locale formatlamak lazim => YYYY-MM-DDTHH:MM
   const dObj = new Date(ev.event_date);
   const localIso = new Date(dObj.getTime() - (dObj.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
   document.getElementById("evDateTime").value = localIso;
-  
+
   document.getElementById("evLocation").value = ev.location || "";
-  document.getElementById("evCommittee").value = ev.committee;
-  if(document.getElementById("evType")) document.getElementById("evType").value = ev.event_type || "";
-  
+  document.getElementById("evCommittee").value = ev.committee || "";
+  document.getElementById("evType").value = ev.event_type || "";
+  document.getElementById("evParticipantCount").value = ev.participant_count || "";
+
+  // Sadece geçmiş etkinliklerde katılımcı sayısını göster
+  const participantGroup = document.getElementById("evParticipantGroup");
+  if (participantGroup) {
+    const isPast = new Date(ev.event_date) < new Date();
+    participantGroup.style.display = isPast ? "block" : "none";
+  }
+
   // Resim Göstergesi
-  selectedImageFile = null; 
+  selectedImageFile = null;
   base64PreviewString = ev.image_url || "";
   const previewDiv = document.getElementById("imagePreview");
   if (base64PreviewString) {
@@ -657,7 +720,7 @@ function showDetailModal(idString) {
 function hideDetailModal() {
   document.getElementById("eventDetailOverlay").classList.remove("open");
   const modalBody = document.getElementById("eventDetailBody");
-  if(modalBody) modalBody.innerHTML = "";
+  if (modalBody) modalBody.innerHTML = "";
 }
 
 function showModal() {
@@ -671,9 +734,14 @@ function hideModal() {
   document.getElementById("evDateTime").value = "";
   document.getElementById("evLocation").value = "";
   document.getElementById("evCommittee").value = "";
-  if(document.getElementById("evType")) document.getElementById("evType").value = "";
-  document.getElementById("evImage").value = "";
+  if (document.getElementById("evType")) document.getElementById("evType").value = "";
+  document.getElementById("evParticipantCount").value = "";
   
+  // Yeni etkinlik eklerken katılımcı sayısı grubunu gizle
+  const participantGroup = document.getElementById("evParticipantGroup");
+  if(participantGroup) participantGroup.style.display = "none";
+
+  document.getElementById("evImage").value = "";
   selectedImageFile = null;
   base64PreviewString = "";
   document.getElementById("imagePreview").style.display = "none";
