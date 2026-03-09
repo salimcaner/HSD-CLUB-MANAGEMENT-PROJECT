@@ -1,7 +1,120 @@
-import { getUser } from "../store.js";
+import { getUser, getToken } from "../store.js";
+
+const API_URL = "http://127.0.0.1:8000";
+
+// --- Son Aktiviteleri Çekme ve Çizme ---
+async function fetchRecentActivities() {
+  const listEl = document.getElementById("home-activity-list");
+  if (!listEl) return;
+
+  try {
+    const token = getToken();
+    const headers = token ? { "Authorization": `Bearer ${token}` } : {};
+
+    // 1. Etkinlikleri ve Raporları paralel çek (Son 15 tanesini alıp frontend'de sıralayalım)
+    const [eventsRes, reportsRes] = await Promise.all([
+      fetch(`${API_URL}/events/?limit=15`, { headers }),
+      fetch(`${API_URL}/reports/?limit=15`, { headers })
+    ]);
+
+    let activities = [];
+
+    // 2. Etkinlikleri normalize et
+    if (eventsRes.ok) {
+      const eventsData = await eventsRes.json();
+      (eventsData.data || []).forEach(ev => {
+        activities.push({
+          type: "event",
+          id: ev.id,
+          title: "Yeni Etkinlik Oluşturuldu",
+          desc: `"${ev.title}" adlı etkinlik sisteme eklendi.`,
+          dateStr: ev.created_at,
+          dateObj: new Date(ev.created_at),
+          iconClass: "success" // yeşil nokta
+        });
+      });
+    }
+
+    // 3. Raporları normalize et
+    if (reportsRes.ok) {
+      const reportsData = await reportsRes.json();
+      (reportsData.data || []).forEach(rp => {
+        activities.push({
+          type: "report",
+          id: rp.id,
+          title: "Yeni Rapor Yüklendi",
+          desc: `"${rp.report_name}" adlı ${rp.report_type.toLowerCase()} sisteme eklendi.`,
+          dateStr: rp.created_at,
+          dateObj: new Date(rp.created_at),
+          iconClass: "accent" // mor nokta
+        });
+      });
+    }
+
+    // 4. Tarihe göre sırala (en yeni en üstte)
+    activities.sort((a, b) => b.dateObj - a.dateObj);
+
+    // 5. Sadece ilk 4 aktiviteyi al
+    const topActivities = activities.slice(0, 4);
+
+    // 6. Ekrana Çiz
+    if (topActivities.length === 0) {
+      listEl.innerHTML = `<li style="text-align:center; padding: 20px 0; color:var(--text-muted); font-size:14px;">Henüz aktivite bulunmuyor.</li>`;
+      return;
+    }
+
+    listEl.innerHTML = topActivities.map(act => {
+      // Zamanı "2 saat önce, 5 gün önce" şeklinde hesapla
+      const timeAgo = getTimeAgo(act.dateObj);
+      
+      return `
+        <li class="activity-item">
+          <div class="activity-dot ${act.iconClass}"></div>
+          <div class="activity-content">
+            <p><strong>${act.title}:</strong> ${act.desc}</p>
+            <span class="activity-time">${timeAgo}</span>
+          </div>
+        </li>
+      `;
+    }).join("");
+
+  } catch (error) {
+    console.error("Son Aktiviteler yüklenirken hata:", error);
+    listEl.innerHTML = `<li style="text-align:center; padding: 20px 0; color:var(--danger); font-size:14px;">Aktiviteler yüklenemedi.</li>`;
+  }
+}
+
+// Zaman Farkı Hesaplama (ör: '2 saat önce')
+function getTimeAgo(dateObj) {
+  const seconds = Math.floor((new Date() - dateObj) / 1000);
+  
+  let interval = seconds / 31536000;
+  if (interval > 1) return Math.floor(interval) + " yıl önce";
+  
+  interval = seconds / 2592000;
+  if (interval > 1) return Math.floor(interval) + " ay önce";
+  
+  interval = seconds / 86400;
+  if (interval > 1) return Math.floor(interval) + " gün önce";
+  
+  interval = seconds / 3600;
+  if (interval > 1) return Math.floor(interval) + " saat önce";
+  
+  interval = seconds / 60;
+  if (interval > 1) return Math.floor(interval) + " dakika önce";
+  
+  return "Az önce";
+}
 
 export function renderHome(user) {
-  const userName = user ? user.username : "Kullanıcı";
+  let userName = "Kullanıcı";
+  if (user) {
+    if (user.first_name || user.last_name) {
+      userName = `${user.first_name || ""} ${user.last_name || ""}`.trim();
+    } else if (user.username) {
+      userName = user.username;
+    }
+  }
   
   return `
     <section class="page home-page">
@@ -82,35 +195,8 @@ export function renderHome(user) {
       <div class="bottom-grid">
         <div class="recent-activities-wrapper">
           <h2 class="section-title">Son Aktiviteler</h2>
-          <ul class="activity-list">
-            <li class="activity-item">
-              <div class="activity-dot accent"></div>
-              <div class="activity-content">
-                <p><strong>Yeni Proje Raporu:</strong> "Yapay Zeka Zirvesi" raporu sisteme eklendi.</p>
-                <span class="activity-time">2 saat önce</span>
-              </div>
-            </li>
-            <li class="activity-item">
-              <div class="activity-dot success"></div>
-              <div class="activity-content">
-                <p><strong>Yeni Üye Katılımı:</strong> Ahmet Yılmaz kulübe katıldı (Proje Komitesi).</p>
-                <span class="activity-time">5 saat önce</span>
-              </div>
-            </li>
-            <li class="activity-item">
-              <div class="activity-dot info"></div>
-              <div class="activity-content">
-                <p><strong>Sosyal Medya:</strong> Instagram üzerinden yeni bir gönderi paylaşıldı.</p>
-                <span class="activity-time">1 gün önce</span>
-              </div>
-            </li>
-            <li class="activity-item">
-              <div class="activity-dot warning"></div>
-              <div class="activity-content">
-                <p><strong>Hatırlatma:</strong> Yarın 18:00'da Genel Kurul toplantısı gerçekleşecek.</p>
-                <span class="activity-time">2 gün önce</span>
-              </div>
-            </li>
+          <ul class="activity-list" id="home-activity-list">
+             <li style="text-align:center; padding: 20px 0; color:var(--text-muted); font-size:14px;">Aktiviteler yükleniyor...</li>
           </ul>
         </div>
         
@@ -218,6 +304,7 @@ export function renderHome(user) {
 }
 
 export function initHome() {
+  fetchRecentActivities();
   // Chart.js render işlemleri
   renderCharts();
   
@@ -414,7 +501,8 @@ function initTiltEffect() {
 
 function renderCharts() {
   // Chart.defaults ile genel tema ayarları
-  Chart.defaults.color = '#8a8d91';
+  const isLightMode = document.body.classList.contains('light-theme');
+  Chart.defaults.color = isLightMode ? '#64748b' : '#8a8d91'; // --text-dim
   Chart.defaults.font.family = "'Figtree', sans-serif";
 
   // Sütun Grafik (Sosyal Medya Paylaşımı) - Her zaman renderlanır
@@ -450,10 +538,10 @@ function renderCharts() {
         plugins: {
           legend: { display: false },
           tooltip: {
-            backgroundColor: 'rgba(28, 29, 33, 0.9)',
-            titleColor: '#fff',
-            bodyColor: '#e2e8f0',
-            borderColor: 'rgba(255, 255, 255, 0.1)',
+            backgroundColor: isLightMode ? 'rgba(255, 255, 255, 0.9)' : 'rgba(28, 29, 33, 0.9)',
+            titleColor: isLightMode ? '#0f172a' : '#fff',
+            bodyColor: isLightMode ? '#475569' : '#e2e8f0',
+            borderColor: isLightMode ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.1)',
             borderWidth: 1,
             padding: 12
           }
@@ -488,7 +576,7 @@ function renderCharts() {
             hoverOffset: 10
           }]
         },
-        options: {
+          options: {
           responsive: true,
           maintainAspectRatio: false,
           cutout: '65%',
@@ -501,13 +589,13 @@ function renderCharts() {
           plugins: {
             legend: {
               position: 'bottom',
-              labels: { padding: 20, color: '#e2e8f0' }
+              labels: { padding: 20, color: isLightMode ? '#475569' : '#e2e8f0' }
             },
             tooltip: {
-              backgroundColor: 'rgba(28, 29, 33, 0.9)',
-              titleColor: '#fff',
-              bodyColor: '#e2e8f0',
-              borderColor: 'rgba(255, 255, 255, 0.1)',
+              backgroundColor: isLightMode ? 'rgba(255, 255, 255, 0.9)' : 'rgba(28, 29, 33, 0.9)',
+              titleColor: isLightMode ? '#0f172a' : '#fff',
+              bodyColor: isLightMode ? '#475569' : '#e2e8f0',
+              borderColor: isLightMode ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.1)',
               borderWidth: 1,
               padding: 12,
               boxPadding: 6
@@ -526,7 +614,7 @@ function renderCharts() {
         }
       });
     }, { threshold: 0.1 }); 
-
+    
     observer.observe(pieContainer);
   }
 }

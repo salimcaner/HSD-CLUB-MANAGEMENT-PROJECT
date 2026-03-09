@@ -113,7 +113,7 @@
   background-color: transparent;
   border: none;
   border-radius: 10px;
-  overflow: hidden;
+  /* overflow: hidden; Removed so dropdowns don't clip */
   /* 📌 TABLO ARKA PLAN FOTOĞRAFI:
      Fotoğrafı eklemek için aşağıdaki satırları aktif et:
      background-image: url('../img/tablo-bg.jpg');
@@ -178,6 +178,7 @@
 .rp-td:last-child {
   overflow: visible;
   padding: 8px 10px;
+  position: relative; /* Dropdown anchor için */
 }
 
 .rp-td--muted { color: #94a3b8; }

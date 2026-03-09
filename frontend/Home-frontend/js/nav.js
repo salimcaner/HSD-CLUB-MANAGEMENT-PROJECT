@@ -158,15 +158,6 @@ export function renderNav(user) {
               </svg>
             </a>
 
-            <!-- Çıkış Yap Butonu -->
-            <button id="logoutBtn" class="topbar-btn topbar-icon-btn topbar-logout" title="Çıkış Yap">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
-                <polyline points="16 17 21 12 16 7"/>
-                <line x1="21" y1="12" x2="9" y2="12"/>
-              </svg>
-              <span class="logout-label">Çıkış</span>
-            </button>
 
           </div>
         </header>
@@ -184,34 +175,42 @@ export function renderNav(user) {
 }
 
 export function initNavEvents() {
-  const currentPath = window.location.hash.replace("#", "") || "/home";
-  
-  // 2. NAV_ITEMS içinden bu yola ait olan objeyi bul
-  const currentItem = NAV_ITEMS.find(item => item.path === currentPath);
-  
-  // 3. Sayfa başlığını (Toplar'daki yazı) mevcut öğeye göre güncelle
-  const titleEl = document.getElementById("pageTitle");
-  if (titleEl && currentItem) {
-    titleEl.textContent = currentItem.label;
-  }
-
-  // Aktif link işaretleme
-  document.querySelectorAll(".nav-link[data-path]").forEach(link => {
-    // Sayfa yenilendiğinde doğru linki 'active' yap
-    if (link.dataset.path === currentPath) {
-      link.classList.add("active");
+  function syncNavState(path) {
+    // Topbar'daki sayfa başlığını güncelle
+    const titleEl = document.getElementById("pageTitle");
+    const currentItem = NAV_ITEMS.find(item => item.path === path);
+    
+    if (titleEl) {
+      if (currentItem) {
+        titleEl.textContent = currentItem.label;
+      } else if (path === "/profile") {
+        titleEl.textContent = "Profil";
+      } else if (path === "/settings") {
+        titleEl.textContent = "Ayarlar";
+      } else {
+        titleEl.textContent = "Ana Sayfa";
+      }
     }
 
-    link.addEventListener("click", (e) => {
-      document.querySelectorAll(".nav-link").forEach(l => l.classList.remove("active"));
-      link.classList.add("active");
-      
-      // Tıklanan linkin etiketini başlığa yaz
-      const label = link.dataset.label; // buildNavLinks içinde data-label eklemiştik
-      if (titleEl && label) titleEl.textContent = label;
+    // Seçili link işaretini (active sınıfı) güncelle
+    document.querySelectorAll(".nav-link[data-path]").forEach(link => {
+      if (link.dataset.path === path) {
+        link.classList.add("active");
+      } else {
+        link.classList.remove("active");
+      }
     });
+  }
+
+  // İlk açılışta route bul ve senkronize et
+  const currentPath = window.location.hash.replace("#", "") || "/home";
+  syncNavState(currentPath);
+
+  // Hash (Url / Sayfa) değiştiğinde tekrar senkronize et (Profil ve Ayarlar için)
+  window.addEventListener("hashchange", () => {
+    const newPath = window.location.hash.replace("#", "") || "/home";
+    syncNavState(newPath);
   });
- 
 
   // Sidebar Kapat/Aç (collapse butonu — sidebar içindeki ok)
   const collapseBtn = document.getElementById("sidebarCollapseBtn");
@@ -254,15 +253,5 @@ export function initNavEvents() {
     });
   }
 
-  // Çıkış Yap
-  const logoutBtn = document.getElementById("logoutBtn");
-  if (logoutBtn) {
-    logoutBtn.addEventListener("click", () => {
-    
-      clearUser(); 
 
-      // Login sayfasına yönlendirme
-      window.location.href = "../../login-frontend/html/login.html";
-    });
-  }
 }
