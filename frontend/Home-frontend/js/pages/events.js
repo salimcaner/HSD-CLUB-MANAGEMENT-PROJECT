@@ -3,7 +3,6 @@ import { hasPerm } from "../acl.js";
 
 const API_URL = "http://127.0.0.1:8000/events"; // Backend Endpoint
 
-// --- Komite Seçenekleri ---
 const COMMITTEES = [
   "Yönetim Kurulu",
   "Proje Komitesi",
@@ -12,9 +11,20 @@ const COMMITTEES = [
   "Akademi Komitesi"
 ];
 
+// --- Etkinlik Türleri ---
+const EVENT_TYPES = [
+  "Toplantı",
+  "Oyun",
+  "Seminer",
+  "Webinar",
+  "Akademi Eğitimi",
+  "Sosyal Etkinlik"
+];
+
 // --- State Variables ---
 let currentSearch = "";
 let currentCommittee = "";
+let currentType = "";
 let currentSort = "newest"; // "newest" or "oldest"
 let selectedImageFile = null; // Modal'daki eklenecek resim dosyası nesnesi
 let base64PreviewString = ""; // Moda'da resmin önizlemesini göstermek için
@@ -159,12 +169,17 @@ export function renderEvents(user) {
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>
             </svg>
-            <input type="text" id="searchInput" placeholder="Etkinlik adına göre ara (Backend)...">
+            <input type="text" id="searchInput" placeholder="Etkinlik adına göre ara...">
           </div>
 
           <select class="filter-select" id="committeeFilter">
             <option value="">Tüm Komiteler (Yerel)</option>
             ${committeeOptions}
+          </select>
+
+          <select class="filter-select" id="typeFilter">
+            <option value="">Tüm Türler</option>
+            ${EVENT_TYPES.map(t => `<option value="${t}">${t}</option>`).join("")}
           </select>
 
           <select class="filter-select" id="sortFilter">
@@ -254,6 +269,13 @@ function buildModalHtml(committeeOptions) {
             </select>
           </div>
           <div class="form-group">
+            <label>Etkinlik Türü *</label>
+            <select id="evType">
+              <option value="">Tür Seçiniz...</option>
+              ${EVENT_TYPES.map(t => `<option value="${t}">${t}</option>`).join("")}
+            </select>
+          </div>
+          <div class="form-group">
             <label>Etkinlik Görseli <span style="font-size:11px; color:#888;">(Zorunlu)</span></label>
              <input type="file" id="evImage" accept="image/*" style="display:block; width:100%; border:none; padding:5px 0;">
             <div id="imagePreview" style="margin-top:10px; display:none;">
@@ -299,6 +321,14 @@ export async function initEvents() {
   if (committeeFilter) {
     committeeFilter.addEventListener("change", (e) => {
       currentCommittee = e.target.value;
+      renderEventList();
+    });
+  }
+
+  const typeFilter = document.getElementById("typeFilter");
+  if (typeFilter) {
+    typeFilter.addEventListener("change", (e) => {
+      currentType = e.target.value;
       renderEventList();
     });
   }
@@ -409,6 +439,10 @@ function renderEventList() {
     filtered = filtered.filter(ev => ev.committee === currentCommittee);
   }
 
+  if (currentType) {
+    filtered = filtered.filter(ev => ev.event_type === currentType);
+  }
+
   filtered.sort((a, b) => {
     const dA = new Date(a.event_date);
     const dB = new Date(b.event_date);
@@ -465,6 +499,7 @@ function renderEventList() {
               </div>
             </div>
             <span class="event-committee-badge">${ev.committee}</span>
+            ${ev.event_type ? `<span class="event-committee-badge" style="background:rgba(255,255,255,0.1); color:#fff; border:1px solid rgba(255,255,255,0.2); margin-left:8px;">${ev.event_type}</span>` : ""}
           </div>
           <div class="event-card-footer">
             <div class="event-creator-info">
@@ -500,8 +535,9 @@ async function handleFormSubmit(user) {
   const dateTimeParam = document.getElementById("evDateTime").value; // "YYYY-MM-DDTHH:MM" formatında
   const location = document.getElementById("evLocation").value.trim();
   const committee = document.getElementById("evCommittee").value;
+  const event_type = document.getElementById("evType")?.value;
 
-  if (!title || !dateTimeParam || !committee || !location || !desc) {
+  if (!title || !dateTimeParam || !committee || !event_type || !location || !desc) {
      showToast("Lütfen (Fotoğraf hariç) tüm (*) alanları doldurun.", "error");
      return;
   }
@@ -522,6 +558,7 @@ async function handleFormSubmit(user) {
   form.append("event_date", isoUtcDate);
   form.append("location", location);
   form.append("committee", committee);
+  form.append("event_type", event_type);
   
   if (selectedImageFile) {
       form.append("image", selectedImageFile); 
@@ -563,6 +600,7 @@ function openEditModal(idString) {
   
   document.getElementById("evLocation").value = ev.location || "";
   document.getElementById("evCommittee").value = ev.committee;
+  if(document.getElementById("evType")) document.getElementById("evType").value = ev.event_type || "";
   
   // Resim Göstergesi
   selectedImageFile = null; 
@@ -604,6 +642,7 @@ function showDetailModal(idString) {
       </span>
     </div>
     <span class="event-committee-badge" style="margin-bottom:16px; display:inline-block;">${ev.committee}</span>
+    ${ev.event_type ? `<span class="event-committee-badge" style="margin-bottom:16px; margin-left:8px; display:inline-block; background:rgba(255,255,255,0.1); color:#fff; border:1px solid rgba(255,255,255,0.2);">${ev.event_type}</span>` : ""}
     <p style="font-size:15px; line-height:1.6; color:var(--text-main); margin-bottom:24px;">${ev.description || "Açıklama bulunmuyor."}</p>
     <div style="font-size:12px; color:var(--text-dim); border-top:1px solid var(--border-light); padding-top:16px;">
       Ekleyen Görevli (ID): <strong style="color:var(--text-muted);">${ev.profiles ? (ev.profiles.first_name + ' ' + ev.profiles.last_name) : ev.created_by}</strong><br>
@@ -632,6 +671,7 @@ function hideModal() {
   document.getElementById("evDateTime").value = "";
   document.getElementById("evLocation").value = "";
   document.getElementById("evCommittee").value = "";
+  if(document.getElementById("evType")) document.getElementById("evType").value = "";
   document.getElementById("evImage").value = "";
   
   selectedImageFile = null;
