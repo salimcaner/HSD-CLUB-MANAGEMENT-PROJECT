@@ -3,6 +3,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from app.core.config import settings
 from fastapi import HTTPException, status
+from email.header import Header
 
 def send_invite_email(to_email: str, invite_link: str, first_name: str, last_name: str):
     """
@@ -21,7 +22,7 @@ def send_invite_email(to_email: str, invite_link: str, first_name: str, last_nam
     msg = MIMEMultipart()
     msg['From'] = settings.SMTP_FROM_EMAIL
     msg['To'] = to_email
-    msg['Subject'] = "Kulüp Yönetim Sistemi - Davet"
+    msg['Subject'] = Header("Kulüp Yönetim Sistemi - Davet", 'utf-8')
 
     html_content = f"""
     <html>
@@ -39,7 +40,7 @@ def send_invite_email(to_email: str, invite_link: str, first_name: str, last_nam
     </html>
     """
 
-    msg.attach(MIMEText(html_content, 'html'))
+    msg.attach(MIMEText(html_content, 'html','utf-8'))
 
     try:
         if settings.SMTP_PORT == 465:

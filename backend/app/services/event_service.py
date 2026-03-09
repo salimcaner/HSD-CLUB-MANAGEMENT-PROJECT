@@ -62,7 +62,7 @@ def get_all_events_service(
     search_name: Optional[str] = None   
 ):
     try:
-        query = supabase.table("events").select("*").order("created_at", desc=True)
+        query = supabase.table("events").select("*, profiles!inner(first_name, last_name)").order("created_at", desc=True)
         
         if search_name:
             query = query.ilike("title", f"%{search_name}%")
@@ -80,7 +80,7 @@ def get_all_events_service(
 # -------------------------
 def get_event_by_id_service(event_id: int):
     try:
-        response = supabase.table("events").select("*").eq("id", event_id).execute()
+        response = supabase.table("events").select("*, profiles!inner(first_name, last_name)").eq("id", event_id).execute()
         
         if not response.data:
             return None

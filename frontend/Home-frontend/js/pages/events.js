@@ -468,7 +468,7 @@ function renderEventList() {
           </div>
           <div class="event-card-footer">
             <div class="event-creator-info">
-              Ekleyen ID: ${ev.created_by} <br/>
+              Ekleyen Görevli: <strong>${ev.profiles ? (ev.profiles.first_name + ' ' + ev.profiles.last_name) : 'Bilinmiyor'}</strong> <br/>
               <span style="opacity:0.6; font-size:10px;">Oluşturulma: ${new Date(ev.created_at).toLocaleDateString("tr-TR")}</span>
             </div>
             ${canManageEvent ? `
@@ -606,7 +606,7 @@ function showDetailModal(idString) {
     <span class="event-committee-badge" style="margin-bottom:16px; display:inline-block;">${ev.committee}</span>
     <p style="font-size:15px; line-height:1.6; color:var(--text-main); margin-bottom:24px;">${ev.description || "Açıklama bulunmuyor."}</p>
     <div style="font-size:12px; color:var(--text-dim); border-top:1px solid var(--border-light); padding-top:16px;">
-      Ekleyen Görevli (ID): <strong style="color:var(--text-muted);">${ev.created_by}</strong><br>
+      Ekleyen Görevli (ID): <strong style="color:var(--text-muted);">${ev.profiles ? (ev.profiles.first_name + ' ' + ev.profiles.last_name) : ev.created_by}</strong><br>
       Kayıt Tarihi: ${new Date(ev.created_at).toLocaleString("tr-TR")}
     </div>
   `;
