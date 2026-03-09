@@ -20,7 +20,6 @@ const EVENT_TYPES = [
   "Akademi Eğitimi",
   "Sosyal Etkinlik"
 ];
-
 // --- Frontend Default Images (Professional Fallback) ---
 const COMMITTEE_DEFAULTS = {
   "Yönetim Kurulu": "https://dummyimage.com/1200x800/000/fff&text=Yönetim+Kurulu",
@@ -298,7 +297,7 @@ function buildModalHtml(committeeOptions) {
             <input type="number" id="evParticipantCount" placeholder="Örn: 50" min="0">
           </div>
           <div class="form-group">
-            <label>Etkinlik Görseli <span style="font-size:11px; color:#888;">(Opsiyonel)</span></label>
+            <label>Etkinlik Görseli <span style="font-size:11px; color:#888;">(Zorunlu)</span></label>
              <input type="file" id="evImage" accept="image/*" style="display:block; width:100%; border:none; padding:5px 0;">
             <div id="imagePreview" style="margin-top:10px; display:none;">
                <img src="" style="max-height:100px; border-radius:6px; background:#111; object-fit:cover;">
@@ -509,23 +508,19 @@ function renderEventList() {
 
     container.innerHTML = filtered.map(ev => {
       const dateObj = new Date(ev.event_date);
-      // ... (tarih formatlama aynı)
       const formattedDate = dateObj.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
       const timeStr = dateObj.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
 
-      // PROFESYONEL FALLBACK: Resim yoksa veya backend'in eski default URL'lerini içeriyorsa local default'u bas
-      let displayImageUrl = ev.image_url;
-      const isBackendDefault = displayImageUrl && (displayImageUrl.includes("dummyimage.com") || !displayImageUrl.includes("supabase"));
-
-      if (!displayImageUrl || isBackendDefault) {
-        displayImageUrl = COMMITTEE_DEFAULTS[ev.committee] || COMMITTEE_DEFAULTS["default"];
-      }
-
+      // Sahibi veya admin mi?
+      // Not: created_by db de text/UUID tutuluyor. Eğer user id si numeric string yapmıyorsanız dikkat.
       const canManageEvent = isSuperUser || (hasPerm(sessionUser, "events:create") && String(ev.created_by) === String(sessionUser.id));
 
       return `
         <div class="event-card event-card-clickable" data-id="${ev.id}">
-          <img src="${displayImageUrl}" class="event-card-image" alt="Event Cover" onerror="this.src='${COMMITTEE_DEFAULTS["default"]}'">
+          ${ev.image_url
+          ? `<img src="${ev.image_url}" class="event-card-image" alt="Event Cover">`
+          : `<div class="event-card-image-placeholder">Resim Yok</div>`
+        }
           <div class="event-card-body">
             <h3 class="event-card-title">${ev.title}</h3>
             <p class="event-card-desc">${ev.description}</p>
@@ -598,6 +593,12 @@ async function handleFormSubmit(user) {
     showToast("Lütfen (Fotoğraf hariç) tüm (*) alanları doldurun.", "error");
     return;
 
+  }
+
+  // Eğer YENİ etkinlikse fotoğraf kesin zorunludur!
+  if (!editingEventId && !selectedImageFile) {
+    showToast("Lütfen etkinlik fotoğrafı yükleyin.", "error");
+    return;
   }
 
   // Frontend verisini ISO stringe çevir 

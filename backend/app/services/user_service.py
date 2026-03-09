@@ -1,6 +1,9 @@
 from fastapi import HTTPException, status
 from app.schemas.user import User
+import app.core.config as settings
 from app.core.supabase_client import get_supabase
+import requests
+
 supabase = get_supabase()
 
 
@@ -110,18 +113,28 @@ def update_user(user_id: str, user_data: dict):
 # -------------------------
 def delete_user(user_id: str):
     try:
-        # 1. Profiles tablosundan sil
+        # Supabase Profiles tablosundan sil
         supabase.table("profiles").delete().eq("id", user_id).execute()
         
-        # 2. Auth'dan da sil
-        supabase.auth.admin.delete_user(user_id)
+        # Supabase Auth'dan kalıcı sil
+        url = f"{settings.SUPABASE_URL}/auth/v1/admin/users/{user_id}"
+        headers = {
+            "apikey": settings.SUPABASE_SERVICE_KEY,
+            "Authorization": f"Bearer {settings.SUPABASE_SERVICE_KEY}",
+            "Content-Type": "application/json"
+        }
+        resp = requests.delete(url, headers=headers)
+        
+        # Gerekirse hata logu görmek için:
+        # if resp.status_code >= 400: print("Auth silinirken uyarı:", resp.text)
         
         return True
-    except Exception:
+    except Exception as e:
+        print("Kullanıcı silinirken hata:", str(e))
         return False
     
 
-    # -------------------------
+# -------------------------
 # Kullanıcıyı Deaktive Et
 # -------------------------
 def deactivate_user(user_id: str):

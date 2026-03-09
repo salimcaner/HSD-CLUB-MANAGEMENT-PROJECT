@@ -82,7 +82,24 @@ def get_all_reports_service(user_role: str, current_user_id: str, search_name: s
             query = query.or_(f"privacy.eq.genel,sender_id.eq.{current_user_id}")
      
         if search_name:
-            query = query.ilike("report_name", f"%{search_name}%")
+            # Virgülleri temizleyelim, Supabase'in "or_" ayıracını bozmasın
+            clean_search = search_name.replace(",", "")
+            
+            # Arama metninin varyasyonlarını çıkartıp 'Set' (benzersizler) içine alıyoruz
+            variants = {
+                clean_search,
+                clean_search.lower(),
+                clean_search.upper(),
+                clean_search.replace("I", "ı").replace("İ", "i").lower(),
+                clean_search.replace("ı", "I").replace("i", "İ").upper(),
+                clean_search.capitalize()
+            }
+            
+            # Elde ettiğimiz varyasyonları '.ilike' formatına hazırlıyoruz
+            conditions = [f"report_name.ilike.%{v}%" for v in variants]
+            
+            # Hepsini OR ile veritabanına gönderiyoruz
+            query = query.or_(",".join(conditions))
             
         end_index = offset + limit - 1
         query = query.range(offset, end_index)     
@@ -184,22 +201,24 @@ def update_report_service(
         if report_owner_id != current_user_id:
              return {"success": False, "message": "Güncelleme yetkiniz yok. Sadece rapor sahibi güncelleyebilir."}
              
-        updated_file_url = old_file_url  # Varsayılan olarak eski URL ile devam ederiz
+        updated_file_url = old_file_url  
         unique_filename = None
+        new_file_uploaded = False
         
+        # 2. ÖNCE YENİ DOSYAYI YÜKLE (GÜVENLİ İŞLEM)
         if new_file_bytes and new_filename:
-            # 1. Buradan İngilizce harflere çevirdik ve safe_filename değişkenine koyduk.
             safe_filename = new_filename.replace(" ", "_").replace("ı", "i").replace("ğ", "g").replace("ü", "u").replace("ş", "s").replace("ö", "o").replace("ç", "c").replace("İ", "I").replace("Ğ", "G").replace("Ü", "U").replace("Ş", "S").replace("Ö", "O").replace("Ç", "C")
-            
-            # 2. uuid ile yan yana koyarken de new_filename DEĞİL, safe_filename kullanmalıyız!
             unique_filename = f"{uuid.uuid4()}_{safe_filename}"
+            
+            # Yükleme (Eğer yükleme başarısız olursa exception fırlatır, alt satırlara geçmeden catch bloğuna düşer)
             supabase.storage.from_("reports").upload(
                 file=new_file_bytes,
                 path=unique_filename,
                 file_options={"content-type": new_content_type}
             )
             updated_file_url = supabase.storage.from_("reports").get_public_url(unique_filename)
-
+            new_file_uploaded = True
+        # 3. YÜKLEME BAŞARILIYSA VERİTABANINI GÜNCELLE
         update_data = {
             "report_name": new_report_name,
             "committee": new_committee,
@@ -209,10 +228,12 @@ def update_report_service(
             "file_url": updated_file_url,
             "status": "Pending" 
         }
+        
         update_response = supabase.table("reports").update(update_data).eq("id", report_id).execute()
         
         if update_response.data:
-             if new_file_bytes and new_filename and old_file_url:
+             # 4. VERİTABANI GÜNCELLEMESİ DE BAŞARILIYSA ARTIK ESKİ DOSYAYI GÖNÜL RAHATLIĞIYLA SİLEBİLİRİZ
+             if new_file_uploaded and old_file_url:
                  old_filename = old_file_url.split("/")[-1] 
                  try:
                      supabase.storage.from_("reports").remove([old_filename])
@@ -221,20 +242,21 @@ def update_report_service(
                      
              return {"success": True, "message": "Rapor başarıyla güncellendi ve tekrar onaya gönderildi.", "data": update_response.data[0]}
         else:
-             if unique_filename:
+             # Veritabanı güncellemesi başarısız olduysa, sisteme boş yere yüklenen YENİ dosyayı geri sil/temizle
+             if new_file_uploaded and unique_filename:
                  supabase.storage.from_("reports").remove([unique_filename])
                  
              return {"success": False, "message": "Veritabanı güncellemesi başarısız oldu."}
              
     except Exception as e:
-        if unique_filename:
+        # Kodun herhangi bir yerinde (upload vs.) hata çıkarsa ve öksüz yeni dosya yüklendiyse, onu temizle
+        if 'unique_filename' in locals() and unique_filename and 'new_file_uploaded' in locals() and new_file_uploaded:
             try:
                 supabase.storage.from_("reports").remove([unique_filename])
             except:
                 pass 
                 
         return {"success": False, "message": f"Güncelleme işlemi sırasında bir hata oluştu: {str(e)}"}
-    
 
 
 # -------------------------

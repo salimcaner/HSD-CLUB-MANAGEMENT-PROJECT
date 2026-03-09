@@ -201,8 +201,8 @@ async def update_event_endpoint(
             event_date=event_date.isoformat(),
             location=location,
             committee=committee,
-            event_type=event_type,                  # <-- Gönderiyoruz
-            participant_count=participant_count,    # <-- Gönderiyoruz
+            event_type=event_type,                  
+            participant_count=participant_count,    
             new_file_bytes=optimized_file_bytes,
             new_filename=final_filename,
             new_content_type=final_content_type
