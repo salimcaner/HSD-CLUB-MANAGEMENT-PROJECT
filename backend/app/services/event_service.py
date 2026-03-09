@@ -4,8 +4,10 @@ from app.schemas.user import UserRole
 from fastapi import HTTPException
 from app.core.supabase_client import get_supabase
 supabase = get_supabase()
+
+
 # -------------------------
-# ETKİNLİK OLUŞTURMA SERVİSİ (Sıkıştırılmış WebP İçin)
+# ETKİNLİK OLUŞTURMA SERVİSİ
 # -------------------------
 def create_event_service(
     title: str,
@@ -13,25 +15,29 @@ def create_event_service(
     event_date: str,
     location: str,
     committee: str,
+    event_type: str,            # <-- YENİ EKLENEN
+    participant_count: Optional[int], # <-- YENİ EKLENEN
     created_by: str,
-    file_bytes: bytes,  
-    filename: str,      
-    content_type: str   
+    file_bytes: Optional[bytes] = None, # <-- Artık zorunlu değil (Default resim için)
+    filename: Optional[str] = None,
+    content_type: Optional[str] = None,
+    default_image_url: Optional[str] = None # <-- YENİ EKLENEN (Zorunlu)
 ):
     try:
-        # 1. Eşsiz isim doğrudan Router'dan geliyor
-        unique_filename = filename
+        # Varsayılan olarak default resim linki atıyoruz
+        public_url = default_image_url
         
-        # 'event-images' bucket'ına resmi yolla
-        upload_response = supabase.storage.from_("event-images").upload(
-            file=file_bytes,
-            path=unique_filename,
-            file_options={"content-type": content_type}
-        )
-        
-        # 2. Resmin Herkese Açık Linkini Al
-        public_url = supabase.storage.from_("event-images").get_public_url(unique_filename)
-        
+        # Eğer kullanıcı ilk aşamada yine de dosya yüklediyse default'u ezip gerçek resmi Supabase'e atıyoruz
+        if file_bytes and filename:
+            unique_filename = filename
+            
+            supabase.storage.from_("event-images").upload(
+                file=file_bytes,
+                path=unique_filename,
+                file_options={"content-type": content_type}
+            )
+            public_url = supabase.storage.from_("event-images").get_public_url(unique_filename)
+            
         # 3. Veritabanına Yaz
         event_data = {
             "title": title,
@@ -39,7 +45,9 @@ def create_event_service(
             "event_date": event_date,
             "location": location,
             "committee": committee,
-            "image_url": public_url, 
+            "event_type": event_type,                # <-- YENİ
+            "participant_count": participant_count,  # <-- YENİ
+            "image_url": public_url,                 # Resim linki
             "created_by": created_by
         }
         
@@ -52,7 +60,7 @@ def create_event_service(
              
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Etkinlik oluşturulurken hata: {str(e)}")
-
+    
 # -------------------------
 # ETKİNLİKLERİ LİSTELEME VE FİLTRELEME SERVİSİ
 # -------------------------
@@ -102,6 +110,8 @@ def update_event_service(
     event_date: str,
     location: str,
     committee: str,
+    event_type: str,                   # <-- YENİ
+    participant_count: Optional[int],  # <-- YENİ
     new_file_bytes: Optional[bytes] = None, 
     new_filename: Optional[str] = None,
     new_content_type: Optional[str] = None
@@ -128,7 +138,7 @@ def update_event_service(
                  "message": "Bu etkinliği güncelleme yetkiniz yok. Sadece etkinliği oluşturan kişi veya Yönetim Ekibi değişiklik yapabilir."
              }
              
-        # --- FOTOĞRAF GÜNCELLEME ---
+        # --- FOTOĞRAF GÜNCELLEME (Frontend'den yeni resim gelmişse) ---
         updated_image_url = old_image_url  
         
         if new_file_bytes and new_filename:
@@ -148,25 +158,28 @@ def update_event_service(
             "event_date": event_date,
             "location": location,
             "committee": committee,
+            "event_type": event_type,                # <-- Yeni gönderilen tür değeri
+            "participant_count": participant_count,  # <-- Etkinlik bitince girilen sayı
             "image_url": updated_image_url
         }
         
         update_response = supabase.table("events").update(update_data).eq("id", event_id).execute()
         
-        # --- KOTA KORUMASI (Eski resmi SİL) ---
-        if update_response.data:
-             if new_file_bytes and new_filename and old_image_url:
+        # --- Kotayı Koru --- 
+        if update_response.data and old_image_url:
+             # Eğer "event-images" içeren bir resimse storage'dan silsin. (Default komite resimlerini silmemesi için bu kontrol önemli)
+             if new_file_bytes and new_filename and "event-images" in old_image_url: 
                  old_filename = old_image_url.split("/")[-1] 
                  try:
                      supabase.storage.from_("event-images").remove([old_filename])
                  except Exception as e:
                      print(f"Uyarı: Eski fotoğraf Storage'dan silinemedi: {str(e)}")
                      
+        if update_response.data:
              return {"success": True, "message": "Etkinlik başarıyla güncellendi.", "data": update_response.data[0]}
         else:
              if unique_filename:
                  supabase.storage.from_("event-images").remove([unique_filename])
-                 
              return {"success": False, "message": "Veritabanı güncellemesi başarısız oldu."}
              
     except Exception as e:
@@ -175,8 +188,9 @@ def update_event_service(
                 supabase.storage.from_("event-images").remove([unique_filename])
             except:
                 pass 
-                
         return {"success": False, "message": f"Güncelleme işlemi sırasında sistem hatası oluştu: {str(e)}"}
+
+
 # -------------------------
 # ETKİNLİK SİLME SERVİSİ
 # -------------------------
