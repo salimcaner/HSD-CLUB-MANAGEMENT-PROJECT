@@ -113,6 +113,7 @@
   background-color: transparent;
   border: none;
   border-radius: 10px;
+  padding-bottom: 200px; /* Açılır menülerin kesilmemesi için alttan boşluk bırakıldı */
   /* overflow: hidden; Removed so dropdowns don't clip */
   /* 📌 TABLO ARKA PLAN FOTOĞRAFI:
      Fotoğrafı eklemek için aşağıdaki satırları aktif et:
@@ -476,6 +477,10 @@
 .rp-dropdown {
   position: relative;
   display: inline-block;
+}
+
+.rp-dropdown--open {
+  z-index: 1000;
 }
 
 .rp-dropdown-toggle {
