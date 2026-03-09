@@ -178,13 +178,13 @@ export function renderMembers(user) {
               <div class="form-group">
                 <label>Sınıfı</label>
                 <select id="memberClass" required>
-                  <option value="Hazırlık">Hazırlık</option>
-                  <option value="1. Sınıf">1. Sınıf</option>
-                  <option value="2. Sınıf">2. Sınıf</option>
-                  <option value="3. Sınıf">3. Sınıf</option>
-                  <option value="4. Sınıf">4. Sınıf</option>
-                  <option value="5. Sınıf">5. Sınıf</option>
-                  <option value="6. Sınıf">6. Sınıf</option>
+                  <option value="0">Hazırlık</option>
+                  <option value="1">1. Sınıf</option>
+                  <option value="2">2. Sınıf</option>
+                  <option value="3">3. Sınıf</option>
+                  <option value="4">4. Sınıf</option>
+                  <option value="5">5. Sınıf</option>
+                  <option value="6">6. Sınıf</option>
                 </select>
               </div>
             </div>
@@ -403,7 +403,12 @@ export function initMembers() {
       const role = document.getElementById("memberRole").value;
       const uniDep = document.getElementById("memberUniDepartment").value.trim();
       const mClassStr = document.getElementById("memberClass").value.trim();
-      const mClass = mClassStr ? parseInt(mClassStr) : null;
+
+      let mClass = null;
+      if (mClassStr) {
+        mClass = parseInt(mClassStr, 10);
+        if (isNaN(mClass)) mClass = null;
+      }
 
       if (!fName || !lName || !email) {
         showToast("Lütfen isim, soyisim ve e-posta gibi zorunlu alanları doldurun.", "error");
@@ -438,7 +443,11 @@ export function initMembers() {
             credentials: 'include',
             body: JSON.stringify(payload)
           });
-          if (!res.ok) throw new Error("Güncelleme başarısız!");
+          if (!res.ok) {
+            const errData = await res.json();
+            console.error("Update Error:", errData);
+            throw new Error(errData.detail || "Güncelleme başarısız!");
+          }
           showToast("Üye bilgileri başarıyla güncellendi.", "success");
         } else {
           // POST /auth/invite
@@ -452,7 +461,11 @@ export function initMembers() {
             credentials: 'include',
             body: JSON.stringify(payload)
           });
-          if (!res.ok) throw new Error("Ekleme başarısız!");
+          if (!res.ok) {
+            const errData = await res.json();
+            console.error("Invite Error Details:", errData);
+            throw new Error(errData.detail || "Ekleme başarısız!");
+          }
           showToast("Yeni üye başarıyla davet edildi/eklendi.", "success");
         }
 

@@ -18,7 +18,7 @@ import { getUser } from "./store.js";
 import { hasAnyPerm } from "./acl.js";
 
 import { renderHome } from "./pages/home.js";
-import { renderCommunity } from "./pages/community.js";
+import { renderCommunity, initCommunity } from "./pages/community.js";
 import { renderEvents } from "./pages/events.js";
 import { renderProjects, initProjects } from "./pages/projects.js";
 import { renderReports, initReports } from "./pages/reports.js";
@@ -114,6 +114,10 @@ export function router() {
 
   if (path === "/calendar") {
     initCalendar();
+  }
+
+  if (path === "/community") {
+    initCommunity();
   }
 }
 
