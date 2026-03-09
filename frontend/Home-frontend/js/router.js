@@ -17,9 +17,9 @@ renderNotFound()*/
 import { getUser } from "./store.js";
 import { hasAnyPerm } from "./acl.js";
 
-import { renderHome } from "./pages/home.js";
+import { renderHome, initHome } from "./pages/home.js";
 import { renderCommunity, initCommunity } from "./pages/community.js";
-import { renderEvents } from "./pages/events.js";
+import { renderEvents, initEvents } from "./pages/events.js";
 import { renderProjects, initProjects } from "./pages/projects.js";
 import { renderReports, initReports } from "./pages/reports.js";
 import { renderCalendar, initCalendar } from "./pages/calendar.js";
@@ -35,7 +35,7 @@ const ROUTES = {
   "/home": { render: renderHome, initHome, required: [] },
   "/community": { render: renderCommunity, required: [] },
 
-  "/events": { render: renderEvents,initEvents, required: [] },
+  "/events": { render: renderEvents, initEvents, required: [] },
   "/projects": { render: renderProjects, required: [] },
   "/reports": { render: renderReports, required: [] },
   "/calendar": { render: renderCalendar, required: ["calendar:read"] },

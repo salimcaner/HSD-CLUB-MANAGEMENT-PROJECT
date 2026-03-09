@@ -159,10 +159,10 @@ export function renderMembers(user) {
                 <label>Rol</label>
                 <select id="memberRole" required>
                   <option value="uye">Üye</option>
-                  <option value="lider">Komite Lideri</option>
-                  <option value="genel_sekreter">İnsan Kaynakları</option>
+                  <option value="departman_lideri">Komite Lideri</option>
+                  <option value="insan_kaynaklari">İnsan Kaynakları</option>
                   <option value="genel_sekreter">Genel Sekreter</option>
-                  <option value="elci">Elçi Yardımcısı</option>
+                  <option value="elci_yardimcisi">Elçi Yardımcısı</option>
                   <option value="elci">Elçi</option>
                 </select>
               </div>
@@ -532,7 +532,11 @@ export function initMembers() {
     document.getElementById("memberLastName").value = mem.last_name || '';
     document.getElementById("memberEmail").value = mem.email || '';
     document.getElementById("memberDepartment").value = mem.department || '';
-    document.getElementById("memberRole").value = mem.role || 'UYE';
+    // Map legacy role values to new enum values
+    let roleValue = mem.role || 'UYE';
+    if (roleValue === 'lider') roleValue = 'departman_lideri';
+    if (roleValue === 'genel_sekreter') roleValue = 'insan_kaynaklari';
+    document.getElementById("memberRole").value = roleValue;
     document.getElementById("memberUniDepartment").value = mem.university_department || '';
     document.getElementById("memberClass").value = mem.class_ || '';
 
