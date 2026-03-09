@@ -7,11 +7,13 @@ from app.schemas.user import User
 supabase = get_supabase()
 
 def create_project(data: ProjectCreate, current_user: User):
-    # Insert
+    # data.manager_ids listesini kullanıyoruz (Frontend'den array gelmeli)
+    managers = data.manager_ids if data.manager_ids else [str(current_user.id)]
+    
     insert_data = {
         "name": data.name,
         "description": data.description,
-        "manager_id": str(data.manager_id) if data.manager_id else str(current_user.id)
+        "manager_ids": managers  # Veritabanına liste olarak kaydediyoruz
     }
     
     response = supabase.table("projects").insert(insert_data).execute()
@@ -20,15 +22,15 @@ def create_project(data: ProjectCreate, current_user: User):
     return response.data[0]
 
 def get_all_projects():
-    # 1. Projeleri ve Yöneticilerin profil bilgilerini JOIN ile çekiyoruz
-    projects_res = supabase.table("projects").select("*, profiles(first_name, last_name)").execute()
+    projects_res = supabase.table("projects").select("*").execute()
     projects_data = projects_res.data or []
     
-    # 2. Üyeleri ve üyelerin profil bilgilerini JOIN ile çekiyoruz
+    # Üyeleri ve üyelerin profil bilgilerini JOIN ile çekiyoruz
     members_res = supabase.table("project_members").select("*, profiles(first_name, last_name)").execute()
     
-    # 3. Görevleri çekiyoruz (Mevcut yapıda görevliye ait isim dönmüyor, sadece assignee_id dönüyor, bu yüzden JOIN gerekmez)
+    
     tasks_res = supabase.table("project_tasks").select("*").execute()
+    
     result = []
     for p in projects_data:
         p_id = p.get("id")
@@ -57,21 +59,21 @@ def get_all_projects():
                     "assigneeId": t.get("assignee_id"),
                     "createdAt": t.get("created_at")
                 })
+                
         # --- Proje Yöneticisi (Manager) İsim Çözümleme ---
-        manager_prof = p.get("profiles") or {}
-        manager_name = f"{manager_prof.get('first_name') or ''} {manager_prof.get('last_name') or ''}".strip()
+        m_ids = p.get("manager_ids") or []
+        
         # Sonucu Listemize Ekliyoruz
         result.append({
             "id": p_id,
             "name": p.get("name"),
             "description": p.get("description"),
-            "manager": manager_name if manager_name else "Bilinmiyor",
-            "managerId": p.get("manager_id"),
+            "managers": m_ids, 
             "members": p_members,
             "tasks": p_tasks,
         })
         
-    return result
+    return result    
 
 
 def delete_project(project_id: str):

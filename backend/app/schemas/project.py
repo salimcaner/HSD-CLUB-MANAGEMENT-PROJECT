@@ -36,13 +36,12 @@ class ProjectMemberResponse(BaseModel):
 class ProjectCreate(BaseModel):
     name: str
     description: Optional[str] = None
-    manager_id: Optional[UUID] = None
+    manager_ids: Optional[List[str]] = []
 
 class ProjectResponse(BaseModel):
     id: str
     name: str
     description: Optional[str] = None
-    manager: str  
-    managerId: Optional[str] = None
+    managers: List[str] = []
     members: List[ProjectMemberResponse] = []
     tasks: List[ProjectTaskResponse] = []

@@ -132,41 +132,7 @@ def delete_user(user_id: str):
     except Exception as e:
         print("Kullanıcı silinirken hata:", str(e))
         return False
-    
 
-# -------------------------
-# Kullanıcıyı Deaktive Et
-# -------------------------
-def deactivate_user(user_id: str):
-    """
-    Kullanıcıyı pasif yap (silmeden devre dışı bırak)
-    Mezunlar için kullanılabilir
-    """
-    response = supabase.table("profiles").update({"is_active": False}).eq("id", user_id).execute()
-    
-    if response.data:
-        result = response.data[0]
-        if "class" in result:
-            result["class_"] = result.pop("class")
-        return User(**result)
-    return None
-
-
-# -------------------------
-# Kullanıcıyı Aktive Et
-# -------------------------
-def activate_user(user_id: str):
-    """
-    Pasif kullanıcıyı tekrar aktif yap
-    """
-    response = supabase.table("profiles").update({"is_active": True}).eq("id", user_id).execute()
-    
-    if response.data:
-        result = response.data[0]
-        if "class" in result:
-            result["class_"] = result.pop("class")
-        return User(**result)
-    return None
 
 
 # -------------------------

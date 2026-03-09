@@ -70,11 +70,11 @@ def get_all_reports_service(user_role: str, current_user_id: str, search_name: s
             query = query.or_(f"privacy.eq.genel,sender_id.eq.{current_user_id}")
             
         # Çok gizli raporlar dahil TÜM raporları görebilenler
-        elif user_role in [UserRole.ELCI.value, UserRole.GENEL_SEKRETER.value, UserRole.ADMIN.value]:
+        elif user_role in [UserRole.ELCI.value, UserRole.GENEL_SEKRETER.value, UserRole.ADMIN.value, UserRole.ELCI_YARDIMCISI.value]:
             pass 
             
         # Sadece genel ve gizli raporları görebilenler 
-        elif user_role in [UserRole.DEPARTMAN_LIDERI.value, UserRole.INSAN_KAYNAKLARI.value]: 
+        elif user_role in [UserRole.KOMITE_LIDERI.value, UserRole.INSAN_KAYNAKLARI.value]: 
             query = query.or_(f"privacy.in.(genel,gizli),sender_id.eq.{current_user_id}")
             
         else:
@@ -144,7 +144,7 @@ def delete_report_service(report_id: int, current_user_id: str, user_role: str):
         report_owner_id = report_data.get("sender_id") 
         
         #KİMLER SİLEBİLİR? (SAHİP VEYA YÖNETİM EKİBİ)
-        admin_roles = [UserRole.ELCI.value, UserRole.GENEL_SEKRETER.value, UserRole.ADMIN.value]
+        admin_roles = [UserRole.ELCI.value, UserRole.GENEL_SEKRETER.value, UserRole.ADMIN.value, UserRole.ELCI_YARDIMCISI.value]
         
         is_owner = (report_owner_id == current_user_id)
         is_admin = (user_role in admin_roles)
