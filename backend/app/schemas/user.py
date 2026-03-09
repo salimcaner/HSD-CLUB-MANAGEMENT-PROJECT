@@ -8,13 +8,13 @@ from enum import Enum
 
 class UserRole(str, Enum):
     """Kullanıcı rolleri - Değiştirilmez, güvenli"""
-    ADMIN = "admin"
-    ELCI = "elci"
-    LIDER = "lider"
-    UYE = "uye"
-    MEZUN = "mezun"
     GENEL_SEKRETER = "genel_sekreter"
-
+    ELCI = "elci"
+    DEPARTMAN_LIDERI = "departman_lideri"
+    INSAN_KAYNAKLARI = "insan_kaynaklari"
+    UYE = "uye"
+    ADMIN="admin"
+    MEZUN="mezun"
 
 # ==========================================
 # BASE SCHEMAS
