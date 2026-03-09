@@ -8,6 +8,7 @@ let committeeData = {
   counts: [0, 0, 0, 0, 0, 0] // Default values until data arrives
 };
 let pieChartInstance = null;
+let allEventsList = []; 
 
 // --- Son Aktiviteleri Çekme ve Çizme ---
 async function fetchRecentActivities() {
@@ -19,10 +20,9 @@ async function fetchRecentActivities() {
     const token = getToken();
     const commonHeaders = token ? { "Authorization": `Bearer ${token}` } : {};
 
-    // 1. Etkinlikleri, Raporları ve Üyeleri paralel çek
-    const [eventsRes, reportsRes, usersRes] = await Promise.all([
+    // 1. Etkinlikleri ve Üyeleri paralel çek (Raporlar hariç tutuldu)
+    const [eventsRes, usersRes] = await Promise.all([
       fetch(`${API_URL}/events/?limit=100`, { headers: commonHeaders }),
-      fetch(`${API_URL}/reports/?limit=15`, { headers: commonHeaders }),
       fetch(`${API_URL}/users/`, {
         headers: {
           'Content-Type': 'application/json',
@@ -39,6 +39,7 @@ async function fetchRecentActivities() {
     if (eventsRes.ok) {
       const eventsData = await eventsRes.json();
       const eventsList = eventsData.data || [];
+      allEventsList = [...eventsList]; 
 
       // Toplantı sayısını hesaplama
       const meetingCount = eventsList.filter(ev =>
@@ -212,27 +213,17 @@ async function fetchRecentActivities() {
       }
     }
 
-    // 3. Raporları normalize et
-    if (reportsRes.ok) {
-      const reportsData = await reportsRes.json();
-      (reportsData.data || []).forEach(rp => {
-        activities.push({
-          type: "report",
-          id: rp.id,
-          title: "Yeni Rapor Yüklendi",
-          desc: `"${rp.report_name}" adlı ${rp.report_type.toLowerCase()} sisteme eklendi.`,
-          dateStr: rp.created_at,
-          dateObj: new Date(rp.created_at),
-          iconClass: "accent" // mor nokta
-        });
-      });
+    /* Raporlar son aktivitelerde gösterilmesin
+    if (reportsRes && reportsRes.ok) {
+        ...
     }
+    */
 
     // 4. Tarihe göre sırala (en yeni en üstte)
     activities.sort((a, b) => b.dateObj - a.dateObj);
 
-    // 5. Sadece ilk 10 aktiviteyi al
-    const topActivities = activities.slice(0, 10);
+    // 5. Sadece ilk 7 aktiviteyi al
+    const topActivities = activities.slice(0, 7);
 
     // 6. Ekrana Çiz
     if (topActivities.length === 0) {
@@ -288,8 +279,14 @@ export function renderHome(user) {
   if (user) {
     if (user.first_name || user.last_name) {
       userName = `${user.first_name || ""} ${user.last_name || ""}`.trim();
+    } else if (user.full_name) {
+      userName = user.full_name;
+    } else if (user.name) {
+      userName = user.name;
     } else if (user.username) {
       userName = user.username;
+    } else if (user.email) {
+      userName = user.email.split('@')[0];
     }
   }
 
@@ -456,6 +453,15 @@ export function renderHome(user) {
         </div>
         <div class="modal-body">
           <div class="form-group">
+            <label>Gelecek Etkinliklerden Seç</label>
+            <select id="counter-event-select" class="form-control">
+              <option value="">-- Bir Etkinlik Seçin (Opsiyonel) --</option>
+            </select>
+          </div>
+          <div class="form-divider" style="margin: 15px 0; border-top: 1px solid var(--border-light); position: relative;">
+            <span style="position: absolute; top: -10px; left: 50%; transform: translateX(-50%); background: var(--bg-mid); padding: 0 10px; font-size: 11px; color: var(--text-dim);">VEYA MANUEL GİR</span>
+          </div>
+          <div class="form-group">
             <label>Etkinlik Adı</label>
             <input type="text" id="counter-event-name" class="form-control" placeholder="Örn: Yapay Zeka Zirvesi 2026" />
           </div>
@@ -612,6 +618,22 @@ function initCounterModal() {
   if (btnEnter) {
     btnEnter.addEventListener('click', () => {
       overlay.classList.add('open');
+      
+      // Populate select with upcoming events
+      const select = document.getElementById('counter-event-select');
+      if (select) {
+        select.innerHTML = '<option value="">-- Bir Etkinlik Seçin (Opsiyonel) --</option>';
+        const now = new Date();
+        const upcoming = allEventsList.filter(ev => new Date(ev.event_date) > now);
+        
+        upcoming.forEach(ev => {
+          const opt = document.createElement('option');
+          opt.value = ev.id;
+          opt.textContent = ev.title;
+          select.appendChild(opt);
+        });
+      }
+
       const now = new Date();
       const tzOffset = now.getTimezoneOffset() * 60000;
       const localISOTime = (new Date(now - tzOffset)).toISOString().slice(0, 10);
@@ -626,6 +648,29 @@ function initCounterModal() {
         document.getElementById('counter-event-name').value = savedName;
       }
     });
+
+    // Handle select change
+    const eventSelect = document.getElementById('counter-event-select');
+    if (eventSelect) {
+      eventSelect.addEventListener('change', (e) => {
+        const selectedId = e.target.value;
+        if (!selectedId) return;
+
+        const event = allEventsList.find(ev => ev.id == selectedId);
+        if (event) {
+          document.getElementById('counter-event-name').value = event.title;
+          
+          const evDate = new Date(event.event_date);
+          const tzOffset = evDate.getTimezoneOffset() * 60000;
+          const localDate = (new Date(evDate - tzOffset)).toISOString().slice(0, 10);
+          document.getElementById('counter-event-date').value = localDate;
+          
+          const hours = String(evDate.getHours()).padStart(2, '0');
+          const minutes = String(evDate.getMinutes()).padStart(2, '0');
+          document.getElementById('counter-event-time').value = `${hours}:${minutes}`;
+        }
+      });
+    }
   }
 
   if (btnClose) btnClose.addEventListener('click', () => overlay.classList.remove('open'));

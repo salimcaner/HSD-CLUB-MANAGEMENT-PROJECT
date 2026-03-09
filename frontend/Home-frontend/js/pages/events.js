@@ -18,7 +18,6 @@ const EVENT_TYPES = [
   "Seminer",
   "Webinar",
   "Akademi Eğitimi",
-  "Akademi Eğitimi",
   "Sosyal Etkinlik"
 ];
 
@@ -294,13 +293,9 @@ function buildModalHtml(committeeOptions) {
               ${EVENT_TYPES.map(t => `<option value="${t}">${t}</option>`).join("")}
             </select>
           </div>
-          <div class="form-group">
-            <label>Etkinlik Dönemi (Görünüm Seçeneği)</label>
-            <select id="evPeriod">
-              <option value="upcoming">İleri Tarihli</option>
-              <option value="past">Geçmiş Etkinlik</option>
-            </select>
-            <p style="font-size:11px; color:var(--text-muted); margin-top:4px;">* Bu seçim sadece frontend görünümünü etkiler, tarihe göre otomatik belirlenir.</p>
+          <div class="form-group" id="evParticipantGroup" style="display: none;">
+            <label>Katılımcı Sayısı <span style="font-size:11px; color:#888;">(Opsiyonel)</span></label>
+            <input type="number" id="evParticipantCount" placeholder="Örn: 50" min="0">
           </div>
           <div class="form-group">
             <label>Etkinlik Görseli <span style="font-size:11px; color:#888;">(Opsiyonel)</span></label>
@@ -457,15 +452,6 @@ export async function initEvents() {
           }
         }
 
-        // Tarih seçildiğinde dönemi otomatik güncelle
-        if (e.target.id === "evDateTime") {
-          const dt = e.target.value;
-          const periodSel = document.getElementById("evPeriod");
-          if (dt && periodSel) {
-            const isPast = new Date(dt) < new Date();
-            periodSel.value = isPast ? "past" : "upcoming";
-          }
-        }
       });
     }
 
@@ -605,6 +591,7 @@ async function handleFormSubmit(user) {
   const location = document.getElementById("evLocation").value.trim();
   const committee = document.getElementById("evCommittee").value;
   const event_type = document.getElementById("evType")?.value;
+  const participant_count = document.getElementById("evParticipantCount")?.value;
 
 
   if (!title || !dateTimeParam || !committee || !event_type || !location || !desc) {
@@ -624,6 +611,9 @@ async function handleFormSubmit(user) {
   form.append("location", location);
   form.append("committee", committee);
   form.append("event_type", event_type);
+  if (participant_count) {
+    form.append("participant_count", participant_count);
+  }
 
   if (selectedImageFile) {
     form.append("image", selectedImageFile);
@@ -666,12 +656,13 @@ function openEditModal(idString) {
   document.getElementById("evLocation").value = ev.location || "";
   document.getElementById("evCommittee").value = ev.committee || "";
   document.getElementById("evType").value = ev.event_type || "";
+  document.getElementById("evParticipantCount").value = ev.participant_count || "";
 
-  // Dönem bilgisini tarihe göre set et
-  const periodSel = document.getElementById("evPeriod");
-  if (periodSel) {
+  // Sadece geçmiş etkinliklerde katılımcı sayısını göster
+  const participantGroup = document.getElementById("evParticipantGroup");
+  if (participantGroup) {
     const isPast = new Date(ev.event_date) < new Date();
-    periodSel.value = isPast ? "past" : "upcoming";
+    participantGroup.style.display = isPast ? "block" : "none";
   }
 
   // Resim Göstergesi
@@ -744,8 +735,13 @@ function hideModal() {
   document.getElementById("evLocation").value = "";
   document.getElementById("evCommittee").value = "";
   if (document.getElementById("evType")) document.getElementById("evType").value = "";
-  document.getElementById("evImage").value = "";
+  document.getElementById("evParticipantCount").value = "";
+  
+  // Yeni etkinlik eklerken katılımcı sayısı grubunu gizle
+  const participantGroup = document.getElementById("evParticipantGroup");
+  if(participantGroup) participantGroup.style.display = "none";
 
+  document.getElementById("evImage").value = "";
   selectedImageFile = null;
   base64PreviewString = "";
   document.getElementById("imagePreview").style.display = "none";

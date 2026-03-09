@@ -80,6 +80,29 @@ ul { list-style: none; }
 button { border: none; background: none; cursor: pointer; font-family: inherit; }
 svg { display: block; }
 
+/* ── Global Scrollbar ── */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-darkest);
+}
+::-webkit-scrollbar-thumb {
+  background: #3b82f6; /* Harmonious blue tone */
+  border-radius: 10px;
+  border: 2px solid var(--bg-darkest);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #2563eb;
+}
+
+/* Firefox Support */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #3b82f6 transparent;
+}
+
 /* ── Layout Wrapper ─────────────────────────────────────────── */
 .layout-wrapper {
   display: flex;
