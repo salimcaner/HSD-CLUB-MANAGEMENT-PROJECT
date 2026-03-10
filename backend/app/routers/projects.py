@@ -49,5 +49,5 @@ async def delete_project_task(task_id: str, current_user = Depends(security.requ
 
 @router.patch("/tasks/{task_id}")
 async def update_task_status(task_id: str, data: ProjectTaskUpdate, current_user = Depends(security.require_authenticated)):
-    """Görevin statüsünü değiştir."""
-    return project_service.update_task_status(task_id, data.status)
+    """Görevin statüsünü değiştir (Yetki kontrollü)."""
+    return project_service.update_task_status(task_id, data.status, current_user)

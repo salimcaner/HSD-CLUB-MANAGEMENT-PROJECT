@@ -1,6 +1,9 @@
 from fastapi import HTTPException, status
 from app.schemas.user import User
+import app.core.config as settings
 from app.core.supabase_client import get_supabase
+import requests
+
 supabase = get_supabase()
 
 
@@ -110,50 +113,26 @@ def update_user(user_id: str, user_data: dict):
 # -------------------------
 def delete_user(user_id: str):
     try:
-        # 1. Profiles tablosundan sil
+        # Supabase Profiles tablosundan sil
         supabase.table("profiles").delete().eq("id", user_id).execute()
         
-        # 2. Auth'dan da sil
-        supabase.auth.admin.delete_user(user_id)
+        # Supabase Auth'dan kalıcı sil
+        url = f"{settings.SUPABASE_URL}/auth/v1/admin/users/{user_id}"
+        headers = {
+            "apikey": settings.SUPABASE_SERVICE_KEY,
+            "Authorization": f"Bearer {settings.SUPABASE_SERVICE_KEY}",
+            "Content-Type": "application/json"
+        }
+        resp = requests.delete(url, headers=headers)
+        
+        # Gerekirse hata logu görmek için:
+        # if resp.status_code >= 400: print("Auth silinirken uyarı:", resp.text)
         
         return True
-    except Exception:
+    except Exception as e:
+        print("Kullanıcı silinirken hata:", str(e))
         return False
-    
 
-    # -------------------------
-# Kullanıcıyı Deaktive Et
-# -------------------------
-def deactivate_user(user_id: str):
-    """
-    Kullanıcıyı pasif yap (silmeden devre dışı bırak)
-    Mezunlar için kullanılabilir
-    """
-    response = supabase.table("profiles").update({"is_active": False}).eq("id", user_id).execute()
-    
-    if response.data:
-        result = response.data[0]
-        if "class" in result:
-            result["class_"] = result.pop("class")
-        return User(**result)
-    return None
-
-
-# -------------------------
-# Kullanıcıyı Aktive Et
-# -------------------------
-def activate_user(user_id: str):
-    """
-    Pasif kullanıcıyı tekrar aktif yap
-    """
-    response = supabase.table("profiles").update({"is_active": True}).eq("id", user_id).execute()
-    
-    if response.data:
-        result = response.data[0]
-        if "class" in result:
-            result["class_"] = result.pop("class")
-        return User(**result)
-    return None
 
 
 # -------------------------
@@ -200,7 +179,10 @@ def get_user_stats():
             "total": 0,
             "admin": 0,
             "elci": 0,
-            "lider": 0,
+            "komite_lideri": 0,
+            "insan_kaynaklari": 0,
+            "elci_yardimcisi": 0,
+            "genel_sekreter": 0,
             "uye": 0,
             "mezun": 0
         }
@@ -209,7 +191,10 @@ def get_user_stats():
         "total": len(response.data),
         "admin": 0,
         "elci": 0,
-        "lider": 0,
+        "komite_lideri": 0,
+        "insan_kaynaklari": 0,
+        "elci_yardimcisi": 0,
+        "genel_sekreter": 0,
         "uye": 0,
         "mezun": 0
     }
