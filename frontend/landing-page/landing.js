@@ -18,20 +18,40 @@ function initHeroGrid() {
     let checkedCount = 0;
     const totalItems = featureItems.length;
 
+    // Yardımcı fonksiyon: Mockup içeriğini (resim vs.) güncelle
+    function updateMockupContent(targetMockup) {
+        if (!targetMockup) return;
+
+        const img = targetMockup.querySelector('.mockup-img');
+        const placeholder = targetMockup.querySelector('.mockup-placeholder');
+
+        // src boş değilse resmi göster
+        if (img && img.getAttribute('src') && img.getAttribute('src').trim() !== "") {
+            img.style.display = 'block';
+            if (placeholder) placeholder.style.display = 'none';
+        } else {
+            if (img) img.style.display = 'none';
+            if (placeholder) placeholder.style.display = 'block';
+        }
+    }
+
     // Mouseenter için mockup değiştirme
     featureItems.forEach(item => {
         item.addEventListener('mouseenter', () => {
-            // Skip if checkbox is being clicked
             if (item.dataset.checkboxClick) return;
 
+            const feature = item.getAttribute('data-feature');
+
+            // Aktif sınıfları temizle ve yenisini ekle
             featureItems.forEach(f => f.classList.remove('active'));
             displayMockups.forEach(m => m.classList.remove('active'));
 
             item.classList.add('active');
-            const feature = item.getAttribute('data-feature');
+
             const targetMockup = document.querySelector(`.display-mockup[data-mockup="${feature}"]`);
             if (targetMockup) {
                 targetMockup.classList.add('active');
+                updateMockupContent(targetMockup);
             }
         });
     });
@@ -95,6 +115,7 @@ function initHeroGrid() {
     if (featureItems.length > 0) {
         featureItems[0].classList.add('active');
         displayMockups[0].classList.add('active');
+        updateMockupContent(displayMockups[0]);
     }
 
     // Login handlers
@@ -102,8 +123,7 @@ function initHeroGrid() {
     loginBtns.forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.preventDefault();
-            alert('Oturum açma sayfasına yönlendiriliyorsunuz...');
-            // window.location.href = 'login.html';
+            window.location.href = '../login-frontend/login.html';
         });
     });
 }

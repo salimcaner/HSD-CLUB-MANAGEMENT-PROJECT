@@ -248,7 +248,7 @@ async def download_report_endpoint(
         if not result.get("success"):
             raise HTTPException(status_code=404, detail=result.get("message"))
             
-        return RedirectResponse(url=result.get("url"))
+        return {"success": True, "url": result.get("url")}
         
     except HTTPException:
         raise

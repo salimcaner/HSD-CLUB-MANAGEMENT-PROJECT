@@ -284,7 +284,7 @@ def get_report_download_url_service(report_id: int):
         signed_url_response = supabase.storage.from_("reports").create_signed_url(filename, 60)
         
         # Supabase Python kütüphanesi genelde sözlük (dict) içinde "signedURL" değerini döner
-        secure_url = signed_url_response.get("signedURL")
+        secure_url = signed_url_response.get("signedUrl")
         
         if not secure_url:
             raise Exception("Güvenli indirme linki oluşturulamadı.")

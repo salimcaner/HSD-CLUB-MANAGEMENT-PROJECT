@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List,Optional  
-from app.schemas.user import User, UserBase,UserUpdateSelf
+from app.schemas.user import User, UserUpdateAdmin, UserUpdateSelf
 from app.services.user_service import (
     get_user_by_email,
     get_all_users,
@@ -105,7 +105,7 @@ async def get_user(
 @router.put("/{user_id}", response_model=User)
 async def update_user_endpoint(
     user_id: str,
-    user_data: UserBase,
+    user_data: UserUpdateAdmin,
     current_user = Depends(security.require_authenticated) # <--- Sadece login olması yeterli
 ):
     """
