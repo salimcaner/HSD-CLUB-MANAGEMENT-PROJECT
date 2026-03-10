@@ -11,130 +11,57 @@ let pieChartInstance = null;
 let socialBarChartInstance = null;
 let allEventsList = [];
 
-// --- Dashboard Verilerini Çekme ve Çizme ---
-async function fetchRecentActivities() {
+// --- Dashboard Verilerini Ekrana Basma ---
+function updateDashboardDisplay(stats, activities, committeeRes) {
   const listEl = document.getElementById("home-activity-list");
   const metricCards = document.querySelectorAll('.metric-info');
   if (!listEl) return;
 
-  try {
-    const token = getToken();
-    const commonHeaders = token ? { "Authorization": `Bearer ${token}` } : {};
+  // 1. Metric Cards (Sayaçlar) Güncelle
+  metricCards.forEach(card => {
+    const p = card.querySelector('p');
+    const h3 = card.querySelector('h3.counter-number');
+    if (!p || !h3) return;
+    const label = p.innerText.trim().toLowerCase();
+    let targetValue = 0;
+    
+    if (label.includes('toplantı')) targetValue = stats.meeting_count || 0;
+    else if (label.includes('akademi')) targetValue = stats.academy_count || 0;
+    else if (label.includes('topluluk') || label.includes('etkinlik')) targetValue = stats.total_events || 0;
+    else if (label.includes('üye')) targetValue = stats.total_members || 0;
 
-    // 1. Tüm verileri paralel olarak başlat
-    const [statsRes, committeeRes, activitiesRes, countdownRes, socialStatsRes, eventsRes] = await Promise.all([
-      fetch(`${API_URL}/dashboard/stats`, { headers: commonHeaders }),
-      fetch(`${API_URL}/dashboard/committees`, { headers: commonHeaders }),
-      fetch(`${API_URL}/dashboard/activities`, { headers: commonHeaders }),
-      fetch(`${API_URL}/dashboard/countdown`, { headers: commonHeaders }),
-      fetch(`${API_URL}/social-media/stats`, { headers: commonHeaders }),
-      fetch(`${API_URL}/events/?limit=100`, { headers: commonHeaders })
-    ]);
+    h3.setAttribute('data-target', targetValue);
+    animateSingleCounter(h3, targetValue);
+  });
 
-    // 2. Verileri tek seferde çözümle
-    let stats = { total_members: 0, meeting_count: 0, academy_count: 0, total_events: 0 };
-    if (statsRes.ok) {
-      stats = await statsRes.json();
+  // 2. Komite Dağılımı (Pie Chart) Verisini Hazırla
+  if (committeeRes) {
+    committeeData.labels = committeeRes.labels;
+    committeeData.counts = committeeRes.counts;
+
+    if (pieChartInstance) {
+      pieChartInstance.data.labels = committeeData.labels;
+      pieChartInstance.data.datasets[0].data = committeeData.counts;
+      pieChartInstance.update();
     }
+  }
 
-    if (eventsRes.ok) {
-      const eventsData = await eventsRes.json();
-      allEventsList = eventsData.data || [];
-    }
-
-    // 4. Metric Cards (Sayaçlar) Güncelle
-    metricCards.forEach(card => {
-      const p = card.querySelector('p');
-      const h3 = card.querySelector('h3.counter-number');
-      if (!p || !h3) return;
-
-      const label = p.innerText.trim().toLowerCase();
-      let targetValue = 0;
-
-      if (label.includes('toplantı')) targetValue = stats.meeting_count || 0;
-      else if (label.includes('akademi')) targetValue = stats.academy_count || 0;
-      else if (label.includes('topluluk') || label.includes('etkinlik')) targetValue = stats.total_events || 0;
-      else if (label.includes('üye')) targetValue = stats.total_members || 0;
-
-      h3.setAttribute('data-target', targetValue);
-      animateSingleCounter(h3, targetValue);
-    });
-
-    // 5. Komite Dağılımı (Pie Chart)
-    if (committeeRes.ok) {
-      const commData = await committeeRes.json();
-      committeeData.labels = commData.labels;
-      committeeData.counts = commData.counts;
-
-      if (pieChartInstance) {
-        pieChartInstance.data.labels = committeeData.labels;
-        pieChartInstance.data.datasets[0].data = committeeData.counts;
-        pieChartInstance.update();
-      }
-    }
-
-    // 6. Son Aktiviteler
-    if (activitiesRes.ok) {
-      const actData = await activitiesRes.json();
-      const activities = actData.activities || [];
-
-      if (activities.length === 0) {
-        listEl.innerHTML = `<li style="text-align:center; padding: 20px 0; color:var(--text-muted); font-size:14px;">Henüz aktivite bulunmuyor.</li>`;
-      } else {
-        listEl.innerHTML = activities.map(act => {
-          const timeAgo = getTimeAgo(new Date(act.created_at));
-          return `
-            <li class="activity-item">
-              <div class="activity-dot ${act.iconClass}"></div>
-              <div class="activity-content">
-                <p><strong>${act.title}:</strong> ${act.desc}</p>
-                <span class="activity-time">${timeAgo}</span>
-              </div>
-            </li>
-          `;
-        }).join("");
-      }
-    }
-
-    // 7. Geri Sayım (Countdown) Güncelleme
-    if (countdownRes.ok) {
-      const countdownData = await countdownRes.json();
-      if (countdownData.success) {
-        localStorage.setItem('countdown_event_name', countdownData.title);
-        localStorage.setItem('countdown_event_datetime', countdownData.event_date);
-        initCountdown(); // Tekrar başlat
-      }
-    }
-
-    // 8. Sosyal Medya Bar Chart (İstatistiklerden Aylık Dağılım)
-    if (socialStatsRes.ok) {
-      const socialData = await socialStatsRes.json();
-      const posts = socialData.data.posts || [];
-
-      // Aylara göre grupla
-      const monthlyCounts = new Array(12).fill(0);
-      const monthlyInteractions = new Array(12).fill(0);
-
-      posts.forEach(post => {
-        if (post.post_date) {
-          const date = new Date(post.post_date);
-          const monthIdx = date.getMonth();
-          monthlyCounts[monthIdx]++;
-          monthlyInteractions[monthIdx] += (post.likes || 0) + (post.comments || 0) + (post.views || 0);
-        }
-      });
-
-      // Sadece veri olan ayları veya son 6 ayı gösterebiliriz. Şimdilik ilk 6 ay kalsın veya dinamik yapalım.
-      if (socialBarChartInstance) {
-        socialBarChartInstance.data.datasets[0].data = monthlyCounts.slice(0, 6);
-        // Tooltip için etkileşim verisini dataset'e ekleyelim (gizli olarak)
-        socialBarChartInstance.data.datasets[0].interactions = monthlyInteractions.slice(0, 6);
-        socialBarChartInstance.update();
-      }
-    }
-  } catch (error) {
-    console.error("Dashboard verileri yüklenirken hata:", error);
-    listEl.innerHTML = `<li style="text-align:center; padding: 20px 0; color:var(--danger); font-size:14px;">Veriler yüklenemedi.</li>`;
+  // 3. Son Aktiviteler
+  if (activities && activities.length > 0) {
+    listEl.innerHTML = activities.map(act => {
+      const timeAgo = getTimeAgo(new Date(act.created_at));
+      return `
+        <li class="activity-item">
+          <div class="activity-dot ${act.iconClass}"></div>
+          <div class="activity-content">
+            <p><strong>${act.title}:</strong> ${act.desc}</p>
+            <span class="activity-time">${timeAgo}</span>
+          </div>
+        </li>
+      `;
+    }).join("");
+  } else {
+    listEl.innerHTML = `<li style="text-align:center; padding: 20px 0; color:var(--text-muted); font-size:14px;">Henüz aktivite bulunmuyor.</li>`;
   }
 }
 
@@ -420,27 +347,49 @@ export function renderHome(user) {
   `;
 }
 
-export function initHome() {
-  fetchRecentActivities();
-  // Chart.js render işlemleri
-  renderCharts();
+export async function initHome() {
+  try {
+    const token = getToken();
+    const headers = token ? { "Authorization": `Bearer ${token}` } : {};
 
-  // Sosyal medya buton eventleri
-  initSocialModal();
-  // Tilt efektini uygula
-  initTiltEffect();
+    // 1. Tüm verileri PARALEL olarak çek
+    const [statsRes, committeeRes, activitiesRes, eventsRes, socialRes, countdownRes] = await Promise.all([
+      fetch(`${API_URL}/dashboard/stats`, { headers }),
+      fetch(`${API_URL}/dashboard/committees`, { headers }),
+      fetch(`${API_URL}/dashboard/activities`, { headers }),
+      fetch(`${API_URL}/events/?limit=100`, { headers }),
+      fetch(`${API_URL}/social-media/`, { headers }),
+      fetch(`${API_URL}/dashboard/countdown`, { headers })
+    ]);
 
-  // Rakam artış efekti (Sayaçlar)
-  initNumberCounters();
+    // 2. Yanıtları JSON olarak işle
+    const [stats, committee, activities, eventsData, socialPosts, countdown] = await Promise.all([
+      statsRes.ok ? statsRes.json() : { total_members: 0, meeting_count: 0, academy_count: 0, total_events: 0 },
+      committeeRes.ok ? committeeRes.json() : null,
+      activitiesRes.ok ? activitiesRes.json() : { activities: [] },
+      eventsRes.ok ? eventsRes.json() : { data: [] },
+      socialRes.ok ? socialRes.json() : { data: [] },
+      countdownRes.ok ? countdownRes.json() : { success: false }
+    ]);
 
-  // Geri sayım sayacını başlat
-  initCountdown();
+    // 3. AllEventsList'i global olarak güncelle (Modal sekmeleri için)
+    allEventsList = eventsData.data || [];
 
-  // Sayaç modal eventleri
-  initCounterModal();
+    // 4. Bileşenleri hazırlanan verilerle güncelle
+    updateDashboardDisplay(stats, activities.activities, committee);
+    renderCharts(socialPosts.data || []);
+    initCountdown(countdown);
 
-  // Slider'ı başlat
-  initHomeSlider();
+    // 5. Bağımsız görsel efektleri başlat
+    initSocialModal();
+    initTiltEffect();
+    initNumberCounters();
+    initCounterModal();
+    initHomeSlider();
+    
+  } catch (err) {
+    console.error("Ana sayfa yükleme hatası:", err);
+  }
 }
 
 /**
@@ -564,21 +513,16 @@ function initNumberCounters() {
 
 let countdownInterval;
 
-function initCountdown() {
+function initCountdown(countdownData) {
   let targetDate;
-  let targetName = "Yapay Zeka Zirvesi 2026";
+  let targetName = "Yakın Etkinlik Yok";
 
-  const savedDateTime = localStorage.getItem('countdown_event_datetime');
-  const savedName = localStorage.getItem('countdown_event_name');
-
-  if (savedDateTime && savedName) {
-    targetDate = new Date(savedDateTime);
-    targetName = savedName;
+  if (countdownData && countdownData.success && countdownData.event_date) {
+    targetDate = new Date(countdownData.event_date);
+    targetName = countdownData.title;
   } else {
-    // Demo amaçlı 5 gün ileri
+    // Veri gelmediyse demo veya bugünden başlat
     targetDate = new Date();
-    targetDate.setDate(targetDate.getDate() + 5);
-    targetDate.setHours(18, 0, 0, 0);
   }
 
   const nameEl = document.querySelector('.countdown-event-name');
@@ -590,8 +534,6 @@ function initCountdown() {
   const secondsEl = document.getElementById('cd-seconds');
 
   if (!daysEl) return;
-
-  // Varsa eski intervali temizle
   if (countdownInterval) clearInterval(countdownInterval);
 
   function update() {
@@ -735,22 +677,44 @@ function initTiltEffect() {
   });
 }
 
-function renderCharts() {
-  // Chart.defaults ile genel tema ayarları
-  const isLightMode = document.body.classList.contains('light-theme');
-  Chart.defaults.color = isLightMode ? '#64748b' : '#8a8d91'; // --text-dim
-  Chart.defaults.font.family = "'Figtree', sans-serif";
+function processSocialData(posts) {
+  // Aylara göre gruplandırma (Son 6 ay)
+  const months = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+  const counts = new Array(12).fill(0);
 
-  // Sütun Grafik (Sosyal Medya Paylaşımı) - Her zaman renderlanır
+  posts.forEach(post => {
+    const date = new Date(post.post_date);
+    counts[date.getMonth()] += 1;
+  });
+
+  const currentMonth = new Date().getMonth();
+  const labels = [];
+  const data = [];
+
+  for (let i = 5; i >= 0; i--) {
+    let mIdx = currentMonth - i;
+    if (mIdx < 0) mIdx += 12;
+    labels.push(months[mIdx]);
+    data.push(counts[mIdx]);
+  }
+
+  return { labels, data };
+}
+
+function renderCharts(socialPosts) {
+  const socialData = processSocialData(socialPosts);
+  const isLightMode = document.body.classList.contains('light-theme');
+  Chart.defaults.color = isLightMode ? '#64748b' : '#8a8d91';
+  Chart.defaults.font.family = "'Figtree', sans-serif";
   const ctxBar = document.getElementById('socialMediaBarChart');
   if (ctxBar) {
     socialBarChartInstance = new Chart(ctxBar, {
       type: 'bar',
       data: {
-        labels: ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran'],
+        labels: socialData.labels, // Backend'den gelen aylar
         datasets: [{
           label: 'Paylaşım Sayısı',
-          data: [0, 0, 0, 0, 0, 0],
+          data: socialData.data,   // Backend'den gelen sayılar
           backgroundColor: 'rgba(124, 58, 237, 0.8)',
           hoverBackgroundColor: '#7c3aed',
           borderRadius: 6,
@@ -873,63 +837,55 @@ function initSocialModal() {
   const btnClose = document.getElementById('btn-close-social-modal');
   const btnCancel = document.getElementById('btn-cancel-social');
   const btnSave = document.getElementById('btn-save-social');
-
   if (btnAdd) {
     btnAdd.addEventListener('click', () => {
       overlay.classList.add('open');
       document.getElementById('social-date').valueAsDate = new Date();
     });
   }
-
   if (btnClose) btnClose.addEventListener('click', () => overlay.classList.remove('open'));
   if (btnCancel) btnCancel.addEventListener('click', () => overlay.classList.remove('open'));
-
   if (btnSave) {
+    // async eklemeyi unutma
     btnSave.addEventListener('click', async () => {
-      const platform = document.getElementById('social-platform').value.toLowerCase();
+      const platform = document.getElementById('social-platform').value;
+      const date = document.getElementById('social-date').value;
       const count = document.getElementById('social-count').value;
-      const dateString = document.getElementById('social-date').value;
-
       if (!count || count <= 0) {
         showToast("Lütfen geçerli bir sayı giriniz.", "error");
         return;
       }
-
       try {
         const token = getToken();
-        // Backend likes, comments, views bekliyor. Şimdilik hepsine aynı değeri veya paylaştırarak girelim.
-        // Ama kullanıcıdan 'Paylaşım Sayısı / Etkileşim' olarak tek değer alıyoruz.
-        // Backend'deki create_social_post likes, comments, views istiyor.
-        // Query param olarak gönderiyoruz.
-
+        // Backend Query parametresi beklediği için URL'i oluşturuyoruz
+        // Count değerini backend'deki 'likes' alanına eşliyoruz (veya isteğine göre views da yapabilirsin)
         const params = new URLSearchParams({
-          platform: platform,
-          post_date: new Date(dateString).toISOString(),
-          likes: count,
+          platform: platform.toLowerCase(),
+          post_date: date,
+          likes: count, 
           comments: 0,
           views: 0
         });
-
-        const response = await fetch(`${API_URL}/social-media/?${params.toString()}`, {
+        const res = await fetch(`${API_URL}/social-media/?${params.toString()}`, {
           method: 'POST',
           headers: {
             "Authorization": `Bearer ${token}`
           }
         });
-
-        if (response.ok) {
-          showToast(`${platform} için veriler kaydedildi!`, "success");
+        if (res.ok) {
+          showToast(`${platform} için veriler başarıyla kaydedildi!`, "success");
           overlay.classList.remove('open');
           document.getElementById('social-count').value = '';
-          // Refresh data
-          fetchRecentActivities();
+          
+          // Veri eklendiği için grafiği ve metrikleri yeniliyoruz
+          initHome(); 
         } else {
-          const err = await response.json();
-          showToast(err.detail || "Bir hata oluştu.", "error");
+          const errData = await res.json();
+          showToast("Hata: " + (errData.detail || "Kaydedilemedi"), "error");
         }
-      } catch (error) {
-        console.error("Sosyal medya kaydedilirken hata:", error);
-        showToast("Bağlantı hatası.", "error");
+      } catch (err) {
+        console.error("Sosyal medya kaydetme hatası:", err);
+        showToast("Sunucuya bağlanılamadı.", "error");
       }
     });
   }
