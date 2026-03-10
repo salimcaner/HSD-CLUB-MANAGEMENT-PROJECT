@@ -1,255 +1,130 @@
 import { getUser, getToken } from "../store.js";
 
-const API_URL = "http://127.0.0.1:8000";
+const API_URL = "http://localhost:8000";
 
 // --- Global State for Charts ---
 let committeeData = {
   labels: ['Yönetim Kurulu', 'Proje Komitesi', 'Pazarlama ve Sosyal Medya Komitesi', 'Sponsorluk ve Organizasyon Komitesi', 'Akademi Komitesi', 'Mezun'],
-  counts: [0, 0, 0, 0, 0, 0] // Default values until data arrives
+  counts: [0, 0, 0, 0, 0, 0]
 };
 let pieChartInstance = null;
-let allEventsList = []; 
+let allEventsList = [];
 
-// --- Son Aktiviteleri Çekme ve Çizme ---
+// --- Dashboard Verilerini Çekme ve Çizme ---
 async function fetchRecentActivities() {
   const listEl = document.getElementById("home-activity-list");
+  const metricCards = document.querySelectorAll('.metric-info');
   if (!listEl) return;
 
   try {
-    // headers setup for events/reports etc.
     const token = getToken();
     const commonHeaders = token ? { "Authorization": `Bearer ${token}` } : {};
 
-    // 1. Etkinlikleri ve Üyeleri paralel çek (Raporlar hariç tutuldu)
-    const [eventsRes, usersRes] = await Promise.all([
-      fetch(`${API_URL}/events/?limit=100`, { headers: commonHeaders }),
-      fetch(`${API_URL}/users/`, {
-        headers: {
-          'Content-Type': 'application/json',
-          "Authorization": token ? `Bearer ${token}` : ""
-        },
-        credentials: 'include'
-      })
+    // 1. Tüm verileri paralel olarak başlat
+    const [statsRes, committeeRes, activitiesRes, eventsRes] = await Promise.all([
+      fetch(`${API_URL}/dashboard/stats`, { headers: commonHeaders }),
+      fetch(`${API_URL}/dashboard/committees`, { headers: commonHeaders }),
+      fetch(`${API_URL}/dashboard/activities`, { headers: commonHeaders }),
+      fetch(`${API_URL}/events/?limit=100`, { headers: commonHeaders })
     ]);
 
-    let activities = [];
-    const metricCards = document.querySelectorAll('.metric-info');
+    // 2. Verileri tek seferde çözümle (JSON body consumtion hatasını önlemek için)
+    let stats = { total_members: 0 };
+    if (statsRes.ok) stats = await statsRes.json();
 
-    // 2. Etkinlikleri normalize et
+    let events = [];
     if (eventsRes.ok) {
       const eventsData = await eventsRes.json();
-      const eventsList = eventsData.data || [];
-      allEventsList = [...eventsList]; 
-
-      // Toplantı sayısını hesaplama
-      const meetingCount = eventsList.filter(ev =>
-        ev.event_type && ev.event_type.toLowerCase() === "toplantı"
-      ).length;
-
-      metricCards.forEach(card => {
-        const p = card.querySelector('p');
-        if (p) {
-          const label = p.innerText.trim();
-          const h3 = card.querySelector('h3.counter-number');
-          if (!h3) return;
-
-          if (label.includes('Toplantı Sayısı')) {
-            h3.setAttribute('data-target', meetingCount);
-            h3.innerText = '0';
-            const updateCount = () => {
-              const target = +h3.getAttribute('data-target');
-              const count = +h3.innerText;
-              const speed = 200;
-              const inc = Math.max(1, target / speed);
-              if (count < target) {
-                h3.innerText = Math.ceil(count + inc);
-                setTimeout(updateCount, 10);
-              } else {
-                h3.innerText = target;
-              }
-            };
-            updateCount();
-          }
-          else if (label.includes('Topluluk Etkinliği')) {
-            // "Etkinlik sayfasına eklenen tüm etkinlikler" sayısı
-            h3.setAttribute('data-target', eventsList.length);
-            h3.innerText = '0';
-            const updateCount = () => {
-              const target = +h3.getAttribute('data-target');
-              const count = +h3.innerText;
-              const speed = 200;
-              const inc = Math.max(1, target / speed);
-              if (count < target) {
-                h3.innerText = Math.ceil(count + inc);
-                setTimeout(updateCount, 10);
-              } else {
-                h3.innerText = target;
-              }
-            };
-            updateCount();
-          }
-        }
-      });
-
-      // Sadece en yeni 15 etkinliği son aktiviteler listesi için işleme alalım
-      eventsList.slice(0, 15).forEach(ev => {
-        activities.push({
-          type: "event",
-          id: ev.id,
-          title: "Yeni Etkinlik Oluşturuldu",
-          desc: `"${ev.title}" adlı etkinlik sisteme eklendi.`,
-          dateStr: ev.created_at,
-          dateObj: new Date(ev.created_at),
-          iconClass: "success" // yeşil nokta
-        });
-      });
+      events = eventsData.data || [];
+      allEventsList = events; // Modal ve sayaçlar için kaydet
     }
 
-    // ----------------------------------------------------
-    // Üye sayısını hesaplama (Sadece 'Aktif' üyeleri sayıyoruz)
-    if (usersRes.ok) {
-      const usersData = await usersRes.json();
-      const usersList = Array.isArray(usersData) ? usersData : (usersData?.data || []);
+    // 3. Sayıları Hesapla (Gerçek 5 rakamına ulaşmak için)
+    const meetingCount = events.filter(ev => (ev.event_type || "").toLowerCase().includes("toplantı")).length;
+    const academyCount = events.filter(ev => {
+      const t = (ev.event_type || "").toLowerCase();
+      return t.includes("akademi") || t.includes("eğitim");
+    }).length;
+    const totalEventsCount = events.length;
 
-      const activeMembersCount = usersList.filter(m => {
-        if (m.is_active === false || (!m.class_ && !m.university_department)) {
-          return false;
-        }
-        return true;
-      }).length;
+    // 4. Metric Cards (Sayaçlar) Güncelle
+    metricCards.forEach(card => {
+      const p = card.querySelector('p');
+      const h3 = card.querySelector('h3.counter-number');
+      if (!p || !h3) return;
 
-      // DOM üzerinde "Aktif Üye" kartını güncelle
-      metricCards.forEach(card => {
-        const p = card.querySelector('p');
-        if (p && p.innerText.includes('Aktif Üye')) {
-          const h3 = card.querySelector('h3.counter-number');
-          if (h3) {
-            h3.setAttribute('data-target', activeMembersCount);
-            h3.innerText = '0';
-            const updateCount = () => {
-              const target = +h3.getAttribute('data-target');
-              const count = +h3.innerText;
-              const speed = 200;
-              const inc = Math.max(1, target / speed);
-              if (count < target) {
-                h3.innerText = Math.ceil(count + inc);
-                setTimeout(updateCount, 10);
-              } else {
-                h3.innerText = target;
-              }
-            };
-            updateCount();
-          }
-        }
-      });
+      const label = p.innerText.trim();
+      let targetValue = 0;
 
-      // Üyeleri de aktivite listesine ekle (Yeni katılan aktif üyeler)
-      const counts = {
-        'Yönetim Kurulu': 0,
-        'Proje Komitesi': 0,
-        'Pazarlama ve Sosyal Medya Komitesi': 0,
-        'Sponsorluk ve Organizasyon Komitesi': 0,
-        'Akademi Komitesi': 0,
-        'Mezun': 0
-      };
+      if (label.includes('Toplantı')) targetValue = meetingCount;
+      else if (label.includes('Akademi')) targetValue = academyCount;
+      else if (label.includes('Topluluk')) targetValue = totalEventsCount;
+      else if (label.includes('Üye')) {
+        targetValue = stats.total_members || 0;
+        console.log("Aktif Üye Değeri Basılıyor:", targetValue);
+      }
 
-      usersList.forEach(m => {
-        const isActive = !(m.is_active === false || (!m.class_ && !m.university_department));
+      h3.setAttribute('data-target', targetValue);
+      animateSingleCounter(h3, targetValue);
+    });
 
-        // Komite Dağılımı Hesaplama (Sadece Aktifler)
-        if (isActive) {
-          const role = (m.role || "").toLowerCase();
-          const dept = (m.department || "").toLowerCase();
+    // 5. Komite Dağılımı (Pie Chart)
+    if (committeeRes.ok) {
+      const commData = await committeeRes.json();
+      committeeData.labels = commData.labels;
+      committeeData.counts = commData.counts;
 
-          // Yönetim Kurulu: Özel roller
-          if (role === 'admin' || role === 'elci' || role === 'genel_sekreter' || role === 'departman_lideri' || role === 'insan_kaynaklari') {
-            counts['Yönetim Kurulu']++;
-          }
-          else if (role === 'mezun') {
-            counts['Mezun']++;
-          }
-          else if (dept.includes("proje")) {
-            counts['Proje Komitesi']++;
-          }
-          else if (dept.includes("eğitim") || dept.includes("akademi")) {
-            counts['Akademi Komitesi']++;
-          }
-          else if (dept.includes("organizasyon") || dept.includes("sponsorluk")) {
-            counts['Sponsorluk ve Organizasyon Komitesi']++;
-          }
-          else if (dept.includes("tasarım") || dept.includes("medya") || dept.includes("pr") || dept.includes("iletişim") || dept.includes("pazarlama")) {
-            counts['Pazarlama ve Sosyal Medya Komitesi']++;
-          } else {
-            // Hiçbiri değilse varsayılan bir yer veya Proje (en kalabalık genelde)
-            counts['Proje Komitesi']++;
-          }
-
-          activities.push({
-            type: "member",
-            id: m.id,
-            title: "Yeni Üye Katıldı",
-            desc: `${m.first_name || ""} ${m.last_name || ""} aramıza katıldı.`,
-            dateStr: m.created_at,
-            dateObj: new Date(m.created_at),
-            iconClass: "info" // mavi nokta
-          });
-        }
-      });
-
-      // Global veriyi güncelle
-      committeeData.counts = [
-        counts['Yönetim Kurulu'],
-        counts['Proje Komitesi'],
-        counts['Pazarlama ve Sosyal Medya Komitesi'],
-        counts['Sponsorluk ve Organizasyon Komitesi'],
-        counts['Akademi Komitesi'],
-        counts['Mezun']
-      ];
-
-      // Eğer grafik zaten çizilmişse update et
       if (pieChartInstance) {
+        pieChartInstance.data.labels = committeeData.labels;
         pieChartInstance.data.datasets[0].data = committeeData.counts;
         pieChartInstance.update();
       }
     }
 
-    /* Raporlar son aktivitelerde gösterilmesin
-    if (reportsRes && reportsRes.ok) {
-        ...
+    // 6. Son Aktiviteler
+    if (activitiesRes.ok) {
+      const actData = await activitiesRes.json();
+      const activities = actData.activities || [];
+
+      if (activities.length === 0) {
+        listEl.innerHTML = `<li style="text-align:center; padding: 20px 0; color:var(--text-muted); font-size:14px;">Henüz aktivite bulunmuyor.</li>`;
+      } else {
+        listEl.innerHTML = activities.map(act => {
+          const timeAgo = getTimeAgo(new Date(act.created_at));
+          return `
+            <li class="activity-item">
+              <div class="activity-dot ${act.iconClass}"></div>
+              <div class="activity-content">
+                <p><strong>${act.title}:</strong> ${act.desc}</p>
+                <span class="activity-time">${timeAgo}</span>
+              </div>
+            </li>
+          `;
+        }).join("");
+      }
     }
-    */
-
-    // 4. Tarihe göre sırala (en yeni en üstte)
-    activities.sort((a, b) => b.dateObj - a.dateObj);
-
-    // 5. Sadece ilk 7 aktiviteyi al
-    const topActivities = activities.slice(0, 7);
-
-    // 6. Ekrana Çiz
-    if (topActivities.length === 0) {
-      listEl.innerHTML = `<li style="text-align:center; padding: 20px 0; color:var(--text-muted); font-size:14px;">Henüz aktivite bulunmuyor.</li>`;
-      return;
-    }
-
-    listEl.innerHTML = topActivities.map(act => {
-      // Zamanı "2 saat önce, 5 gün önce" şeklinde hesapla
-      const timeAgo = getTimeAgo(act.dateObj);
-
-      return `
-        <li class="activity-item">
-          <div class="activity-dot ${act.iconClass}"></div>
-          <div class="activity-content">
-            <p><strong>${act.title}:</strong> ${act.desc}</p>
-            <span class="activity-time">${timeAgo}</span>
-          </div>
-        </li>
-      `;
-    }).join("");
-
   } catch (error) {
-    console.error("Son Aktiviteler yüklenirken hata:", error);
-    listEl.innerHTML = `<li style="text-align:center; padding: 20px 0; color:var(--danger); font-size:14px;">Aktiviteler yüklenemedi.</li>`;
+    console.error("Dashboard verileri yüklenirken hata:", error);
+    listEl.innerHTML = `<li style="text-align:center; padding: 20px 0; color:var(--danger); font-size:14px;">Veriler yüklenemedi.</li>`;
   }
+}
+
+// Münferit sayaç animasyonu
+function animateSingleCounter(element, target) {
+  element.innerText = '0';
+  const speed = 200;
+  const inc = Math.max(1, target / speed);
+
+  const updateCount = () => {
+    const count = +element.innerText;
+    if (count < target) {
+      element.innerText = Math.ceil(count + inc);
+      setTimeout(updateCount, 10);
+    } else {
+      element.innerText = target;
+    }
+  };
+  updateCount();
 }
 
 // Zaman Farkı Hesaplama (ör: '2 saat önce')
@@ -309,6 +184,36 @@ export function renderHome(user) {
         </div>
       </div>
 
+      <!-- Fotoğraf Slider -->
+      <div class="home-slider" id="home-slider">
+        <button class="slider-arrow slider-arrow-left" id="slider-prev" aria-label="Önceki">
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+        </button>
+        <div class="slider-track" id="slider-track">
+          <div class="slider-slide">
+            <img src="../../picture/01ef3c03-756f-40a2-97ec-deb10a750c3f.jpg" alt="Fotoğraf 1" class="slider-img" data-index="1"/>
+          </div>
+          <div class="slider-slide">
+            <img src="../../picture/WhatsApp_Image_2025-05-20_at_15_vYYXOVg.08.20.jpeg" alt="Fotoğraf 2" class="slider-img" data-index="2"/>
+          </div>
+          <div class="slider-slide">
+            <img src="../../picture/WhatsApp_Image_2025-05-20_at_12.36.42.jpeg" alt="Fotoğraf 3" class="slider-img" data-index="3"/>
+          </div>
+          <div class="slider-slide">
+            <img src="../../picture/mobil.png" alt="Fotoğraf 4" class="slider-img" data-index="4"/>
+          </div>
+        </div>
+        <button class="slider-arrow slider-arrow-right" id="slider-next" aria-label="Sonraki">
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+        </button>
+        <div class="slider-dots" id="slider-dots">
+          <span class="slider-dot active" data-slide="0"></span>
+          <span class="slider-dot" data-slide="1"></span>
+          <span class="slider-dot" data-slide="2"></span>
+          <span class="slider-dot" data-slide="3"></span>
+        </div>
+      </div>
+
       <!-- Özet Kartları -->
       <div class="metrics-grid" id="metrics-grid">
         <div class="metric-card">
@@ -316,7 +221,7 @@ export function renderHome(user) {
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
           </div>
           <div class="metric-info">
-            <h3 class="counter-number" data-target="42">0</h3>
+            <h3 class="counter-number" data-target="0">0</h3>
             <p>Toplantı Sayısı</p>
           </div>
         </div>
@@ -325,7 +230,7 @@ export function renderHome(user) {
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" /></svg>
           </div>
           <div class="metric-info">
-            <h3 class="counter-number" data-target="15">0</h3>
+            <h3 class="counter-number" data-target="0">0</h3>
             <p>Akademi Etkinliği</p>
           </div>
         </div>
@@ -504,6 +409,86 @@ export function initHome() {
 
   // Sayaç modal eventleri
   initCounterModal();
+
+  // Slider'ı başlat
+  initHomeSlider();
+}
+
+/**
+ * Ana sayfa görsel slider mantığı
+ */
+function initHomeSlider() {
+  const track = document.getElementById('slider-track');
+  const slides = document.querySelectorAll('.slider-slide');
+  const prevBtn = document.getElementById('slider-prev');
+  const nextBtn = document.getElementById('slider-next');
+  const dots = document.querySelectorAll('.slider-dot');
+
+  if (!track || slides.length === 0) return;
+
+  let currentIndex = 0;
+  let autoPlayInterval;
+
+  const updateSlider = (index) => {
+    // Sınır kontrolü
+    if (index >= slides.length) index = 0;
+    if (index < 0) index = slides.length - 1;
+
+    currentIndex = index;
+
+    // Kaydırma işlemi
+    track.style.transform = `translateX(-${currentIndex * 100}%)`;
+
+    // Dot güncelleme
+    dots.forEach((dot, idx) => {
+      dot.classList.toggle('active', idx === currentIndex);
+    });
+  };
+
+  const nextSlide = () => updateSlider(currentIndex + 1);
+  const prevSlide = () => updateSlider(currentIndex - 1);
+
+  // Otomatik oynatma başlat
+  const startAutoPlay = () => {
+    stopAutoPlay(); // Varsa temizle
+    autoPlayInterval = setInterval(nextSlide, 2000); // 5 saniyede bir
+  };
+
+  const stopAutoPlay = () => {
+    if (autoPlayInterval) clearInterval(autoPlayInterval);
+  };
+
+  // Event listenerlar
+  if (nextBtn) {
+    nextBtn.addEventListener('click', () => {
+      nextSlide();
+      startAutoPlay(); // Manuel müdahalede zamanlayıcıyı sıfırla
+    });
+  }
+
+  if (prevBtn) {
+    prevBtn.addEventListener('click', () => {
+      prevSlide();
+      startAutoPlay();
+    });
+  }
+
+  dots.forEach((dot, idx) => {
+    dot.addEventListener('click', () => {
+      updateSlider(idx);
+      startAutoPlay();
+    });
+  });
+
+  // Mouse gelince durdur, gidince başlat
+  const sliderContainer = document.getElementById('home-slider');
+  if (sliderContainer) {
+    sliderContainer.addEventListener('mouseenter', stopAutoPlay);
+    sliderContainer.addEventListener('mouseleave', startAutoPlay);
+  }
+
+  // Başlangıçta çalıştır
+  startAutoPlay();
 }
 
 function initNumberCounters() {
@@ -618,14 +603,14 @@ function initCounterModal() {
   if (btnEnter) {
     btnEnter.addEventListener('click', () => {
       overlay.classList.add('open');
-      
+
       // Populate select with upcoming events
       const select = document.getElementById('counter-event-select');
       if (select) {
         select.innerHTML = '<option value="">-- Bir Etkinlik Seçin (Opsiyonel) --</option>';
         const now = new Date();
         const upcoming = allEventsList.filter(ev => new Date(ev.event_date) > now);
-        
+
         upcoming.forEach(ev => {
           const opt = document.createElement('option');
           opt.value = ev.id;
@@ -659,12 +644,12 @@ function initCounterModal() {
         const event = allEventsList.find(ev => ev.id == selectedId);
         if (event) {
           document.getElementById('counter-event-name').value = event.title;
-          
+
           const evDate = new Date(event.event_date);
           const tzOffset = evDate.getTimezoneOffset() * 60000;
           const localDate = (new Date(evDate - tzOffset)).toISOString().slice(0, 10);
           document.getElementById('counter-event-date').value = localDate;
-          
+
           const hours = String(evDate.getHours()).padStart(2, '0');
           const minutes = String(evDate.getMinutes()).padStart(2, '0');
           document.getElementById('counter-event-time').value = `${hours}:${minutes}`;
