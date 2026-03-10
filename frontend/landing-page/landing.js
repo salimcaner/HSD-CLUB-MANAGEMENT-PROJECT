@@ -2,6 +2,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initHeroGrid();
     initManagementCarousel();
     initInteractiveFeatures();
+    initTeamCarousel();
 });
 
 // ==========================================
@@ -13,7 +14,7 @@ function initHeroGrid() {
     const checkboxes = document.querySelectorAll('.feature-checkbox');
     const enlightenmentOverlay = document.getElementById('enlightenmentOverlay');
     const enlightenmentText = document.getElementById('enlightenmentText');
-    
+
     let checkedCount = 0;
     const totalItems = featureItems.length;
 
@@ -22,7 +23,7 @@ function initHeroGrid() {
         item.addEventListener('mouseenter', () => {
             // Skip if checkbox is being clicked
             if (item.dataset.checkboxClick) return;
-            
+
             featureItems.forEach(f => f.classList.remove('active'));
             displayMockups.forEach(m => m.classList.remove('active'));
 
@@ -40,16 +41,16 @@ function initHeroGrid() {
         checkbox.addEventListener('click', (e) => {
             e.stopPropagation();
             const item = featureItems[index];
-            
+
             // Prevent mouseenter during checkbox click
             item.dataset.checkboxClick = 'true';
             setTimeout(() => delete item.dataset.checkboxClick, 100);
-            
+
             // Toggle checked state
             if (!item.classList.contains('checked')) {
                 item.classList.add('checked');
                 checkedCount++;
-                
+
                 // Her checkbox işaretlendiğinde enlightenment efektini güncelle
                 updateEnlightenment();
             } else {
@@ -59,22 +60,22 @@ function initHeroGrid() {
             }
         });
     });
-    
+
     function updateEnlightenment() {
         if (checkedCount > 0) {
             // Karanlık overlay'i göster
             enlightenmentOverlay.classList.add('dark');
-            
+
             // Yazıyı yavaşça görünür yap
             setTimeout(() => {
                 enlightenmentText.classList.add('visible');
             }, 500);
-            
+
             // Aydınlanma seviyesini checkedCount'a göre ayarla
             const enlightenmentLevel = checkedCount / totalItems;
             const darknessLevel = 0.9 - (enlightenmentLevel * 0.9);
             enlightenmentOverlay.style.background = `rgba(0, 0, 0, ${darknessLevel})`;
-            
+
             // Tam aydınlanma - tüm checkboxlar işaretliyse
             if (checkedCount === totalItems) {
                 setTimeout(() => {
@@ -114,18 +115,18 @@ function initManagementCarousel() {
     const grid = document.getElementById('managementGrid');
     const leftBtn = document.getElementById('carouselLeft');
     const rightBtn = document.getElementById('carouselRight');
-    
+
     if (!grid || !leftBtn || !rightBtn) return;
-    
+
     let currentPosition = 0;
     const cardWidth = 350; // Approximate card width + gap
     const scrollAmount = cardWidth;
-    
+
     leftBtn.addEventListener('click', () => {
         currentPosition = Math.max(currentPosition - scrollAmount, 0);
         grid.style.transform = `translateX(-${currentPosition}px)`;
     });
-    
+
     rightBtn.addEventListener('click', () => {
         const maxScroll = grid.scrollWidth - grid.parentElement.offsetWidth;
         currentPosition = Math.min(currentPosition + scrollAmount, maxScroll);
@@ -139,20 +140,20 @@ function initManagementCarousel() {
 function initInteractiveFeatures() {
     const tabs = document.querySelectorAll('.feature-tab');
     const panels = document.querySelectorAll('.demo-panel');
-    
+
     let currentPanel = null;
     let animationActive = false;
-    
+
     tabs.forEach(tab => {
         tab.addEventListener('click', () => {
             if (animationActive) return;
-            
+
             const targetTab = tab.getAttribute('data-tab');
-            
+
             // Update tabs
             tabs.forEach(t => t.classList.remove('active'));
             tab.classList.add('active');
-            
+
             // Update panels
             panels.forEach(p => p.classList.remove('active'));
             const targetPanel = document.querySelector(`.demo-panel[data-panel="${targetTab}"]`);
@@ -163,7 +164,7 @@ function initInteractiveFeatures() {
             }
         });
     });
-    
+
     // Initialize first panel
     if (tabs.length > 0) {
         panels[0].classList.add('active');
@@ -176,7 +177,7 @@ function initInteractiveFeatures() {
 // PANEL ANIMATIONS
 // ==========================================
 function initPanelAnimation(panelName) {
-    switch(panelName) {
+    switch (panelName) {
         case 'uyeyonetimi':
             initNetworkAnimation();
             break;
@@ -202,22 +203,22 @@ function initPanelAnimation(panelName) {
 function initNetworkAnimation() {
     const canvas = document.getElementById('dotsCanvas');
     const btn = document.getElementById('activateNetwork');
-    
+
     if (!canvas || !btn) return;
-    
+
     const ctx = canvas.getContext('2d');
     canvas.width = 600;
     canvas.height = 350;
-    
+
     let dots = [];
     let activated = false;
-    
+
     btn.addEventListener('click', () => {
         if (activated) return;
         activated = true;
         btn.style.opacity = '0';
         btn.style.pointerEvents = 'none';
-        
+
         // Create dots
         for (let i = 0; i < 20; i++) {
             setTimeout(() => {
@@ -230,37 +231,37 @@ function initNetworkAnimation() {
                 });
             }, i * 100);
         }
-        
+
         animate();
     });
-    
+
     function animate() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
+
         // Update and draw dots
         dots.forEach((dot, i) => {
             if (dot.radius < dot.targetRadius) {
                 dot.radius += 0.2;
                 dot.opacity = Math.min(1, dot.opacity + 0.05);
             }
-            
+
             // Draw glow
             const gradient = ctx.createRadialGradient(dot.x, dot.y, 0, dot.x, dot.y, dot.radius * 3);
             gradient.addColorStop(0, `rgba(207, 10, 44, ${dot.opacity * 0.6})`);
             gradient.addColorStop(1, 'rgba(207, 10, 44, 0)');
-            
+
             ctx.fillStyle = gradient;
             ctx.beginPath();
             ctx.arc(dot.x, dot.y, dot.radius * 3, 0, Math.PI * 2);
             ctx.fill();
-            
+
             // Draw dot
             ctx.fillStyle = `rgba(207, 10, 44, ${dot.opacity})`;
             ctx.beginPath();
             ctx.arc(dot.x, dot.y, dot.radius, 0, Math.PI * 2);
             ctx.fill();
         });
-        
+
         // Draw connections
         for (let i = 0; i < dots.length; i++) {
             for (let j = i + 1; j < dots.length; j++) {
@@ -276,7 +277,7 @@ function initNetworkAnimation() {
                 }
             }
         }
-        
+
         if (activated) {
             requestAnimationFrame(animate);
         }
@@ -289,23 +290,23 @@ function initCalendar() {
     const currentMonthEl = document.getElementById('currentMonth');
     const prevBtn = document.getElementById('prevMonth');
     const nextBtn = document.getElementById('nextMonth');
-    
+
     if (!calendarGrid || !currentMonthEl) return;
-    
+
     const monthNames = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
-                        'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+        'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
     const dayNames = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
-    
+
     let currentDate = new Date(2026, 1, 1); // February 2026
-    
+
     function renderCalendar() {
         calendarGrid.innerHTML = '';
-        
+
         const year = currentDate.getFullYear();
         const month = currentDate.getMonth();
-        
+
         currentMonthEl.textContent = `${monthNames[month]} ${year}`;
-        
+
         // Add day headers
         dayNames.forEach(day => {
             const dayHeader = document.createElement('div');
@@ -313,58 +314,58 @@ function initCalendar() {
             dayHeader.textContent = day;
             calendarGrid.appendChild(dayHeader);
         });
-        
+
         // Get first day of month (0 = Sunday, need to convert to Monday = 0)
         const firstDay = new Date(year, month, 1).getDay();
         const daysInMonth = new Date(year, month + 1, 0).getDate();
-        
+
         // Adjust for Monday start (convert Sunday=0 to Sunday=6)
         const startDay = firstDay === 0 ? 6 : firstDay - 1;
-        
+
         // Add empty cells for days before month starts
         for (let i = 0; i < startDay; i++) {
             const emptyDay = document.createElement('div');
             emptyDay.className = 'calendar-day';
             calendarGrid.appendChild(emptyDay);
         }
-        
+
         // Add days of the month
         const today = new Date();
         const eventDays = [13, 20, 25]; // Days with events
-        
+
         for (let day = 1; day <= daysInMonth; day++) {
             const dayEl = document.createElement('div');
             dayEl.className = 'calendar-day date';
             dayEl.textContent = day;
-            
+
             // Highlight today
             if (day === today.getDate() && month === today.getMonth() && year === today.getFullYear()) {
                 dayEl.classList.add('today');
             }
-            
+
             // Mark event days
             if (eventDays.includes(day)) {
                 dayEl.classList.add('event');
             }
-            
+
             calendarGrid.appendChild(dayEl);
         }
     }
-    
+
     if (prevBtn) {
         prevBtn.addEventListener('click', () => {
             currentDate.setMonth(currentDate.getMonth() - 1);
             renderCalendar();
         });
     }
-    
+
     if (nextBtn) {
         nextBtn.addEventListener('click', () => {
             currentDate.setMonth(currentDate.getMonth() + 1);
             renderCalendar();
         });
     }
-    
+
     renderCalendar();
 }
 
@@ -372,54 +373,54 @@ function initCalendar() {
 function initFinanceChart() {
     const canvas = document.getElementById('chartCanvas');
     if (!canvas) return;
-    
+
     const ctx = canvas.getContext('2d');
     canvas.width = 600;
     canvas.height = 350;
-    
+
     const data = [0, 0, 0, 0, 0];
     const target = [65, 82, 54, 90, 72];
     const labels = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs'];
-    
+
     let frame = 0;
-    
+
     function animate() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
+
         // Update data
         for (let i = 0; i < data.length; i++) {
             if (data[i] < target[i]) {
                 data[i] += 2;
             }
         }
-        
+
         // Draw bars
         const barWidth = 80;
         const spacing = 40;
         const maxHeight = 250;
-        
+
         data.forEach((value, i) => {
             const x = 50 + i * (barWidth + spacing);
             const height = (value / 100) * maxHeight;
             const y = canvas.height - height - 40;
-            
+
             // Bar
             ctx.fillStyle = '#CF0A2C';
             ctx.fillRect(x, y, barWidth, height);
-            
+
             // Label
             ctx.fillStyle = 'white';
             ctx.font = '14px Figtree';
             ctx.textAlign = 'center';
             ctx.fillText(labels[i], x + barWidth / 2, canvas.height - 15);
         });
-        
+
         frame++;
         if (frame < 60) {
             requestAnimationFrame(animate);
         }
     }
-    
+
     animate();
 }
 
@@ -427,11 +428,11 @@ function initFinanceChart() {
 function initDataStream() {
     const stream = document.getElementById('dataStream');
     if (!stream) return;
-    
+
     stream.innerHTML = '';
-    
+
     const data = ['+24 Katılım', '+3 Yeni Proje', '%82 Tamamlanma'];
-    
+
     data.forEach((text, i) => {
         setTimeout(() => {
             const item = document.createElement('div');
@@ -446,7 +447,7 @@ function initDataStream() {
 // 5️⃣ COMMITTEE ORGANIZE
 function initCommitteeOrganize() {
     const cards = document.querySelectorAll('.committee-card');
-    
+
     // Scatter
     cards.forEach((card, i) => {
         const angle = (i / cards.length) * Math.PI * 2;
@@ -456,7 +457,7 @@ function initCommitteeOrganize() {
         card.style.setProperty('--rotation', `${Math.random() * 30 - 15}deg`);
         card.classList.add('scattered');
     });
-    
+
     // Organize after delay
     setTimeout(() => {
         cards.forEach(card => {
@@ -471,16 +472,16 @@ function initProjectProgress() {
     const fill = document.getElementById('projectProgress');
     const text = document.getElementById('progressText');
     const tasks = document.querySelectorAll('.task-item');
-    
+
     if (!fill || !text) return;
-    
+
     let progress = 0;
-    
+
     const interval = setInterval(() => {
         progress += 2;
         fill.style.width = progress + '%';
         text.textContent = progress + '%';
-        
+
         if (progress >= 33 && !tasks[0].classList.contains('checked')) {
             tasks[0].classList.add('checked');
         }
@@ -509,3 +510,26 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => {
         }
     });
 });
+
+// ==========================================
+// TEAM CAROUSEL - Seamless Loop
+// ==========================================
+function initTeamCarousel() {
+    const track = document.getElementById('teamTrack');
+    if (!track) return;
+
+    // Clone elements twice for seamless infinite scroll on larger screens
+    const cards = Array.from(track.children);
+
+    // First set of clones
+    cards.forEach(card => {
+        const clone = card.cloneNode(true);
+        track.appendChild(clone);
+    });
+
+    // Second set of clones (ensures no gaps on ultra-wide screens)
+    cards.forEach(card => {
+        const clone = card.cloneNode(true);
+        track.appendChild(clone);
+    });
+}

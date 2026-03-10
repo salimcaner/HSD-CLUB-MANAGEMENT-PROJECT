@@ -5,20 +5,47 @@
 }
 
 :root {
-    --primary: #CF0A2C;
-    --primary-dark: #a00823;
-    --text-dark: #232527;
-    --text-gray: #64748b;
-    --bg-light: #f8fafc;
-    --border: #e2e8f0;
+    /* Base Theme (Light) */
+    --bg-darkest: #f8fafc;
+    /* açık gri zemin */
+    --bg-dark: #ffffff;
+    /* sidebar arka planı beyaz */
+    --bg-mid: #f1f5f9;
+    /* kartlar, hover grimsi */
+    --bg-light: #e2e8f0;
+    /* hafif yüzeyler */
+    --bg-topbar: #ffffff;
+    /* topbar beyaz */
+
+    --border: rgba(0, 0, 0, 0.08);
+    --border-hover: rgba(0, 0, 0, 0.15);
+
+    --text-primary: #0f172a;
+    /* koyu gri-siyah metin */
+    --text-secondary: #475569;
+    /* ikincil metin */
+    --text-muted: #64748b;
+    /* soluk metin */
+
+    --accent: #3b82f6;
+    /* vurgu (mavi) */
+    --accent-glow: rgba(59, 130, 246, 0.15);
+    --accent-active: #2563eb;
+    /* aktif durum */
+
+    /* Legacy Mappings */
+    --primary: var(--accent);
+    --primary-dark: var(--accent-active);
+    --text-dark: var(--text-primary);
+    --text-gray: var(--text-secondary);
 }
 
 body {
     font-family: 'Figtree', -apple-system, sans-serif;
-    color: var(--text-dark);
+    color: var(--text-primary);
     line-height: 1.6;
     overflow-x: hidden;
-    background: white;
+    background: var(--bg-dark);
 }
 
 html {
@@ -51,7 +78,7 @@ html {
 .logo-text {
     font-size: 1.5rem;
     font-weight: 900;
-    background: linear-gradient(135deg, #CF0A2C, #ff3355);
+    background: linear-gradient(135deg, var(--accent), #60a5fa);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -148,7 +175,7 @@ html {
 .hero-cta:hover {
     background: var(--primary-dark);
     transform: translateY(-2px);
-    box-shadow: 0 10px 30px rgba(207, 10, 44, 0.3);
+    box-shadow: 0 10px 30px var(--accent-glow);
 }
 
 /* Hero Right - Grid sistemi tablo içine alındı */
@@ -180,7 +207,7 @@ html {
 }
 
 .feature-grid {
-  
+
     display: grid;
     grid-template-columns: repeat(3, 60px);
     gap: 0.8rem;
@@ -207,9 +234,9 @@ html {
 
 .feature-item:hover,
 .feature-item.active {
-    background: #fef2f2;
+    background: var(--accent-glow);
     border-color: var(--primary);
-    box-shadow: 0 4px 12px rgba(207, 10, 44, 0.15);
+    box-shadow: 0 4px 12px var(--accent-glow);
     transform: scale(1.05);
 }
 
@@ -375,7 +402,7 @@ html {
     left: 0;
     width: 100%;
     height: 100%;
-    background: linear-gradient(to bottom, rgba(0,0,0,0.3), rgba(0,0,0,0.7));
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.7));
     padding: 2rem;
     display: flex;
     flex-direction: column;
@@ -638,7 +665,7 @@ html {
 }
 
 .calendar-day.event {
-    background: rgba(207, 10, 44, 0.3);
+    background: var(--accent-glow);
     border: 2px solid var(--primary);
 }
 
@@ -696,9 +723,12 @@ html {
 }
 
 @keyframes pulse {
-    0%, 100% {
+
+    0%,
+    100% {
         opacity: 1;
     }
+
     50% {
         opacity: 0.5;
     }
@@ -890,6 +920,103 @@ html {
     line-height: 1.8;
 }
 
+/* ============================================
+   TEAM SECTION (Now inside About)
+   ============================================ */
+.team-sub-section {
+    width: 100%;
+    overflow: hidden;
+}
+
+.team-carousel-wrapper {
+    width: 100%;
+    position: relative;
+    padding: 1rem 0;
+    mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+}
+
+.team-track {
+    display: flex;
+    gap: 2rem;
+    animation: scrollTeam 20s linear infinite;
+    width: max-content;
+}
+
+.team-track:hover {
+    animation-play-state: paused;
+}
+
+.team-card {
+    width: 220px;
+    background: var(--bg-dark);
+    border-radius: 16px;
+    overflow: hidden;
+    text-decoration: none;
+    border: 1px solid var(--border);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+}
+
+.team-card:hover {
+    transform: translateY(-10px);
+    border-color: var(--accent);
+    box-shadow: 0 20px 40px var(--accent-glow);
+}
+
+.team-image {
+    width: 100%;
+    aspect-ratio: 1;
+    background: var(--bg-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.team-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.image-placeholder {
+    color: var(--text-muted);
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.team-info {
+    padding: 1rem;
+    text-align: center;
+}
+
+.team-info h4 {
+    color: var(--text-primary);
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 0.2rem;
+}
+
+.team-info span {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+@keyframes scrollTeam {
+    0% {
+        transform: translateX(0);
+    }
+
+    100% {
+        /* Total width of 5 cards + 5 gaps (since cards are now 220px) */
+        transform: translateX(calc(-220px * 5 - 2rem * 5));
+    }
+}
+
 .footer {
     background: var(--text-dark);
     color: white;
@@ -947,7 +1074,7 @@ html {
         height: 400px;
         right: -30px;
     }
-    
+
     .mgmt-card {
         min-width: calc(33.333% - 1rem);
     }
@@ -958,13 +1085,13 @@ html {
         grid-template-columns: 1fr;
         gap: 3rem;
     }
-    
+
     .hero-left {
         align-items: flex-start;
         text-align: left;
         padding-left: 0;
     }
-    
+
     .mockup-display {
         position: relative;
         width: 100%;
@@ -973,11 +1100,11 @@ html {
         top: 0;
         margin-top: 2rem;
     }
-    
+
     .grid-container-box {
         max-width: 100%;
     }
-    
+
     .mgmt-card {
         min-width: calc(50% - 0.75rem);
     }
@@ -987,7 +1114,7 @@ html {
     .feature-grid {
         grid-template-columns: repeat(3, 1fr);
     }
-    
+
     .network-canvas,
     .finance-chart,
     .committee-organize,
@@ -997,7 +1124,7 @@ html {
         max-width: 100%;
         min-width: auto;
     }
-    
+
     .events-showcase-new {
         flex-direction: column;
     }
@@ -1007,23 +1134,23 @@ html {
     .hero-title {
         font-size: 2rem;
     }
-    
+
     .hero-left {
         padding: 3rem 0 2rem 0;
     }
-    
+
     .feature-grid {
         grid-template-columns: repeat(2, 1fr);
     }
-    
+
     .mgmt-card {
         min-width: 100%;
     }
-    
+
     .features-tabs {
         flex-direction: column;
     }
-    
+
     .carousel-wrapper {
         padding: 0 2.5rem;
     }
