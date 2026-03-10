@@ -38,7 +38,7 @@ async def update_self(
 # -------------------------
 @router.get("/", response_model=List[User])
 async def list_users(
-    current_user = Depends(security.require_yonetim)
+    current_user = Depends(security.require_lider_or_above)
 ):
     """
     Tüm kullanıcıları listele (Yönetim yetkisi gerekli)
@@ -54,7 +54,7 @@ async def list_users(
 async def filter_users(
     role: Optional[str] = None,
     department: Optional[str] = None,
-    current_user = Depends(security.require_yonetim)
+    current_user = Depends(security.require_lider_or_above)
 ):
     """
     Rol veya departmana göre filtrelenmiş kullanıcı listesi
@@ -69,7 +69,7 @@ async def filter_users(
 # -------------------------
 @router.get("/stats")
 async def get_stats(
-    current_user = Depends(security.require_yonetim)
+    current_user = Depends(security.require_lider_or_above)
 ):
     """
     Sistem genelindeki kullanıcı istatistikleri
@@ -116,7 +116,7 @@ async def update_user_endpoint(
     # 1. YETKİ KONTROLÜ
     # Kullanıcının rolünü al
     role_str = current_user.role if isinstance(current_user.role, str) else current_user.role.value
-    admin_roles = [security.UserRole.ELCI.value, security.UserRole.GENEL_SEKRETER.value, security.UserRole.ADMIN.value, security.UserRole.ELCI_YARDIMCISI.value]
+    admin_roles = [security.UserRole.ELCI.value, security.UserRole.GENEL_SEKRETER.value, security.UserRole.ADMIN.value, security.UserRole.ELCI_YARDIMCISI.value, security.UserRole.KOMITE_LIDERI.value]
     
     is_owner = (str(current_user.id) == str(user_id))
     is_admin = (role_str in admin_roles)

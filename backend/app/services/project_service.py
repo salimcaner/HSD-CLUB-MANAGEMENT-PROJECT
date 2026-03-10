@@ -2,7 +2,7 @@ from fastapi import HTTPException, status
 from typing import List
 from app.core.supabase_client import get_supabase
 from app.schemas.project import ProjectCreate, ProjectTaskCreate
-from app.schemas.user import User
+from app.schemas.user import User, UserRole
 
 supabase = get_supabase()
 
@@ -112,8 +112,38 @@ def delete_task(task_id: str):
     response = supabase.table("project_tasks").delete().eq("id", task_id).execute()
     return response.data
 
-def update_task_status(task_id: str, status: str):
+def update_task_status(task_id: str, status: str, current_user):
+    # 1. Önce görevin veritabanındaki halini çekelim
+    task_res = supabase.table("project_tasks").select("*").eq("id", task_id).execute()
+    
+    if not task_res.data:
+        raise HTTPException(status_code=404, detail="Görev bulunamadı")
+        
+    task = task_res.data[0]
+    
+    # 2. Yetki Kontrolü
+    user_id_str = str(current_user.id)
+    user_role = current_user.role if isinstance(current_user.role, str) else current_user.role.value
+    
+    # Yönetici Rolleri
+    admin_roles = [
+        UserRole.ELCI.value, 
+        UserRole.ELCI_YARDIMCISI.value, 
+        UserRole.GENEL_SEKRETER.value, 
+        UserRole.ADMIN.value
+    ]
+    
+    is_assignee = (task.get("assignee_id") == user_id_str) # Görev bana mı atanmış?
+    is_admin = (user_role in admin_roles)                # Yönetici miyim?
+    if not (is_assignee or is_admin):
+        raise HTTPException(
+            status_code=403, 
+            detail="Bu görevin durumunu güncelleme yetkiniz yok. Sadece size atanmış görevleri değiştirebilirsiniz."
+        )
+    # 3. Güncelleme İşlemi
     response = supabase.table("project_tasks").update({"status": status}).eq("id", task_id).execute()
+    
     if not response.data:
         raise HTTPException(status_code=500, detail="Görev güncellenemedi")
+        
     return response.data[0]

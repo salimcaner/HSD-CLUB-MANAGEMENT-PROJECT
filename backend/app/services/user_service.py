@@ -179,7 +179,10 @@ def get_user_stats():
             "total": 0,
             "admin": 0,
             "elci": 0,
-            "lider": 0,
+            "komite_lideri": 0,
+            "insan_kaynaklari": 0,
+            "elci_yardimcisi": 0,
+            "genel_sekreter": 0,
             "uye": 0,
             "mezun": 0
         }
@@ -188,7 +191,10 @@ def get_user_stats():
         "total": len(response.data),
         "admin": 0,
         "elci": 0,
-        "lider": 0,
+        "komite_lideri": 0,
+        "insan_kaynaklari": 0,
+        "elci_yardimcisi": 0,
+        "genel_sekreter": 0,
         "uye": 0,
         "mezun": 0
     }

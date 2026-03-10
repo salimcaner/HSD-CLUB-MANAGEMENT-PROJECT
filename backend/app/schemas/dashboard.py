@@ -1,5 +1,7 @@
 from datetime import datetime
 from pydantic import BaseModel
+from typing import Optional
+
 class DashboardStatsResponse(BaseModel):
     meeting_count: int      
     academy_count: int      
@@ -13,11 +15,17 @@ class CommitteeStatsResponse(BaseModel):
 
 
 class ActivityItem(BaseModel):
-    id: str                 # Aktivitenin ait olduğu id (Event id veya User id)
-    type: str               # "event" veya "member"
-    title: str              # Örn: "Yeni Etkinlik Oluşturuldu" veya "Yeni Üye Katıldı"
-    desc: str               # Örn: "Yapay Zeka Zirvesi adlı etkinlik eklendi."
-    created_at: datetime    # Sıralama yapmak için tarih
-    iconClass: str          # Frontend'de css için "success" (yeşil) veya "info" (mavi)
+    id: str                
+    type: str              
+    title: str              
+    desc: str               
+    created_at: datetime    
+    iconClass: str          
 class DashboardActivitiesResponse(BaseModel):
     activities: list[ActivityItem]
+
+class CountdownResponse(BaseModel):
+    success: bool
+    title: Optional[str] = None
+    event_date: Optional[str] = None
+    message: Optional[str] = None
