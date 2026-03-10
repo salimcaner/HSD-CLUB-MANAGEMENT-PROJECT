@@ -736,10 +736,10 @@ function hideModal() {
   document.getElementById("evCommittee").value = "";
   if (document.getElementById("evType")) document.getElementById("evType").value = "";
   document.getElementById("evParticipantCount").value = "";
-  
+
   // Yeni etkinlik eklerken katılımcı sayısı grubunu gizle
   const participantGroup = document.getElementById("evParticipantGroup");
-  if(participantGroup) participantGroup.style.display = "none";
+  if (participantGroup) participantGroup.style.display = "none";
 
   document.getElementById("evImage").value = "";
   selectedImageFile = null;

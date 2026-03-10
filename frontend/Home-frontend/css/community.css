@@ -266,3 +266,56 @@
         min-width: 160px;
     }
 }
+/* ── LIGHT THEME OVERRIDES ── */
+body.light-theme .community-page {
+    background: #f1f5f9;
+    border-color: rgba(0, 0, 0, 0.06);
+    color: #0f172a;
+}
+body.light-theme .comm-header {
+    border-color: rgba(0, 0, 0, 0.08);
+}
+body.light-theme .comm-subtitle,
+body.light-theme .comm-stats,
+body.light-theme .comm-member-email,
+body.light-theme .comm-meta-item,
+body.light-theme .comm-loading,
+body.light-theme .comm-empty,
+body.light-theme .comm-error {
+    color: #64748b;
+}
+body.light-theme .comm-search-wrap {
+    background: #f8fafc;
+    border-color: rgba(0, 0, 0, 0.08);
+}
+body.light-theme .comm-search-wrap input {
+    color: #0f172a;
+}
+body.light-theme .comm-search-wrap input::placeholder {
+    color: #94a3b8;
+}
+body.light-theme .comm-role-count {
+    background: rgba(0, 0, 0, 0.05);
+    color: #475569;
+}
+body.light-theme .comm-member-card {
+    background: #ffffff;
+    border-color: rgba(0, 0, 0, 0.1);
+}
+body.light-theme .comm-member-card:hover {
+    border-color: #7c3aed;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+}
+body.light-theme .comm-member-name {
+    color: #0f172a;
+}
+body.light-theme .comm-member-meta {
+    border-color: rgba(0, 0, 0, 0.08);
+}
+body.light-theme .comm-role-line {
+    opacity: 0.1;
+    background: #000;
+}
+body.light-theme .comm-meta-item svg {
+    color: #64748b;
+}

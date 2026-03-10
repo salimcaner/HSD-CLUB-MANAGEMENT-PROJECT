@@ -139,3 +139,7 @@
     flex-direction: column;
   }
 }
+/* ── LIGHT THEME OVERRIDES ── */
+body.light-theme .settings-card-header {
+  background: rgba(0, 0, 0, 0.02);
+}

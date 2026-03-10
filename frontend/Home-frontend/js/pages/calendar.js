@@ -79,6 +79,23 @@ export function renderCalendar(user) {
       </div>
     </div>
 
+    <!-- CALENDAR EVENT DETAIL MODAL -->
+    <div class="cal-modal-overlay" id="calDetailOverlay" style="z-index: 2000;">
+      <div class="cal-modal">
+        <div class="cal-modal-header">
+          <h2>Etkinlik <span style="color:var(--cal-accent)">Detayı</span></h2>
+          <button class="cal-modal-close" id="calDetailCloseBtn">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        <div class="cal-modal-body" id="calDetailBody" style="color:var(--cal-text);">
+          <!-- Dinamik olarak JS tarafından doldurulacak -->
+        </div>
+      </div>
+    </div>
+
     <div id="calToast" class="cal-toast" style="display:none;"></div>
   `;
 }
@@ -125,7 +142,8 @@ async function loadEvents() {
         description: ev.description || "",
         date: ev.event_date || null,
         type: type,
-        _readonly: true
+        _readonly: true,
+        rawEvent: ev
       };
     }).filter(e => e.date);
   } catch (e) {
@@ -263,6 +281,12 @@ function bindModal() {
   document.getElementById("calDrawerOverlay")?.addEventListener("click", e => {
     if (e.target === document.getElementById("calDrawerOverlay")) closeDayDrawer();
   });
+
+  // Calendar Detail Modal kapat
+  document.getElementById("calDetailCloseBtn")?.addEventListener("click", hideCalDetailModal);
+  document.getElementById("calDetailOverlay")?.addEventListener("click", e => {
+    if (e.target === document.getElementById("calDetailOverlay")) hideCalDetailModal();
+  });
 }
 
 // ──────────────────────────────────────────────────
@@ -281,8 +305,10 @@ function openDrawer(dateStr, items) {
   } else {
     bodyEl.innerHTML = items.map(ev => {
       const cat = CATEGORY[ev.type] || { label: ev.type, color: "#aaa" };
+      const isLocal = String(ev.id).startsWith("local-");
+      const realId = String(ev.id).replace("ev-", "");
       return `
-        <div class="cal-drawer-item">
+        <div class="cal-drawer-item ${!isLocal ? "clickable-cal-event" : ""}" ${!isLocal ? `data-id="${realId}" title="Detaya Git"` : ""} style="${!isLocal ? 'cursor:pointer;' : ''}">
           <span class="cal-dot" style="background:${cat.color};width:10px;height:10px;border-radius:50%;flex-shrink:0;margin-top:4px"></span>
           <div class="cal-drawer-item-info">
             <strong>${ev.title}</strong>
@@ -308,6 +334,14 @@ function openDrawer(dateStr, items) {
         showToast("Silindi.", "success");
       });
     });
+
+    bodyEl.querySelectorAll(".clickable-cal-event").forEach(item => {
+      item.addEventListener("click", (e) => {
+        if (e.target.closest(".cal-drawer-delete")) return;
+        const id = item.dataset.id;
+        showCalDetailModal(id);
+      });
+    });
   }
 
   document.getElementById("calDrawerOverlay")?.classList.add("open");
@@ -315,6 +349,70 @@ function openDrawer(dateStr, items) {
 
 function closeDayDrawer() {
   document.getElementById("calDrawerOverlay")?.classList.remove("open");
+}
+
+// ──────────────────────────────────────────────────
+// EVENT DETAIL MODAL
+// ──────────────────────────────────────────────────
+function showCalDetailModal(idString) {
+  const evItem = projectItems.find(e => String(e.id).replace("ev-", "") === idString);
+  if (!evItem || !evItem.rawEvent) return;
+
+  const ev = evItem.rawEvent;
+  const dateObj = new Date(ev.event_date);
+  const formattedDate = dateObj.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
+  const formattedTime = dateObj.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+
+  let displayImageUrl = ev.image_url;
+  const isBackendDefault = displayImageUrl && (displayImageUrl.includes("dummyimage.com") || !displayImageUrl.includes("supabase"));
+
+  const defaults = {
+    "Yönetim Kurulu": "https://dummyimage.com/1200x800/000/fff&text=Yönetim+Kurulu",
+    "Proje Komitesi": "https://dummyimage.com/1200x800/0b0b0b/7c3aed&text=Proje+Komitesi",
+    "Pazarlama ve Sosyal Medya Komitesi": "https://dummyimage.com/1200x800/0b0b0b/ec4899&text=Pazarlama+Komitesi",
+    "Sponsorluk ve Organizasyon Komitesi": "https://dummyimage.com/1200x800/0b0b0b/3b82f6&text=Sponsorluk+Komitesi",
+    "Akademi Komitesi": "https://dummyimage.com/1200x800/0b0b0b/10b981&text=Akademi+Komitesi",
+    "default": "https://dummyimage.com/1200x800/1c1d21/64748b&text=HSD+Etkinlik"
+  };
+
+  if (!displayImageUrl || isBackendDefault) {
+    displayImageUrl = defaults[ev.committee] || defaults["default"];
+  }
+
+  const descHTML = ev.description ? ev.description.replace(/\\n/g, '<br>') : "Açıklama bulunmuyor.";
+
+  const bodyHtml = `
+    <img src="${displayImageUrl}" style="width:100%; max-height:200px; object-fit:cover; border-radius:8px; margin-bottom:16px; border: 1px solid var(--cal-border)" onerror="this.src='https://dummyimage.com/1200x800/1c1d21/64748b&text=HSD+Etkinlik'">
+    <h3 style="font-size:20px; margin-top:0; margin-bottom:8px; color:var(--cal-text);">${ev.title || ev.event_type || "Etkinlik"}</h3>
+    <div style="display:flex; gap:12px; margin-bottom:16px; font-size:13px; color:var(--cal-muted);">
+      <span style="display:flex; align-items:center; gap:4px;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--cal-accent)" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+        ${formattedDate} - ${formattedTime}
+      </span>
+      <span style="display:flex; align-items:center; gap:4px;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--cal-accent)" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+        ${ev.location || "Belirtilmemiş"}
+      </span>
+    </div>
+    <span class="cal-drawer-type" style="margin-bottom:16px; display:inline-block; border-left:3px solid var(--cal-accent)">${ev.committee}</span>
+    ${ev.event_type ? `<span class="cal-drawer-type" style="margin-bottom:16px; margin-left:8px; display:inline-block; background:rgba(255,255,255,0.1); color:#fff; border:1px solid rgba(255,255,255,0.2);">${ev.event_type}</span>` : ""}
+    <p style="font-size:14px; line-height:1.6; color:var(--cal-text); margin-bottom:20px;">${descHTML}</p>
+    <div style="font-size:12px; color:var(--cal-muted); border-top:1px solid var(--cal-border); padding-top:16px;">
+      Ekleyen Görevli (ID): <strong style="color:var(--cal-text);">${ev.profiles ? (ev.profiles.first_name + ' ' + ev.profiles.last_name) : ev.created_by}</strong><br>
+      Kayıt Tarihi: ${new Date(ev.created_at).toLocaleString("tr-TR")}
+    </div>
+  `;
+
+  const bodyEl = document.getElementById("calDetailBody");
+  if (bodyEl) bodyEl.innerHTML = bodyHtml;
+
+  document.getElementById("calDetailOverlay")?.classList.add("open");
+}
+
+function hideCalDetailModal() {
+  document.getElementById("calDetailOverlay")?.classList.remove("open");
+  const modalBody = document.getElementById("calDetailBody");
+  if (modalBody) modalBody.innerHTML = "";
 }
 
 // ──────────────────────────────────────────────────

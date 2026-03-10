@@ -8,7 +8,7 @@ let committeeData = {
   counts: [0, 0, 0, 0, 0, 0] // Default values until data arrives
 };
 let pieChartInstance = null;
-let allEventsList = []; 
+let allEventsList = [];
 
 // --- Son Aktiviteleri Çekme ve Çizme ---
 async function fetchRecentActivities() {
@@ -39,7 +39,7 @@ async function fetchRecentActivities() {
     if (eventsRes.ok) {
       const eventsData = await eventsRes.json();
       const eventsList = eventsData.data || [];
-      allEventsList = [...eventsList]; 
+      allEventsList = [...eventsList];
 
       // Toplantı sayısını hesaplama
       const meetingCount = eventsList.filter(ev =>
@@ -618,14 +618,14 @@ function initCounterModal() {
   if (btnEnter) {
     btnEnter.addEventListener('click', () => {
       overlay.classList.add('open');
-      
+
       // Populate select with upcoming events
       const select = document.getElementById('counter-event-select');
       if (select) {
         select.innerHTML = '<option value="">-- Bir Etkinlik Seçin (Opsiyonel) --</option>';
         const now = new Date();
         const upcoming = allEventsList.filter(ev => new Date(ev.event_date) > now);
-        
+
         upcoming.forEach(ev => {
           const opt = document.createElement('option');
           opt.value = ev.id;
@@ -659,12 +659,12 @@ function initCounterModal() {
         const event = allEventsList.find(ev => ev.id == selectedId);
         if (event) {
           document.getElementById('counter-event-name').value = event.title;
-          
+
           const evDate = new Date(event.event_date);
           const tzOffset = evDate.getTimezoneOffset() * 60000;
           const localDate = (new Date(evDate - tzOffset)).toISOString().slice(0, 10);
           document.getElementById('counter-event-date').value = localDate;
-          
+
           const hours = String(evDate.getHours()).padStart(2, '0');
           const minutes = String(evDate.getMinutes()).padStart(2, '0');
           document.getElementById('counter-event-time').value = `${hours}:${minutes}`;

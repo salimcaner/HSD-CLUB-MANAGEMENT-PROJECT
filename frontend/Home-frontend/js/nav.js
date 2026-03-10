@@ -36,7 +36,7 @@ const NAV_ITEMS = [
     label: "Takvim",
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><circle cx="12" cy="16" r="1.5" fill="currentColor"/></svg>`,
     path: "/calendar",
-    required: ["calendar:read"]
+    required: []
   },
   {
     label: "Finans",
@@ -66,6 +66,11 @@ function buildNavLinks(user) {
     .join("");
 }
 
+function toTitleCase(str) {
+  if (!str) return "";
+  return str.split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" ");
+}
+
 export function renderNav(user) {
   const navLinks = buildNavLinks(user);
   let initials = "??";
@@ -73,13 +78,13 @@ export function renderNav(user) {
 
   if (user) {
     if (user.first_name || user.last_name) {
-      initials = (user.first_name?.[0] || "") + (user.last_name?.[0] || "");
-      fullName = `${user.first_name || ""} ${user.last_name || ""}`.trim();
+      initials = ((user.first_name?.[0] || "") + (user.last_name?.[0] || "")).toUpperCase();
+      fullName = toTitleCase(`${user.first_name || ""} ${user.last_name || ""}`.trim());
     } else if (user.full_name) {
-      fullName = user.full_name;
+      fullName = toTitleCase(user.full_name);
       initials = user.full_name.split(" ").map(n => n[0]).join("").toUpperCase();
     } else if (user.name) {
-      fullName = user.name;
+      fullName = toTitleCase(user.name);
       initials = user.name.split(" ").map(n => n[0]).join("").toUpperCase();
     } else if (user.username) {
       fullName = user.username;
@@ -130,7 +135,7 @@ export function renderNav(user) {
           <div class="user-card">
             <div class="user-avatar">${initials}</div>
             <div class="user-details">
-              <span class="user-name">${user.first_name} ${user.last_name}</span>
+              <span class="user-name">${fullName}</span>
               <span class="user-role">${user.role}</span>
             </div>
             <button id="sidebarLogoutBtn" class="sidebar-logout-btn" title="Çıkış Yap">
@@ -203,7 +208,7 @@ export function initNavEvents() {
     // Topbar'daki sayfa başlığını güncelle
     const titleEl = document.getElementById("pageTitle");
     const currentItem = NAV_ITEMS.find(item => item.path === path);
-    
+
     if (titleEl) {
       if (currentItem) {
         titleEl.textContent = currentItem.label;

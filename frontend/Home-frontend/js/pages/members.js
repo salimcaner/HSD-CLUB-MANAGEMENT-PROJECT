@@ -257,6 +257,11 @@ function renderMembersContent() {
   const canUpdate = hasPerm(currentUser, "members:update");
   const canDelete = hasPerm(currentUser, "members:delete");
 
+  function toTitleCase(str) {
+    if (!str) return "-";
+    return str.split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" ");
+  }
+
   if (currentView === "table") {
     let tbodyHtml = filtered.map(m => {
       const initials = ((m.first_name?.[0] || 'X') + (m.last_name?.[0] || 'Y')).toUpperCase();
@@ -278,18 +283,24 @@ function renderMembersContent() {
         actionsHtml += '</div>';
       }
 
+      const fNameStr = toTitleCase(m.first_name);
+      const lNameStr = toTitleCase(m.last_name);
+      const emailStr = m.email ? m.email.toLowerCase() : "-";
+      const deptStr = toTitleCase(m.department);
+      const uniDeptStr = toTitleCase(m.university_department);
+
       return `
         <tr>
           <td>
             <div class="member-name-cell">
-              <div class="name">${m.first_name || '-'}</div>
+              <div class="name">${fNameStr}</div>
             </div>
           </td>
-          <td>${m.last_name || '-'}</td>
-          <td>${m.email || '-'}</td>
-          <td>${m.department || '-'}</td>
+          <td>${lNameStr}</td>
+          <td>${emailStr}</td>
+          <td>${deptStr}</td>
           <td><span class="role-badge role-${(m.role || 'uye').toLowerCase()}">${getRoleLabel(m.role)}</span></td>
-          <td>${m.university_department || '-'}</td>
+          <td>${uniDeptStr}</td>
           <td>${m.class_ ? m.class_ + '. Sınıf' : '-'}</td>
           <td>${date}</td>
           <td>${actionsHtml}</td>

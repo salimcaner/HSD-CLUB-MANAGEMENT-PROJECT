@@ -5,7 +5,7 @@
   --bg-dark: #1c1d21;
   --bg-mid: #232527;
   --bg-card: #2a2b30;
-  --text-main: #FFFFFF;
+  --text-main: #ffffff;
   --text-muted: #e2e8f0;
   --text-dim: #8a8d91;
   --accent: #7c3aed;
@@ -551,4 +551,17 @@
   .kanban-board {
     grid-template-columns: 1fr;
   }
+}
+/* ── LIGHT THEME OVERRIDES ── */
+body.light-theme .kanban-column {
+  background: rgba(0, 0, 0, 0.03);
+}
+body.light-theme .project-manager-badge {
+  background: rgba(0, 0, 0, 0.05);
+}
+body.light-theme .project-detail-manager {
+  background: rgba(0, 0, 0, 0.05);
+}
+body.light-theme .member-item {
+  border-bottom-color: rgba(0, 0, 0, 0.05);
 }

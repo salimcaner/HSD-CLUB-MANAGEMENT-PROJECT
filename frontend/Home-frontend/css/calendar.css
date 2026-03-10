@@ -678,3 +678,38 @@
         grid-template-columns: 1fr;
     }
 }
+/* ── LIGHT THEME OVERRIDES ── */
+body.light-theme {
+    --cal-bg: #f1f5f9;
+    --cal-card: #ffffff;
+    --cal-dark: #f8fafc;
+    --cal-border: rgba(0, 0, 0, 0.08);
+    --cal-text: #0f172a;
+    --cal-muted: #64748b;
+    --cal-today: rgba(124, 58, 237, 0.1);
+}
+
+body.light-theme .cal-nav-btn {
+    background: #ffffff;
+}
+body.light-theme .cal-nav-btn:hover {
+    background: rgba(0, 0, 0, 0.05);
+}
+body.light-theme .cal-today-btn:hover {
+    background: rgba(0, 0, 0, 0.05);
+}
+body.light-theme .cal-cell:hover {
+    background: rgba(0, 0, 0, 0.03);
+}
+body.light-theme .cal-drawer-item {
+    background: #ffffff;
+}
+body.light-theme .cal-drawer-item:hover {
+    border-color: rgba(0, 0, 0, 0.15);
+}
+body.light-theme .cal-drawer-type {
+    background: rgba(0, 0, 0, 0.06);
+}
+body.light-theme .cal-form-group input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(0) opacity(0.5); /* Black calendar icon in light theme */
+}

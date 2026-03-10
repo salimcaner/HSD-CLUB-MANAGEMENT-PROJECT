@@ -38,7 +38,7 @@ const ROUTES = {
   "/events": { render: renderEvents, initEvents, required: [] },
   "/projects": { render: renderProjects, required: [] },
   "/reports": { render: renderReports, required: [] },
-  "/calendar": { render: renderCalendar, required: ["calendar:read"] },
+  "/calendar": { render: renderCalendar, initCalendar, required: [] },
   "/finance": { render: renderFinance, required: ["finance:read"] },
   "/members": { render: renderMembers, required: ["members:read"] },
 
