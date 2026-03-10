@@ -29,7 +29,7 @@ def create_event_service(
         
         # Eğer kullanıcı ilk aşamada yine de dosya yüklediyse default'u ezip gerçek resmi Supabase'e atıyoruz
         if file_bytes and filename:
-            unique_filename = filename
+            unique_filename = f"{uuid.uuid4().hex}_{filename}"
             
             supabase.storage.from_("event-images").upload(
                 file=file_bytes,

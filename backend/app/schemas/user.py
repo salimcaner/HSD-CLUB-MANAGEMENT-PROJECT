@@ -92,3 +92,15 @@ class UserUpdateSelf(BaseModel):
     
     class Config:
         populate_by_name = True
+
+class UserUpdateAdmin(BaseModel):
+    """Yönetim tarafından yapılan kısmi güncellemeler için"""
+    email: Optional[EmailStr] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    role: Optional[UserRole] = None
+    department: Optional[str] = None
+    class_: Optional[int] = None
+    university_department: Optional[str] = None
+    class Config:
+        populate_by_name = True
