@@ -6,10 +6,12 @@ const LS_KEY = "cal_events_v1";
 
 // ── Kategori tanımları ──────────────────────────
 export const CATEGORY = {
-  etkinlik: { label: "Etkinlik", color: "#60a5fa" },   // mavi
-  toplanti: { label: "Toplantı", color: "#34d399" },   // yeşil
-  rapor: { label: "Rapor", color: "#fb923c" },   // turuncu
-  proje: { label: "Proje", color: "#a78bfa" },   // mor
+  yonetim: { label: "Yönetim Kurulu", color: "#f59e0b" },
+  proje: { label: "Proje Komitesi", color: "#7c3aed" },
+  pazarlama: { label: "Pazarlama ve Sosyal Medya Komtiesi", color: "#ec4899" },
+  sponsorluk: { label: "Sponsorluk ve Organizasyon Komitesi", color: "#3b82f6" },
+  akademi: { label: "Akademi Komitesi", color: "#10b981" },
+  mezun: { label: "Mezunlar Komitesi", color: "#94a3b8" },
 };
 
 let currentDate = new Date();
@@ -37,11 +39,6 @@ export function renderCalendar(user) {
           <h1>Takvim</h1>
           <p class="cal-subtitle">Etkinlikler, toplantılar, raporlar ve projeler</p>
         </div>
-        <button class="cal-add-btn" id="calAddBtn">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="16" height="16">
-            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-          </svg>Ekle
-        </button>
       </div>
 
       <div class="cal-nav">
@@ -67,48 +64,6 @@ export function renderCalendar(user) {
 
     </section>
 
-    <!-- ADD MODAL -->
-    <div class="cal-modal-overlay" id="calModalOverlay">
-      <div class="cal-modal">
-        <div class="cal-modal-header">
-          <h2>Yeni <span>Öğe Ekle</span></h2>
-          <button class="cal-modal-close" id="calModalClose">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
-              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-            </svg>
-          </button>
-        </div>
-        <div class="cal-modal-body">
-          <div class="cal-form-group">
-            <label>Kategori</label>
-            <select id="calItemType">
-              <option value="etkinlik">🎉 Etkinlik</option>
-              <option value="toplanti">📋 Toplantı</option>
-              <option value="rapor">📊 Rapor</option>
-              <option value="proje">🚀 Proje</option>
-              <option value="diger">📌 Diğer</option>
-            </select>
-          </div>
-          <div class="cal-form-group">
-            <label>Başlık</label>
-            <input type="text" id="calItemTitle" placeholder="Başlık girin...">
-          </div>
-          <div class="cal-form-group">
-            <label>Açıklama</label>
-            <textarea id="calItemDesc" placeholder="Açıklama (isteğe bağlı)..." rows="2"></textarea>
-          </div>
-          <div class="cal-form-group">
-            <label>Tarih</label>
-            <input type="date" id="calItemDate">
-          </div>
-        </div>
-        <div class="cal-modal-footer">
-          <button class="cal-btn cal-btn-ghost" id="calModalCancel">İptal</button>
-          <button class="cal-btn cal-btn-primary" id="calModalSave">Kaydet</button>
-        </div>
-      </div>
-    </div>
-
     <!-- DAY DRAWER -->
     <div class="cal-drawer-overlay" id="calDrawerOverlay">
       <div class="cal-drawer" id="calDrawer">
@@ -132,35 +87,49 @@ export function renderCalendar(user) {
 // INIT
 // ──────────────────────────────────────────────────
 export async function initCalendar() {
-  await loadProjects();
+  await loadEvents();
   renderGrid();
   bindNav();
   bindModal();
 }
 
 // ──────────────────────────────────────────────────
-// LOAD PROJECTS FROM BACKEND
+// LOAD EVENTS FROM BACKEND
 // ──────────────────────────────────────────────────
-async function loadProjects() {
+async function loadEvents() {
   try {
     const token = getToken();
-    const res = await fetch(`${API_URL}/projects/`, {
-      headers: { "Authorization": `Bearer ${token}` },
-      credentials: "include"
+    const res = await fetch(`${API_URL}/events/?limit=100`, {
+      headers: { "Authorization": `Bearer ${token}` }
     });
     if (!res.ok) return;
-    const projects = await res.json();
-    // Projeleri takvim öğesine dönüştür — tarih bilgisi yoksa bugünü kullan
-    projectItems = projects.map(p => ({
-      id: "proj-" + p.id,
-      title: p.name,
-      description: p.description || "",
-      date: p.start_date || null,
-      type: "proje",
-      _readonly: true
-    })).filter(p => p.date);
+    const data = await res.json();
+    const events = data.data || [];
+
+    // Etkinlikleri takvim öğesine dönüştür
+    projectItems = events.map(ev => {
+      // Komite ismini CATEGORY key'ine dönüştür
+      let type = "proje"; // default
+      switch (ev.committee) {
+        case "Yönetim Kurulu": type = "yonetim"; break;
+        case "Proje Komitesi": type = "proje"; break;
+        case "Pazarlama ve Sosyal Medya Komitesi": type = "pazarlama"; break;
+        case "Sponsorluk ve Organizasyon Komitesi": type = "sponsorluk"; break;
+        case "Akademi Komitesi": type = "akademi"; break;
+        case "Mezunlar Komitesi": type = "mezun"; break;
+      }
+
+      return {
+        id: "ev-" + ev.id,
+        title: ev.event_type || "Etkinlik",
+        description: ev.description || "",
+        date: ev.event_date || null,
+        type: type,
+        _readonly: true
+      };
+    }).filter(e => e.date);
   } catch (e) {
-    console.warn("Projeler yüklenemedi:", e);
+    console.warn("Etkinlikler yüklenemedi:", e);
   }
 }
 
