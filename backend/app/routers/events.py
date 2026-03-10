@@ -16,8 +16,8 @@ router = APIRouter(prefix="/events", tags=["Events"])
 def require_create_event_permission(current_user: UserInDB = Depends(get_current_user)):
     role_str = current_user.role if isinstance(current_user.role, str) else current_user.role.value
     
-    # "uye" rolü engellenir
-    if role_str == "uye" or role_str == UserRole.UYE.value:
+    # "uye" ve mezun rolü engellenir
+    if role_str in ["uye", "mezun"] or role_str in [UserRole.UYE.value, UserRole.MEZUN.value]:
          raise HTTPException(
              status_code=status.HTTP_403_FORBIDDEN,
              detail="Bu işlemi gerçekleştirmek için yetkiniz yok"
