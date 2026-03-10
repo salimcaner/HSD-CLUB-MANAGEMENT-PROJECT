@@ -144,15 +144,15 @@ export function renderMembers(user) {
             </div>
             <div class="form-row">
               <div class="form-group">
-                <label>Topluluk Departmanı</label>
+                <label>Komitesi</label>
                 <select id="memberDepartment" required>
-                  <option value="" disabled selected>Departman Seç</option>
-                  <option value="Proje">Proje Departmanı</option>
-                  <option value="Eğitim">Akademi Departmanı</option>
-                  <option value="İnsan Kaynakları">İnsan Kaynakları </option>
-                  <option value="Organizasyon">Sponsorluk ve Organizasyon Departmanı</option>
-                  <option value="Tasarım ve Medya">Tasarım ve Medya Departmanı</option>
-                  <option value="PR ve Kurumsal İletişim">PR ve Kurumsal İletişim Departmanı</option>
+                  <option value="" disabled selected>Komite Seç</option>
+                  <option value="Yonetim">Yönetim Kurulu</option>
+                  <option value="proje">Proje Komitesi</option>
+                  <option value="pazarlama">Pazarlama ve Sosyal Medya Komitesi </option>
+                  <option value="Organizasyon">Sponsorluk ve Organizasyon Komitesi</option>
+                  <option value="Akademi">Akademi Komitesi</option>
+                  <option value="Mezun">Mezunlar</option>
                 </select>
               </div>
               <div class="form-group">
