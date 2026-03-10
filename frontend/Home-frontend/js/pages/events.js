@@ -20,15 +20,15 @@ const EVENT_TYPES = [
   "Akademi Eğitimi",
   "Sosyal Etkinlik"
 ];
-
-// --- Frontend Default Images (Professional Fallback) ---
-const COMMITTEE_DEFAULTS = {
-  "Yönetim Kurulu": "https://dummyimage.com/1200x800/000/fff&text=Yönetim+Kurulu",
-  "Proje Komitesi": "https://dummyimage.com/1200x800/0b0b0b/7c3aed&text=Proje+Komitesi",
-  "Pazarlama ve Sosyal Medya Komitesi": "https://dummyimage.com/1200x800/0b0b0b/ec4899&text=Pazarlama+Komitesi",
-  "Sponsorluk ve Organizasyon Komitesi": "https://dummyimage.com/1200x800/0b0b0b/3b82f6&text=Sponsorluk+Komitesi",
-  "Akademi Komitesi": "https://dummyimage.com/1200x800/0b0b0b/10b981&text=Akademi+Komitesi",
-  "default": "https://dummyimage.com/1200x800/1c1d21/64748b&text=HSD+Etkinlik"
+// --- Frontend Default Images (High-Quality Type-Based Fallbacks) ---
+const EVENT_TYPE_DEFAULTS = {
+  "Toplantı": "../../picture/Ofisteki toplantı anı.png",
+  "Oyun": "../../picture/Oyun denetleyicisi ve ödüller.png",
+  "Seminer": "../../picture/ChatGPT Image 10 Mar 2026 15_09_02.png",
+  "Webinar": "../../picture/Webinar sunumu ve etkileşimli konuşmalar.png",
+  "Akademi Eğitimi": "../../picture/ChatGPT Image 10 Mar 2026 15_17_22.png",
+  "Sosyal Etkinlik": "../../picture/ChatGPT Image 10 Mar 2026 15_18_51.png",
+  "default": "https://images.unsplash.com/photo-1523580494863-6f30312248f5?q=80&w=1200&h=800&auto=format&fit=crop"
 };
 
 // --- State Variables ---
@@ -173,6 +173,16 @@ export function renderEvents(user) {
         <div class="events-title-block">
           <h1>Etkin<span>likler</span></h1>
         </div>
+        ${isAuthorized ? `
+          <div class="header-actions">
+            <button class="btn btn-primary" id="addEventBtn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              Etkinlik Ekle
+            </button>
+          </div>
+        ` : ""}
       </div>
 
       <div class="events-toolbar">
@@ -196,8 +206,8 @@ export function renderEvents(user) {
 
           <select class="filter-select" id="periodFilter">
             <option value="">Tüm Dönemler</option>
-            <option value="upcoming">İleri Tarihli</option>
-            <option value="past">Geçmiş Etkinlikler</option>
+            <option value="upcoming">Gelecek Etkinlik</option>
+            <option value="past">Geçmiş Etkinlik</option>
           </select>
 
           <select class="filter-select" id="sortFilter">
@@ -207,14 +217,7 @@ export function renderEvents(user) {
         </div>
 
         <div class="toolbar-right">
-          ${isAuthorized ? `
-            <button class="btn btn-primary" id="addEventBtn">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                <line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line>
-              </svg>
-              Etkinlik Ekle
-            </button>
-          ` : ""}
+          <!-- Buton buradaydı, başlığa taşındı -->
         </div>
       </div>
 
@@ -294,14 +297,17 @@ function buildModalHtml(committeeOptions) {
             </select>
           </div>
           <div class="form-group" id="evParticipantGroup" style="display: none;">
-            <label>Katılımcı Sayısı <span style="font-size:11px; color:#888;">(Opsiyonel)</span></label>
+            <label id="evParticipantLabel">Katılımcı Sayısı <span style="font-size:11px; color:#888;">(Opsiyonel)</span></label>
             <input type="number" id="evParticipantCount" placeholder="Örn: 50" min="0">
           </div>
           <div class="form-group">
             <label>Etkinlik Görseli <span style="font-size:11px; color:#888;">(Opsiyonel)</span></label>
              <input type="file" id="evImage" accept="image/*" style="display:block; width:100%; border:none; padding:5px 0;">
             <div id="imagePreview" style="margin-top:10px; display:none;">
-               <img src="" style="max-height:100px; border-radius:6px; background:#111; object-fit:cover;">
+              <div class="image-preview-wrap">
+                <img src="" style="max-height:100px; border-radius:6px; background:#111; object-fit:cover;">
+                <button class="remove-image-btn" id="removeImageBtn" title="Resmi Kaldır">&times;</button>
+              </div>
             </div>
           </div>
         </div>
@@ -336,6 +342,13 @@ export async function initEvents() {
         await fetchEventsFromBackend();
         renderEventList();
       }, 500);
+    });
+  }
+
+  const evDateTimeInput = document.getElementById("evDateTime");
+  if (evDateTimeInput) {
+    evDateTimeInput.addEventListener("change", () => {
+      updateParticipantRequirement();
     });
   }
 
@@ -421,7 +434,14 @@ export async function initEvents() {
         showDetailModal(id);
       }
 
-      const detailCloseBtn = e.target.closest("#detailCloseBtn");
+        const removeBtn = e.target.closest("#removeImageBtn");
+        if (removeBtn) {
+          e.preventDefault();
+          e.stopPropagation();
+          clearImageSelection();
+        }
+
+        const detailCloseBtn = e.target.closest("#detailCloseBtn");
       if (detailCloseBtn || e.target.id === "eventDetailOverlay") {
         hideDetailModal();
       }
@@ -509,33 +529,27 @@ function renderEventList() {
 
     container.innerHTML = filtered.map(ev => {
       const dateObj = new Date(ev.event_date);
-      // ... (tarih formatlama aynı)
       const formattedDate = dateObj.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
       const timeStr = dateObj.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
 
-      // PROFESYONEL FALLBACK: Resim yoksa veya backend'in eski default URL'lerini içeriyorsa local default'u bas
-      let displayImageUrl = ev.image_url;
-      const isBackendDefault = displayImageUrl && (displayImageUrl.includes("dummyimage.com") || !displayImageUrl.includes("supabase"));
-
-      if (!displayImageUrl || isBackendDefault) {
-        displayImageUrl = COMMITTEE_DEFAULTS[ev.committee] || COMMITTEE_DEFAULTS["default"];
-      }
-
+      // Sahibi veya admin mi?
+      // Not: created_by db de text/UUID tutuluyor. Eğer user id si numeric string yapmıyorsanız dikkat.
       const canManageEvent = isSuperUser || (hasPerm(sessionUser, "events:create") && String(ev.created_by) === String(sessionUser.id));
 
       return `
         <div class="event-card event-card-clickable" data-id="${ev.id}">
-          <img src="${displayImageUrl}" class="event-card-image" alt="Event Cover" onerror="this.src='${COMMITTEE_DEFAULTS["default"]}'">
+          ${dateObj >= new Date()
+          ? `<span class="period-badge upcoming">Gelecek Etkinlik</span>`
+          : `<span class="period-badge past">Geçmiş Etkinlik</span>`
+          }
+          ${ev.image_url
+          ? `<img src="${ev.image_url}" class="event-card-image" alt="Event Cover">`
+          : `<img src="${EVENT_TYPE_DEFAULTS[ev.event_type] || EVENT_TYPE_DEFAULTS['default']}" class="event-card-image" alt="Event Cover">`
+          }
           <div class="event-card-body">
             <h3 class="event-card-title">${ev.title}</h3>
             <p class="event-card-desc">${ev.description}</p>
             <div class="event-meta">
-              <div class="event-meta-row" style="margin-bottom:8px;">
-                ${dateObj >= new Date()
-          ? `<span class="period-badge upcoming" style="background:#dcfce7; color:#166534; padding:2px 8px; border-radius:4px; font-size:10px; font-weight:600;">İleri Tarihli</span>`
-          : `<span class="period-badge past" style="background:#f1f5f9; color:#475569; padding:2px 8px; border-radius:4px; font-size:10px; font-weight:600;">Geçmiş Etkinlik</span>`
-        }
-              </div>
               <div class="event-meta-row">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                    <rect x="3" y="4" width="18" height="18" rx="2"></rect>
@@ -595,12 +609,11 @@ async function handleFormSubmit(user) {
 
 
   if (!title || !dateTimeParam || !committee || !event_type || !location || !desc) {
-    showToast("Lütfen (Fotoğraf hariç) tüm (*) alanları doldurun.", "error");
+    showToast("Lütfen tüm (*) alanları doldurun.", "error");
     return;
-
   }
 
-  // Frontend verisini ISO stringe çevir 
+  // Frontend verisini ISO stringe çevir
   const isoUtcDate = new Date(dateTimeParam).toISOString();
 
   // BACKEND İÇİN FORM DATA OLUŞTURUYORUZ
@@ -659,11 +672,7 @@ function openEditModal(idString) {
   document.getElementById("evParticipantCount").value = ev.participant_count || "";
 
   // Sadece geçmiş etkinliklerde katılımcı sayısını göster
-  const participantGroup = document.getElementById("evParticipantGroup");
-  if (participantGroup) {
-    const isPast = new Date(ev.event_date) < new Date();
-    participantGroup.style.display = isPast ? "block" : "none";
-  }
+  updateParticipantRequirement();
 
   // Resim Göstergesi
   selectedImageFile = null;
@@ -683,6 +692,18 @@ function openEditModal(idString) {
   showModal();
 }
 
+function updateParticipantRequirement() {
+  const dateTimeInput = document.getElementById("evDateTime");
+  const participantGroup = document.getElementById("evParticipantGroup");
+  const participantLabel = document.getElementById("evParticipantLabel");
+
+  if (participantGroup && participantLabel) {
+    // Her durumda göster ve opsiyonel olarak işaretle
+    participantGroup.style.display = "block"; 
+    participantLabel.innerHTML = `Katılımcı Sayısı <span style="font-size:11px; color:#888;">(Opsiyonel)</span>`;
+  }
+}
+
 function showDetailModal(idString) {
   const ev = eventsData.find(e => String(e.id) === idString);
   if (!ev) return;
@@ -692,7 +713,7 @@ function showDetailModal(idString) {
   const formattedTime = dateObj.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
 
   const bodyHtml = `
-    ${ev.image_url ? `<img src="${ev.image_url}" style="width:100%; max-height:280px; object-fit:cover; border-radius:8px; margin-bottom:16px; border: 1px solid rgba(255,255,255,0.1)">` : ""}
+    <img src="${ev.image_url || EVENT_TYPE_DEFAULTS[ev.event_type] || EVENT_TYPE_DEFAULTS['default']}" style="width:100%; max-height:280px; object-fit:cover; border-radius:8px; margin-bottom:16px; border: 1px solid rgba(255,255,255,0.1)">
     <h3 style="font-size:22px; margin-top:0; margin-bottom:8px; color:var(--text-main);">${ev.title}</h3>
     <div style="display:flex; gap:12px; margin-bottom:16px; font-size:13px; color:var(--text-muted);">
       <span style="display:flex; align-items:center; gap:4px;">
@@ -723,7 +744,18 @@ function hideDetailModal() {
   if (modalBody) modalBody.innerHTML = "";
 }
 
+function clearImageSelection() {
+  selectedImageFile = null;
+  base64PreviewString = "";
+  const evImageInput = document.getElementById("evImage");
+  if (evImageInput) evImageInput.value = "";
+  
+  const previewDiv = document.getElementById("imagePreview");
+  if (previewDiv) previewDiv.style.display = "none";
+}
+
 function showModal() {
+  updateParticipantRequirement();
   document.getElementById("eventModalOverlay").classList.add("open");
 }
 
@@ -736,15 +768,18 @@ function hideModal() {
   document.getElementById("evCommittee").value = "";
   if (document.getElementById("evType")) document.getElementById("evType").value = "";
   document.getElementById("evParticipantCount").value = "";
+<<<<<<< HEAD
 
   // Yeni etkinlik eklerken katılımcı sayısı grubunu gizle
   const participantGroup = document.getElementById("evParticipantGroup");
   if (participantGroup) participantGroup.style.display = "none";
+=======
+  
+  // Katılımcı sayısı alanını opsiyonel olarak sıfırla
+  updateParticipantRequirement();
+>>>>>>> 48cd34c2fd583a4bfc712bd82e40006a3498607d
 
-  document.getElementById("evImage").value = "";
-  selectedImageFile = null;
-  base64PreviewString = "";
-  document.getElementById("imagePreview").style.display = "none";
+  clearImageSelection();
 }
 
 function showToast(message, type = "success") {

@@ -10,8 +10,9 @@ class UserRole(str, Enum):
     """Kullanıcı rolleri - Değiştirilmez, güvenli"""
     GENEL_SEKRETER = "genel_sekreter"
     ELCI = "elci"
-    DEPARTMAN_LIDERI = "departman_lideri"
+    KOMITE_LIDERI = "komite_lideri"
     INSAN_KAYNAKLARI = "insan_kaynaklari"
+    ELCI_YARDIMCISI = "elci_yardimcisi"
     UYE = "uye"
     ADMIN="admin"
     MEZUN="mezun"
@@ -89,5 +90,17 @@ class UserUpdateSelf(BaseModel):
     class_: Optional[int] = None
     university_department: Optional[str] = None
     
+    class Config:
+        populate_by_name = True
+
+class UserUpdateAdmin(BaseModel):
+    """Yönetim tarafından yapılan kısmi güncellemeler için"""
+    email: Optional[EmailStr] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    role: Optional[UserRole] = None
+    department: Optional[str] = None
+    class_: Optional[int] = None
+    university_department: Optional[str] = None
     class Config:
         populate_by_name = True

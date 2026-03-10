@@ -1,14 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List,Optional  
-from app.schemas.user import User, UserBase,UserUpdateSelf
+from app.schemas.user import User, UserUpdateAdmin, UserUpdateSelf
 from app.services.user_service import (
     get_user_by_email,
     get_all_users,
     get_user_by_id,
     update_user,
-    delete_user,
-    deactivate_user,    
-    activate_user,      
+    delete_user,     
     get_filtered_users, 
     get_user_stats      
 )
@@ -40,7 +38,7 @@ async def update_self(
 # -------------------------
 @router.get("/", response_model=List[User])
 async def list_users(
-    current_user = Depends(security.require_yonetim)
+    current_user = Depends(security.require_lider_or_above)
 ):
     """
     Tüm kullanıcıları listele (Yönetim yetkisi gerekli)
@@ -56,7 +54,7 @@ async def list_users(
 async def filter_users(
     role: Optional[str] = None,
     department: Optional[str] = None,
-    current_user = Depends(security.require_yonetim)
+    current_user = Depends(security.require_lider_or_above)
 ):
     """
     Rol veya departmana göre filtrelenmiş kullanıcı listesi
@@ -71,7 +69,7 @@ async def filter_users(
 # -------------------------
 @router.get("/stats")
 async def get_stats(
-    current_user = Depends(security.require_yonetim)
+    current_user = Depends(security.require_lider_or_above)
 ):
     """
     Sistem genelindeki kullanıcı istatistikleri
@@ -107,7 +105,7 @@ async def get_user(
 @router.put("/{user_id}", response_model=User)
 async def update_user_endpoint(
     user_id: str,
-    user_data: UserBase,
+    user_data: UserUpdateAdmin,
     current_user = Depends(security.require_authenticated) # <--- Sadece login olması yeterli
 ):
     """
@@ -118,7 +116,7 @@ async def update_user_endpoint(
     # 1. YETKİ KONTROLÜ
     # Kullanıcının rolünü al
     role_str = current_user.role if isinstance(current_user.role, str) else current_user.role.value
-    admin_roles = [security.UserRole.ELCI.value, security.UserRole.GENEL_SEKRETER.value, security.UserRole.INSAN_KAYNAKLARI.value]
+    admin_roles = [security.UserRole.ELCI.value, security.UserRole.GENEL_SEKRETER.value, security.UserRole.ADMIN.value, security.UserRole.ELCI_YARDIMCISI.value, security.UserRole.KOMITE_LIDERI.value]
     
     is_owner = (str(current_user.id) == str(user_id))
     is_admin = (role_str in admin_roles)
@@ -158,44 +156,5 @@ async def delete_user_endpoint(
         )
     return {"message": "Kullanıcı başarıyla silindi!"}
 
-# -------------------------
-# Kullanıcıyı Deaktive Et
-# -------------------------
-@router.put("/{user_id}/deactivate", response_model=User)
-async def deactivate_user_endpoint(
-    user_id: str,
-    current_user = Depends(security.require_yonetim)
-):
-    """
-    Kullanıcıyı pasif yap (silmeden devre dışı bırak)
-    Mezunlar için kullanılabilir
-    """
-    deactivated_user = deactivate_user(user_id)
-    if not deactivated_user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Kullanıcı bulunamadı!"
-        )
-    return deactivated_user
-
-
-# -------------------------
-# Kullanıcıyı Aktive Et
-# -------------------------
-@router.put("/{user_id}/activate", response_model=User)
-async def activate_user_endpoint(
-    user_id: str,
-    current_user = Depends(security.require_yonetim)
-):
-    """
-    Pasif kullanıcıyı tekrar aktif yap
-    """
-    activated_user = activate_user(user_id)
-    if not activated_user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Kullanıcı bulunamadı!"
-        )
-    return activated_user
 
 

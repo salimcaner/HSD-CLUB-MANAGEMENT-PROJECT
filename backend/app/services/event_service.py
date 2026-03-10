@@ -29,7 +29,7 @@ def create_event_service(
         
         # Eğer kullanıcı ilk aşamada yine de dosya yüklediyse default'u ezip gerçek resmi Supabase'e atıyoruz
         if file_bytes and filename:
-            unique_filename = filename
+            unique_filename = f"{uuid.uuid4().hex}_{filename}"
             
             supabase.storage.from_("event-images").upload(
                 file=file_bytes,
@@ -128,7 +128,7 @@ def update_event_service(
         old_image_url = event_data.get("image_url")
         
         # --- GÜVENLİK ---
-        admin_roles = [UserRole.ELCI.value, UserRole.GENEL_SEKRETER.value, UserRole.ADMIN.value]
+        admin_roles = [UserRole.ELCI.value, UserRole.GENEL_SEKRETER.value, UserRole.ADMIN.value, UserRole.ELCI_YARDIMCISI.value, UserRole.KOMITE_LIDERI.value] 
         is_owner = (event_owner_id == current_user_id)
         is_admin = (user_role in admin_roles)
         
@@ -205,7 +205,7 @@ def delete_event_service(event_id: int, current_user_id: str, user_role: str):
         event_owner_id = event_data.get("created_by") 
         
         # --- GÜVENLİK ---
-        admin_roles = [UserRole.ELCI.value, UserRole.GENEL_SEKRETER.value, UserRole.ADMIN.value]
+        admin_roles = [UserRole.ELCI.value, UserRole.GENEL_SEKRETER.value, UserRole.ADMIN.value, UserRole.ELCI_YARDIMCISI.value, UserRole.KOMITE_LIDERI.value]
         
         is_owner = (event_owner_id == current_user_id)
         is_admin = (user_role in admin_roles)

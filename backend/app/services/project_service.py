@@ -2,16 +2,18 @@ from fastapi import HTTPException, status
 from typing import List
 from app.core.supabase_client import get_supabase
 from app.schemas.project import ProjectCreate, ProjectTaskCreate
-from app.schemas.user import User
+from app.schemas.user import User, UserRole
 
 supabase = get_supabase()
 
 def create_project(data: ProjectCreate, current_user: User):
-    # Insert
+    # data.manager_ids listesini kullanıyoruz (Frontend'den array gelmeli)
+    managers = data.manager_ids if data.manager_ids else [str(current_user.id)]
+    
     insert_data = {
         "name": data.name,
         "description": data.description,
-        "manager_id": str(data.manager_id) if data.manager_id else str(current_user.id)
+        "manager_ids": managers  # Veritabanına liste olarak kaydediyoruz
     }
     
     response = supabase.table("projects").insert(insert_data).execute()
@@ -20,15 +22,15 @@ def create_project(data: ProjectCreate, current_user: User):
     return response.data[0]
 
 def get_all_projects():
-    # 1. Projeleri ve Yöneticilerin profil bilgilerini JOIN ile çekiyoruz
-    projects_res = supabase.table("projects").select("*, profiles(first_name, last_name)").execute()
+    projects_res = supabase.table("projects").select("*").execute()
     projects_data = projects_res.data or []
     
-    # 2. Üyeleri ve üyelerin profil bilgilerini JOIN ile çekiyoruz
+    # Üyeleri ve üyelerin profil bilgilerini JOIN ile çekiyoruz
     members_res = supabase.table("project_members").select("*, profiles(first_name, last_name)").execute()
     
-    # 3. Görevleri çekiyoruz (Mevcut yapıda görevliye ait isim dönmüyor, sadece assignee_id dönüyor, bu yüzden JOIN gerekmez)
+    
     tasks_res = supabase.table("project_tasks").select("*").execute()
+    
     result = []
     for p in projects_data:
         p_id = p.get("id")
@@ -57,21 +59,21 @@ def get_all_projects():
                     "assigneeId": t.get("assignee_id"),
                     "createdAt": t.get("created_at")
                 })
+                
         # --- Proje Yöneticisi (Manager) İsim Çözümleme ---
-        manager_prof = p.get("profiles") or {}
-        manager_name = f"{manager_prof.get('first_name') or ''} {manager_prof.get('last_name') or ''}".strip()
+        m_ids = p.get("manager_ids") or []
+        
         # Sonucu Listemize Ekliyoruz
         result.append({
             "id": p_id,
             "name": p.get("name"),
             "description": p.get("description"),
-            "manager": manager_name if manager_name else "Bilinmiyor",
-            "managerId": p.get("manager_id"),
+            "managers": m_ids, 
             "members": p_members,
             "tasks": p_tasks,
         })
         
-    return result
+    return result    
 
 
 def delete_project(project_id: str):
@@ -110,8 +112,38 @@ def delete_task(task_id: str):
     response = supabase.table("project_tasks").delete().eq("id", task_id).execute()
     return response.data
 
-def update_task_status(task_id: str, status: str):
+def update_task_status(task_id: str, status: str, current_user):
+    # 1. Önce görevin veritabanındaki halini çekelim
+    task_res = supabase.table("project_tasks").select("*").eq("id", task_id).execute()
+    
+    if not task_res.data:
+        raise HTTPException(status_code=404, detail="Görev bulunamadı")
+        
+    task = task_res.data[0]
+    
+    # 2. Yetki Kontrolü
+    user_id_str = str(current_user.id)
+    user_role = current_user.role if isinstance(current_user.role, str) else current_user.role.value
+    
+    # Yönetici Rolleri
+    admin_roles = [
+        UserRole.ELCI.value, 
+        UserRole.ELCI_YARDIMCISI.value, 
+        UserRole.GENEL_SEKRETER.value, 
+        UserRole.ADMIN.value
+    ]
+    
+    is_assignee = (task.get("assignee_id") == user_id_str) # Görev bana mı atanmış?
+    is_admin = (user_role in admin_roles)                # Yönetici miyim?
+    if not (is_assignee or is_admin):
+        raise HTTPException(
+            status_code=403, 
+            detail="Bu görevin durumunu güncelleme yetkiniz yok. Sadece size atanmış görevleri değiştirebilirsiniz."
+        )
+    # 3. Güncelleme İşlemi
     response = supabase.table("project_tasks").update({"status": status}).eq("id", task_id).execute()
+    
     if not response.data:
         raise HTTPException(status_code=500, detail="Görev güncellenemedi")
+        
     return response.data[0]

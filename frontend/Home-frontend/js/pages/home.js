@@ -1,39 +1,43 @@
 import { getUser, getToken } from "../store.js";
 
-const API_URL = "http://127.0.0.1:8000";
+const API_URL = "http://localhost:8000";
 
 // --- Global State for Charts ---
 let committeeData = {
   labels: ['Yönetim Kurulu', 'Proje Komitesi', 'Pazarlama ve Sosyal Medya Komitesi', 'Sponsorluk ve Organizasyon Komitesi', 'Akademi Komitesi', 'Mezun'],
-  counts: [0, 0, 0, 0, 0, 0] // Default values until data arrives
+  counts: [0, 0, 0, 0, 0, 0]
 };
 let pieChartInstance = null;
+let socialBarChartInstance = null;
 let allEventsList = [];
 
-// --- Son Aktiviteleri Çekme ve Çizme ---
-async function fetchRecentActivities() {
+// --- Dashboard Verilerini Ekrana Basma ---
+function updateDashboardDisplay(stats, activities, committeeRes) {
   const listEl = document.getElementById("home-activity-list");
+  const metricCards = document.querySelectorAll('.metric-info');
   if (!listEl) return;
 
-  try {
-    // headers setup for events/reports etc.
-    const token = getToken();
-    const commonHeaders = token ? { "Authorization": `Bearer ${token}` } : {};
+  // 1. Metric Cards (Sayaçlar) Güncelle
+  metricCards.forEach(card => {
+    const p = card.querySelector('p');
+    const h3 = card.querySelector('h3.counter-number');
+    if (!p || !h3) return;
+    const label = p.innerText.trim().toLowerCase();
+    let targetValue = 0;
+    
+    if (label.includes('toplantı')) targetValue = stats.meeting_count || 0;
+    else if (label.includes('akademi')) targetValue = stats.academy_count || 0;
+    else if (label.includes('topluluk') || label.includes('etkinlik')) targetValue = stats.total_events || 0;
+    else if (label.includes('üye')) targetValue = stats.total_members || 0;
 
-    // 1. Etkinlikleri ve Üyeleri paralel çek (Raporlar hariç tutuldu)
-    const [eventsRes, usersRes] = await Promise.all([
-      fetch(`${API_URL}/events/?limit=100`, { headers: commonHeaders }),
-      fetch(`${API_URL}/users/`, {
-        headers: {
-          'Content-Type': 'application/json',
-          "Authorization": token ? `Bearer ${token}` : ""
-        },
-        credentials: 'include'
-      })
-    ]);
+    h3.setAttribute('data-target', targetValue);
+    animateSingleCounter(h3, targetValue);
+  });
 
-    let activities = [];
-    const metricCards = document.querySelectorAll('.metric-info');
+  // 2. Komite Dağılımı (Pie Chart) Verisini Hazırla
+  if (committeeRes) {
+    committeeData.labels = committeeRes.labels;
+    committeeData.counts = committeeRes.counts;
 
     // 2. Etkinlikleri normalize et
     if (eventsRes.ok) {
@@ -103,138 +107,17 @@ async function fetchRecentActivities() {
           iconClass: "success" // yeşil nokta
         });
       });
+    if (pieChartInstance) {
+      pieChartInstance.data.labels = committeeData.labels;
+      pieChartInstance.data.datasets[0].data = committeeData.counts;
+      pieChartInstance.update();
     }
+  }
 
-    // ----------------------------------------------------
-    // Üye sayısını hesaplama (Sadece 'Aktif' üyeleri sayıyoruz)
-    if (usersRes.ok) {
-      const usersData = await usersRes.json();
-      const usersList = Array.isArray(usersData) ? usersData : (usersData?.data || []);
-
-      const activeMembersCount = usersList.filter(m => {
-        if (m.is_active === false || (!m.class_ && !m.university_department)) {
-          return false;
-        }
-        return true;
-      }).length;
-
-      // DOM üzerinde "Aktif Üye" kartını güncelle
-      metricCards.forEach(card => {
-        const p = card.querySelector('p');
-        if (p && p.innerText.includes('Aktif Üye')) {
-          const h3 = card.querySelector('h3.counter-number');
-          if (h3) {
-            h3.setAttribute('data-target', activeMembersCount);
-            h3.innerText = '0';
-            const updateCount = () => {
-              const target = +h3.getAttribute('data-target');
-              const count = +h3.innerText;
-              const speed = 200;
-              const inc = Math.max(1, target / speed);
-              if (count < target) {
-                h3.innerText = Math.ceil(count + inc);
-                setTimeout(updateCount, 10);
-              } else {
-                h3.innerText = target;
-              }
-            };
-            updateCount();
-          }
-        }
-      });
-
-      // Üyeleri de aktivite listesine ekle (Yeni katılan aktif üyeler)
-      const counts = {
-        'Yönetim Kurulu': 0,
-        'Proje Komitesi': 0,
-        'Pazarlama ve Sosyal Medya Komitesi': 0,
-        'Sponsorluk ve Organizasyon Komitesi': 0,
-        'Akademi Komitesi': 0,
-        'Mezun': 0
-      };
-
-      usersList.forEach(m => {
-        const isActive = !(m.is_active === false || (!m.class_ && !m.university_department));
-
-        // Komite Dağılımı Hesaplama (Sadece Aktifler)
-        if (isActive) {
-          const role = (m.role || "").toLowerCase();
-          const dept = (m.department || "").toLowerCase();
-
-          // Yönetim Kurulu: Özel roller
-          if (role === 'admin' || role === 'elci' || role === 'genel_sekreter' || role === 'departman_lideri' || role === 'insan_kaynaklari') {
-            counts['Yönetim Kurulu']++;
-          }
-          else if (role === 'mezun') {
-            counts['Mezun']++;
-          }
-          else if (dept.includes("proje")) {
-            counts['Proje Komitesi']++;
-          }
-          else if (dept.includes("eğitim") || dept.includes("akademi")) {
-            counts['Akademi Komitesi']++;
-          }
-          else if (dept.includes("organizasyon") || dept.includes("sponsorluk")) {
-            counts['Sponsorluk ve Organizasyon Komitesi']++;
-          }
-          else if (dept.includes("tasarım") || dept.includes("medya") || dept.includes("pr") || dept.includes("iletişim") || dept.includes("pazarlama")) {
-            counts['Pazarlama ve Sosyal Medya Komitesi']++;
-          } else {
-            // Hiçbiri değilse varsayılan bir yer veya Proje (en kalabalık genelde)
-            counts['Proje Komitesi']++;
-          }
-
-          activities.push({
-            type: "member",
-            id: m.id,
-            title: "Yeni Üye Katıldı",
-            desc: `${m.first_name || ""} ${m.last_name || ""} aramıza katıldı.`,
-            dateStr: m.created_at,
-            dateObj: new Date(m.created_at),
-            iconClass: "info" // mavi nokta
-          });
-        }
-      });
-
-      // Global veriyi güncelle
-      committeeData.counts = [
-        counts['Yönetim Kurulu'],
-        counts['Proje Komitesi'],
-        counts['Pazarlama ve Sosyal Medya Komitesi'],
-        counts['Sponsorluk ve Organizasyon Komitesi'],
-        counts['Akademi Komitesi'],
-        counts['Mezun']
-      ];
-
-      // Eğer grafik zaten çizilmişse update et
-      if (pieChartInstance) {
-        pieChartInstance.data.datasets[0].data = committeeData.counts;
-        pieChartInstance.update();
-      }
-    }
-
-    /* Raporlar son aktivitelerde gösterilmesin
-    if (reportsRes && reportsRes.ok) {
-        ...
-    }
-    */
-
-    // 4. Tarihe göre sırala (en yeni en üstte)
-    activities.sort((a, b) => b.dateObj - a.dateObj);
-
-    // 5. Sadece ilk 7 aktiviteyi al
-    const topActivities = activities.slice(0, 7);
-
-    // 6. Ekrana Çiz
-    if (topActivities.length === 0) {
-      listEl.innerHTML = `<li style="text-align:center; padding: 20px 0; color:var(--text-muted); font-size:14px;">Henüz aktivite bulunmuyor.</li>`;
-      return;
-    }
-
-    listEl.innerHTML = topActivities.map(act => {
-      // Zamanı "2 saat önce, 5 gün önce" şeklinde hesapla
-      const timeAgo = getTimeAgo(act.dateObj);
-
+  // 3. Son Aktiviteler
+  if (activities && activities.length > 0) {
+    listEl.innerHTML = activities.map(act => {
+      const timeAgo = getTimeAgo(new Date(act.created_at));
       return `
         <li class="activity-item">
           <div class="activity-dot ${act.iconClass}"></div>
@@ -245,11 +128,27 @@ async function fetchRecentActivities() {
         </li>
       `;
     }).join("");
-
-  } catch (error) {
-    console.error("Son Aktiviteler yüklenirken hata:", error);
-    listEl.innerHTML = `<li style="text-align:center; padding: 20px 0; color:var(--danger); font-size:14px;">Aktiviteler yüklenemedi.</li>`;
+  } else {
+    listEl.innerHTML = `<li style="text-align:center; padding: 20px 0; color:var(--text-muted); font-size:14px;">Henüz aktivite bulunmuyor.</li>`;
   }
+}
+
+// Münferit sayaç animasyonu
+function animateSingleCounter(element, target) {
+  element.innerText = '0';
+  const speed = 200;
+  const inc = Math.max(1, target / speed);
+
+  const updateCount = () => {
+    const count = +element.innerText;
+    if (count < target) {
+      element.innerText = Math.ceil(count + inc);
+      setTimeout(updateCount, 10);
+    } else {
+      element.innerText = target;
+    }
+  };
+  updateCount();
 }
 
 // Zaman Farkı Hesaplama (ör: '2 saat önce')
@@ -309,6 +208,36 @@ export function renderHome(user) {
         </div>
       </div>
 
+      <!-- Fotoğraf Slider -->
+      <div class="home-slider" id="home-slider">
+        <button class="slider-arrow slider-arrow-left" id="slider-prev" aria-label="Önceki">
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+        </button>
+        <div class="slider-track" id="slider-track">
+          <div class="slider-slide">
+            <img src="../../picture/01ef3c03-756f-40a2-97ec-deb10a750c3f.jpg" alt="Fotoğraf 1" class="slider-img" data-index="1"/>
+          </div>
+          <div class="slider-slide">
+            <img src="../../picture/WhatsApp_Image_2025-05-20_at_15_vYYXOVg.08.20.jpeg" alt="Fotoğraf 2" class="slider-img" data-index="2"/>
+          </div>
+          <div class="slider-slide">
+            <img src="../../picture/WhatsApp_Image_2025-05-20_at_12.36.42.jpeg" alt="Fotoğraf 3" class="slider-img" data-index="3"/>
+          </div>
+          <div class="slider-slide">
+            <img src="../../picture/mobil.png" alt="Fotoğraf 4" class="slider-img" data-index="4"/>
+          </div>
+        </div>
+        <button class="slider-arrow slider-arrow-right" id="slider-next" aria-label="Sonraki">
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+        </button>
+        <div class="slider-dots" id="slider-dots">
+          <span class="slider-dot active" data-slide="0"></span>
+          <span class="slider-dot" data-slide="1"></span>
+          <span class="slider-dot" data-slide="2"></span>
+          <span class="slider-dot" data-slide="3"></span>
+        </div>
+      </div>
+
       <!-- Özet Kartları -->
       <div class="metrics-grid" id="metrics-grid">
         <div class="metric-card">
@@ -316,7 +245,7 @@ export function renderHome(user) {
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
           </div>
           <div class="metric-info">
-            <h3 class="counter-number" data-target="42">0</h3>
+            <h3 class="counter-number" data-target="0">0</h3>
             <p>Toplantı Sayısı</p>
           </div>
         </div>
@@ -325,7 +254,7 @@ export function renderHome(user) {
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" /></svg>
           </div>
           <div class="metric-info">
-            <h3 class="counter-number" data-target="15">0</h3>
+            <h3 class="counter-number" data-target="0">0</h3>
             <p>Akademi Etkinliği</p>
           </div>
         </div>
@@ -420,10 +349,10 @@ export function renderHome(user) {
           <div class="form-group">
             <label>Platform Seçiniz</label>
             <select id="social-platform" class="form-control">
-              <option value="Instagram">Instagram</option>
-              <option value="Twitter">Twitter / X</option>
-              <option value="LinkedIn">LinkedIn</option>
-              <option value="Youtube">Youtube</option>
+              <option value="instagram">Instagram</option>
+              <option value="medium">Medium</option>
+              <option value="linkedin">LinkedIn</option>
+              <option value="youtube">Youtube</option>
             </select>
           </div>
           <div class="form-group">
@@ -486,24 +415,126 @@ export function renderHome(user) {
   `;
 }
 
-export function initHome() {
-  fetchRecentActivities();
-  // Chart.js render işlemleri
-  renderCharts();
+export async function initHome() {
+  try {
+    const token = getToken();
+    const headers = token ? { "Authorization": `Bearer ${token}` } : {};
 
-  // Sosyal medya buton eventleri
-  initSocialModal();
-  // Tilt efektini uygula
-  initTiltEffect();
+    // 1. Tüm verileri PARALEL olarak çek
+    const [statsRes, committeeRes, activitiesRes, eventsRes, socialRes, countdownRes] = await Promise.all([
+      fetch(`${API_URL}/dashboard/stats`, { headers }),
+      fetch(`${API_URL}/dashboard/committees`, { headers }),
+      fetch(`${API_URL}/dashboard/activities`, { headers }),
+      fetch(`${API_URL}/events/?limit=100`, { headers }),
+      fetch(`${API_URL}/social-media/`, { headers }),
+      fetch(`${API_URL}/dashboard/countdown`, { headers })
+    ]);
 
-  // Rakam artış efekti (Sayaçlar)
-  initNumberCounters();
+    // 2. Yanıtları JSON olarak işle
+    const [stats, committee, activities, eventsData, socialPosts, countdown] = await Promise.all([
+      statsRes.ok ? statsRes.json() : { total_members: 0, meeting_count: 0, academy_count: 0, total_events: 0 },
+      committeeRes.ok ? committeeRes.json() : null,
+      activitiesRes.ok ? activitiesRes.json() : { activities: [] },
+      eventsRes.ok ? eventsRes.json() : { data: [] },
+      socialRes.ok ? socialRes.json() : { data: [] },
+      countdownRes.ok ? countdownRes.json() : { success: false }
+    ]);
 
-  // Geri sayım sayacını başlat
-  initCountdown();
+    // 3. AllEventsList'i global olarak güncelle (Modal sekmeleri için)
+    allEventsList = eventsData.data || [];
 
-  // Sayaç modal eventleri
-  initCounterModal();
+    // 4. Bileşenleri hazırlanan verilerle güncelle
+    updateDashboardDisplay(stats, activities.activities, committee);
+    renderCharts(socialPosts.data || []);
+    initCountdown(countdown);
+
+    // 5. Bağımsız görsel efektleri başlat
+    initSocialModal();
+    initTiltEffect();
+    initNumberCounters();
+    initCounterModal();
+    initHomeSlider();
+    
+  } catch (err) {
+    console.error("Ana sayfa yükleme hatası:", err);
+  }
+}
+
+/**
+ * Ana sayfa görsel slider mantığı
+ */
+function initHomeSlider() {
+  const track = document.getElementById('slider-track');
+  const slides = document.querySelectorAll('.slider-slide');
+  const prevBtn = document.getElementById('slider-prev');
+  const nextBtn = document.getElementById('slider-next');
+  const dots = document.querySelectorAll('.slider-dot');
+
+  if (!track || slides.length === 0) return;
+
+  let currentIndex = 0;
+  let autoPlayInterval;
+
+  const updateSlider = (index) => {
+    // Sınır kontrolü
+    if (index >= slides.length) index = 0;
+    if (index < 0) index = slides.length - 1;
+
+    currentIndex = index;
+
+    // Kaydırma işlemi
+    track.style.transform = `translateX(-${currentIndex * 100}%)`;
+
+    // Dot güncelleme
+    dots.forEach((dot, idx) => {
+      dot.classList.toggle('active', idx === currentIndex);
+    });
+  };
+
+  const nextSlide = () => updateSlider(currentIndex + 1);
+  const prevSlide = () => updateSlider(currentIndex - 1);
+
+  // Otomatik oynatma başlat
+  const startAutoPlay = () => {
+    stopAutoPlay(); // Varsa temizle
+    autoPlayInterval = setInterval(nextSlide, 2000); // 5 saniyede bir
+  };
+
+  const stopAutoPlay = () => {
+    if (autoPlayInterval) clearInterval(autoPlayInterval);
+  };
+
+  // Event listenerlar
+  if (nextBtn) {
+    nextBtn.addEventListener('click', () => {
+      nextSlide();
+      startAutoPlay(); // Manuel müdahalede zamanlayıcıyı sıfırla
+    });
+  }
+
+  if (prevBtn) {
+    prevBtn.addEventListener('click', () => {
+      prevSlide();
+      startAutoPlay();
+    });
+  }
+
+  dots.forEach((dot, idx) => {
+    dot.addEventListener('click', () => {
+      updateSlider(idx);
+      startAutoPlay();
+    });
+  });
+
+  // Mouse gelince durdur, gidince başlat
+  const sliderContainer = document.getElementById('home-slider');
+  if (sliderContainer) {
+    sliderContainer.addEventListener('mouseenter', stopAutoPlay);
+    sliderContainer.addEventListener('mouseleave', startAutoPlay);
+  }
+
+  // Başlangıçta çalıştır
+  startAutoPlay();
 }
 
 function initNumberCounters() {
@@ -550,21 +581,16 @@ function initNumberCounters() {
 
 let countdownInterval;
 
-function initCountdown() {
+function initCountdown(countdownData) {
   let targetDate;
-  let targetName = "Yapay Zeka Zirvesi 2026";
+  let targetName = "Yakın Etkinlik Yok";
 
-  const savedDateTime = localStorage.getItem('countdown_event_datetime');
-  const savedName = localStorage.getItem('countdown_event_name');
-
-  if (savedDateTime && savedName) {
-    targetDate = new Date(savedDateTime);
-    targetName = savedName;
+  if (countdownData && countdownData.success && countdownData.event_date) {
+    targetDate = new Date(countdownData.event_date);
+    targetName = countdownData.title;
   } else {
-    // Demo amaçlı 5 gün ileri
+    // Veri gelmediyse demo veya bugünden başlat
     targetDate = new Date();
-    targetDate.setDate(targetDate.getDate() + 5);
-    targetDate.setHours(18, 0, 0, 0);
   }
 
   const nameEl = document.querySelector('.countdown-event-name');
@@ -576,8 +602,6 @@ function initCountdown() {
   const secondsEl = document.getElementById('cd-seconds');
 
   if (!daysEl) return;
-
-  // Varsa eski intervali temizle
   if (countdownInterval) clearInterval(countdownInterval);
 
   function update() {
@@ -721,22 +745,44 @@ function initTiltEffect() {
   });
 }
 
-function renderCharts() {
-  // Chart.defaults ile genel tema ayarları
-  const isLightMode = document.body.classList.contains('light-theme');
-  Chart.defaults.color = isLightMode ? '#64748b' : '#8a8d91'; // --text-dim
-  Chart.defaults.font.family = "'Figtree', sans-serif";
+function processSocialData(posts) {
+  // Aylara göre gruplandırma (Son 6 ay)
+  const months = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+  const counts = new Array(12).fill(0);
 
-  // Sütun Grafik (Sosyal Medya Paylaşımı) - Her zaman renderlanır
+  posts.forEach(post => {
+    const date = new Date(post.post_date);
+    counts[date.getMonth()] += 1;
+  });
+
+  const currentMonth = new Date().getMonth();
+  const labels = [];
+  const data = [];
+
+  for (let i = 5; i >= 0; i--) {
+    let mIdx = currentMonth - i;
+    if (mIdx < 0) mIdx += 12;
+    labels.push(months[mIdx]);
+    data.push(counts[mIdx]);
+  }
+
+  return { labels, data };
+}
+
+function renderCharts(socialPosts) {
+  const socialData = processSocialData(socialPosts);
+  const isLightMode = document.body.classList.contains('light-theme');
+  Chart.defaults.color = isLightMode ? '#64748b' : '#8a8d91';
+  Chart.defaults.font.family = "'Figtree', sans-serif";
   const ctxBar = document.getElementById('socialMediaBarChart');
   if (ctxBar) {
-    new Chart(ctxBar, {
+    socialBarChartInstance = new Chart(ctxBar, {
       type: 'bar',
       data: {
-        labels: ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran'],
+        labels: socialData.labels, // Backend'den gelen aylar
         datasets: [{
           label: 'Paylaşım Sayısı',
-          data: [12, 19, 15, 25, 22, 30],
+          data: socialData.data,   // Backend'den gelen sayılar
           backgroundColor: 'rgba(124, 58, 237, 0.8)',
           hoverBackgroundColor: '#7c3aed',
           borderRadius: 6,
@@ -765,7 +811,20 @@ function renderCharts() {
             bodyColor: isLightMode ? '#475569' : '#e2e8f0',
             borderColor: isLightMode ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.1)',
             borderWidth: 1,
-            padding: 12
+            padding: 12,
+            callbacks: {
+              label: function (context) {
+                let label = context.dataset.label || '';
+                if (label) {
+                  label += ': ';
+                }
+                label += context.parsed.y;
+
+                // Etkileşim sayısını (katılımcı) ekle
+                const interactions = context.dataset.interactions ? context.dataset.interactions[context.dataIndex] : 0;
+                return [label, `Toplam Katılımcı: ${interactions}`];
+              }
+            }
           }
         }
       }
@@ -846,32 +905,56 @@ function initSocialModal() {
   const btnClose = document.getElementById('btn-close-social-modal');
   const btnCancel = document.getElementById('btn-cancel-social');
   const btnSave = document.getElementById('btn-save-social');
-
   if (btnAdd) {
     btnAdd.addEventListener('click', () => {
       overlay.classList.add('open');
       document.getElementById('social-date').valueAsDate = new Date();
     });
   }
-
   if (btnClose) btnClose.addEventListener('click', () => overlay.classList.remove('open'));
   if (btnCancel) btnCancel.addEventListener('click', () => overlay.classList.remove('open'));
-
   if (btnSave) {
-    btnSave.addEventListener('click', () => {
+    // async eklemeyi unutma
+    btnSave.addEventListener('click', async () => {
       const platform = document.getElementById('social-platform').value;
+      const date = document.getElementById('social-date').value;
       const count = document.getElementById('social-count').value;
-
       if (!count || count <= 0) {
         showToast("Lütfen geçerli bir sayı giriniz.", "error");
         return;
       }
-
-      // Simülasyon
-      showToast(`${platform} için ${count} paylaşım kaydedildi!`, "success");
-      overlay.classList.remove('open');
-      document.getElementById('social-count').value = '';
-      // İleride burada bir API call yapılıp bar chart datası güncellenebilir.
+      try {
+        const token = getToken();
+        // Backend Query parametresi beklediği için URL'i oluşturuyoruz
+        // Count değerini backend'deki 'likes' alanına eşliyoruz (veya isteğine göre views da yapabilirsin)
+        const params = new URLSearchParams({
+          platform: platform.toLowerCase(),
+          post_date: date,
+          likes: count, 
+          comments: 0,
+          views: 0
+        });
+        const res = await fetch(`${API_URL}/social-media/?${params.toString()}`, {
+          method: 'POST',
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
+        });
+        if (res.ok) {
+          showToast(`${platform} için veriler başarıyla kaydedildi!`, "success");
+          overlay.classList.remove('open');
+          document.getElementById('social-count').value = '';
+          
+          // Veri eklendiği için grafiği ve metrikleri yeniliyoruz
+          initHome(); 
+        } else {
+          const errData = await res.json();
+          showToast("Hata: " + (errData.detail || "Kaydedilemedi"), "error");
+        }
+      } catch (err) {
+        console.error("Sosyal medya kaydetme hatası:", err);
+        showToast("Sunucuya bağlanılamadı.", "error");
+      }
     });
   }
 }
@@ -895,4 +978,5 @@ function showToast(message, type = "success") {
     toast.style.animation = 'slideOut 0.3s forwards';
     setTimeout(() => toast.remove(), 300);
   }, 3000);
+}
 }

@@ -37,6 +37,11 @@ async def create_report_endpoint(
             detail="Dosya boyutu çok büyük. Maksimum 10 MB desteklenmektedir."
         )
     
+    if project_name and project_name.strip().lower() in ["", "null", "undefined"]:
+        project_name = None
+    elif project_name and not project_name.strip(): # Sadece space basılıp gönderildiyse
+        project_name = None 
+
     # Dosya servisine gönder
     created_report = create_report_service(
         sender_id=current_user.id,
@@ -192,6 +197,11 @@ async def update_report_endpoint(
                 )
             file_name = file.filename
             content_type = file.content_type
+
+        if project_name and project_name.strip().lower() in ["", "null", "undefined"]:
+            project_name = None
+        elif project_name and not project_name.strip():
+            project_name = None
             
         result = update_report_service(
             report_id=report_id,
@@ -238,7 +248,7 @@ async def download_report_endpoint(
         if not result.get("success"):
             raise HTTPException(status_code=404, detail=result.get("message"))
             
-        return RedirectResponse(url=result.get("url"))
+        return {"success": True, "url": result.get("url")}
         
     except HTTPException:
         raise
