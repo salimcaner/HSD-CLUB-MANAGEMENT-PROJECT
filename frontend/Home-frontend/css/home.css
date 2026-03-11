@@ -574,74 +574,6 @@ body.light-theme {
   border-bottom-right-radius: var(--radius-lg);
 }
 
-/* ─── TOAST (Bildirimler) ─── */
-.toast-container {
-  position: fixed;
-  bottom: 24px;
-  right: 24px;
-  z-index: 1000;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.toast {
-  background: rgba(42, 43, 48, 0.9);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border-left: 4px solid var(--accent);
-  color: var(--text-main);
-  padding: 14px 20px;
-  border-radius: 6px;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
-  font-weight: 500;
-  font-size: 14px;
-  animation: slideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.toast.success {
-  border-color: var(--success);
-}
-
-.toast.success svg {
-  color: var(--success);
-}
-
-.toast.error {
-  border-color: var(--danger);
-}
-
-.toast.error svg {
-  color: var(--danger);
-}
-
-@keyframes slideIn {
-  from {
-    transform: translateX(120%);
-    opacity: 0;
-  }
-
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
-}
-
-@keyframes slideOut {
-  from {
-    transform: translateX(0);
-    opacity: 1;
-  }
-
-  to {
-    transform: translateX(120%);
-    opacity: 0;
-  }
-}
-
 /* ─── FOTOĞRAF SLİDER ─── */
 .home-slider {
   position: relative;
@@ -695,14 +627,21 @@ body.light-theme {
   transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
+
 .slider-arrow:hover {
   background: var(--accent);
   border-color: transparent;
   transform: translateY(-50%) scale(1.08);
   box-shadow: 0 6px 20px rgba(124, 58, 237, 0.5);
 }
-.slider-arrow-left  { left: 16px; }
-.slider-arrow-right { right: 16px; }
+
+.slider-arrow-left {
+  left: 16px;
+}
+
+.slider-arrow-right {
+  right: 16px;
+}
 
 /* Dot göstergeleri */
 .slider-dots {
@@ -714,6 +653,7 @@ body.light-theme {
   gap: 8px;
   z-index: 10;
 }
+
 .slider-dot {
   width: 8px;
   height: 8px;
@@ -722,6 +662,7 @@ body.light-theme {
   cursor: pointer;
   transition: background 0.3s, transform 0.3s;
 }
+
 .slider-dot.active {
   background: #fff;
   transform: scale(1.3);
@@ -733,14 +674,22 @@ body.light-theme .slider-arrow {
   color: #0f172a;
   border-color: rgba(0, 0, 0, 0.1);
 }
+
 body.light-theme .slider-dot {
   background: rgba(15, 23, 42, 0.3);
 }
+
 body.light-theme .slider-dot.active {
   background: var(--accent);
 }
 
 @media (max-width: 768px) {
-  .slider-slide { height: 220px; }
-  .slider-arrow { width: 36px; height: 36px; }
+  .slider-slide {
+    height: 220px;
+  }
+
+  .slider-arrow {
+    width: 36px;
+    height: 36px;
+  }
 }

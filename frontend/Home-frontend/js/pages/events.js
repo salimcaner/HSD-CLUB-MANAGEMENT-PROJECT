@@ -54,7 +54,7 @@ async function fetchEventsFromBackend() {
     const headers = token ? { "Authorization": `Bearer ${token}` } : {};
 
     // Arama textini URL parametresi olarak ekle 
-    let url = `${API_URL}/?limit=100`;
+    let url = `${API_URL}?limit=100`;
     if (currentSearch) {
       url += `&search_name=${encodeURIComponent(currentSearch)}`;
     }
@@ -768,16 +768,9 @@ function hideModal() {
   document.getElementById("evCommittee").value = "";
   if (document.getElementById("evType")) document.getElementById("evType").value = "";
   document.getElementById("evParticipantCount").value = "";
-<<<<<<< HEAD
-
-  // Yeni etkinlik eklerken katılımcı sayısı grubunu gizle
-  const participantGroup = document.getElementById("evParticipantGroup");
-  if (participantGroup) participantGroup.style.display = "none";
-=======
   
   // Katılımcı sayısı alanını opsiyonel olarak sıfırla
   updateParticipantRequirement();
->>>>>>> 48cd34c2fd583a4bfc712bd82e40006a3498607d
 
   clearImageSelection();
 }

@@ -28,7 +28,7 @@ export function renderCommunity() {
     <section class="community-page">
       <div class="comm-header">
         <div>
-          <h1>Topluluk</h1>
+          <h1>Topl<span>uluk</span></h1>
           <p class="comm-subtitle">Tüm üyeler — komite sırasına göre</p>
         </div>
         <div class="comm-search-wrap">
@@ -81,16 +81,21 @@ async function fetchAndRender() {
   const token = getToken();
   const contentEl = document.getElementById("communityContent");
   try {
-    const res = await fetch(`${API_URL}/users/`, {
+    const res = await fetch(`${API_URL}/community/`, {
       headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
       credentials: "include"
     });
     if (!res.ok) throw new Error("Yüklenemedi");
-    const members = await res.json();
-    console.log("Fetched Community Members: ", members);
+    const response = await res.json();
+    console.log("Fetched Community Response: ", response);
+    
+    // Extract members array from response object
+    const members = response.data || response;
+    
     window._commAllMembers = members;
     renderList(members, "");
   } catch (e) {
+    console.error("Community Page Error:", e);
     contentEl.innerHTML = `<div class="comm-error">Üyeler yüklenirken hata oluştu.</div>`;
   }
 }
@@ -187,6 +192,7 @@ const ROLE_LABELS = {
   elci_yardimcisi: "Elçi Yardımcısı",
   genel_sekreter: "Genel Sekreter",
   insan_kaynaklari: "İnsan Kaynakları",
+  komite_lideri: "Komite Lideri",
   departman_lideri: "Komite Lideri",
   lider: "Komite Lideri",
   uye: "Üye",

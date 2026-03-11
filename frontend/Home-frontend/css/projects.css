@@ -552,16 +552,20 @@
     grid-template-columns: 1fr;
   }
 }
+
 /* ── LIGHT THEME OVERRIDES ── */
 body.light-theme .kanban-column {
   background: rgba(0, 0, 0, 0.03);
 }
+
 body.light-theme .project-manager-badge {
   background: rgba(0, 0, 0, 0.05);
 }
+
 body.light-theme .project-detail-manager {
   background: rgba(0, 0, 0, 0.05);
 }
+
 body.light-theme .member-item {
   border-bottom-color: rgba(0, 0, 0, 0.05);
 }

@@ -22,8 +22,9 @@
   --radius-md: 8px;
   --radius-lg: 12px;
   --font-base: 'Figtree', sans-serif;
-  
-  --danger: #ef4444;       /* Silme/İptal işleri için */
+
+  --danger: #ef4444;
+  /* Silme/İptal işleri için */
   --danger-hover: #dc2626;
   --success: #22c55e;
 }
@@ -56,8 +57,15 @@ body.light-theme {
 }
 
 @keyframes fadeUp {
-  from { opacity: 0; transform: translateY(16px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* ─── Başlık (Header) ─── */
@@ -90,7 +98,8 @@ body.light-theme {
   justify-content: space-between;
 }
 
-.toolbar-left, .toolbar-right {
+.toolbar-left,
+.toolbar-right {
   display: flex;
   gap: 12px;
   align-items: center;
@@ -183,8 +192,14 @@ body.light-theme {
   font-size: 16px;
   padding: 4px;
 }
-.icon-btn-simple:hover { color: var(--text-main); }
-.icon-btn-simple.delete:hover { color: var(--danger); }
+
+.icon-btn-simple:hover {
+  color: var(--text-main);
+}
+
+.icon-btn-simple.delete:hover {
+  color: var(--danger);
+}
 
 /* ─── Etkinlik Kartları (Grid View) ─── */
 .events-grid {
@@ -245,7 +260,8 @@ body.light-theme {
   line-height: 1.5;
   margin-bottom: 16px;
   display: -webkit-box;
-  -webkit-line-clamp: 2; /* 2 satırda keser */
+  -webkit-line-clamp: 2;
+  /* 2 satırda keser */
   line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
@@ -265,12 +281,17 @@ body.light-theme {
   font-size: 13px;
   color: var(--text-muted);
 }
-.event-meta-row svg { color: var(--accent); }
+
+.event-meta-row svg {
+  color: var(--accent);
+}
 
 .event-committee-badge {
   display: inline-block;
-  background: rgba(124, 58, 237, 0.15); /* accent renginin şeffaf hali */
-  color: #a78bfa; /* accent'in daha açık tonu */
+  background: rgba(124, 58, 237, 0.15);
+  /* accent renginin şeffaf hali */
+  color: #a78bfa;
+  /* accent'in daha açık tonu */
   padding: 4px 10px;
   border-radius: 20px;
   font-size: 12px;
@@ -304,7 +325,7 @@ body.light-theme {
 
 .event-card-footer {
   padding: 14px 20px;
-  background: rgba(0,0,0,0.15);
+  background: rgba(0, 0, 0, 0.15);
   border-top: 1px solid var(--border-light);
   display: flex;
   justify-content: space-between;
@@ -397,7 +418,9 @@ body.light-theme {
   margin: 0;
 }
 
-.modal-header h2 span { color: var(--accent); }
+.modal-header h2 span {
+  color: var(--accent);
+}
 
 .modal-close {
   background: none;
@@ -407,7 +430,10 @@ body.light-theme {
   padding: 4px;
   transition: color 0.2s;
 }
-.modal-close:hover { color: var(--accent); }
+
+.modal-close:hover {
+  color: var(--accent);
+}
 
 .modal-body {
   padding: 24px;
@@ -416,10 +442,19 @@ body.light-theme {
   scrollbar-width: thin;
   scrollbar-color: var(--bg-dark) transparent;
 }
-.modal-body::-webkit-scrollbar { width: 6px; }
-.modal-body::-webkit-scrollbar-thumb { background: var(--bg-dark); border-radius: 4px; }
 
-.form-group { margin-bottom: 16px; }
+.modal-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.modal-body::-webkit-scrollbar-thumb {
+  background: var(--bg-dark);
+  border-radius: 4px;
+}
+
+.form-group {
+  margin-bottom: 16px;
+}
 
 .form-row {
   display: grid;
@@ -468,27 +503,34 @@ body.light-theme {
   padding: 24px;
   text-align: center;
   position: relative;
-  background: rgba(0,0,0,0.1);
+  background: rgba(0, 0, 0, 0.1);
   transition: border-color 0.2s;
 }
-.image-upload-area:hover, .image-upload-area.dragover {
+
+.image-upload-area:hover,
+.image-upload-area.dragover {
   border-color: var(--accent);
-  background: rgba(124, 58, 237, 0.05); /* accent arkaplan */
+  background: rgba(124, 58, 237, 0.05);
+  /* accent arkaplan */
 }
+
 .upload-icon {
   color: var(--text-dim);
   margin-bottom: 8px;
 }
+
 .image-upload-area p {
   margin: 0;
   font-size: 13px;
   color: var(--text-muted);
 }
+
 .image-upload-area .upload-hint {
   font-size: 11px;
   color: var(--text-dim);
   margin-top: 4px;
 }
+
 .image-upload-area input[type="file"] {
   position: absolute;
   inset: 0;
@@ -504,12 +546,14 @@ body.light-theme {
   display: inline-block;
   max-width: 100%;
 }
+
 .image-preview-wrap img {
   max-width: 100%;
   max-height: 140px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-light);
 }
+
 .remove-image-btn {
   position: absolute;
   top: -8px;
@@ -524,7 +568,7 @@ body.light-theme {
   line-height: 24px;
   cursor: pointer;
   z-index: 2;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
 }
 
 .modal-footer {
@@ -555,17 +599,30 @@ body.light-theme {
   color: var(--text-main);
   padding: 12px 20px;
   border-radius: 4px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   font-size: 14px;
   animation: slideIn 0.3s ease forwards;
   display: flex;
   align-items: center;
   gap: 10px;
 }
-.toast.success { border-color: var(--success); }
-.toast.error { border-color: var(--danger); }
+
+.toast.success {
+  border-color: var(--success);
+}
+
+.toast.error {
+  border-color: var(--danger);
+}
 
 @keyframes slideIn {
-  from { transform: translateX(100%); opacity: 0; }
-  to { transform: translateX(0); opacity: 1; }
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
 }

@@ -690,37 +690,45 @@ body {
   gap: 12px;
   justify-content: center;
 }
+
 /* ── LIGHT THEME OVERRIDES ── */
 body.light-theme .members-table td {
-    border-bottom-color: rgba(0, 0, 0, 0.04);
+  border-bottom-color: rgba(0, 0, 0, 0.04);
 }
+
 body.light-theme .role-badge {
-    background: rgba(0, 0, 0, 0.05);
-    border-color: rgba(0, 0, 0, 0.1);
+  background: rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.1);
 }
+
 body.light-theme .icon-btn-simple:hover {
-    background: rgba(0, 0, 0, 0.05);
+  background: rgba(0, 0, 0, 0.05);
 }
+
 body.light-theme .role-ELCI {
   color: #6d28d9;
   background: rgba(109, 40, 217, 0.1);
   border-color: rgba(109, 40, 217, 0.2);
 }
+
 body.light-theme .role-ELCI_YARDIMCISI {
   color: #2563eb;
   background: rgba(37, 99, 235, 0.1);
   border-color: rgba(37, 99, 235, 0.2);
 }
+
 body.light-theme .role-KOMITE_LIDERI {
   color: #ea580c;
   background: rgba(234, 88, 12, 0.1);
   border-color: rgba(234, 88, 12, 0.2);
 }
+
 body.light-theme .role-GENEL_SEKRETER {
   color: #16a34a;
   background: rgba(22, 163, 74, 0.1);
   border-color: rgba(22, 163, 74, 0.2);
 }
+
 body.light-theme .role-INSAN_KAYNAKLARI {
   color: #d97706;
   background: rgba(217, 119, 6, 0.1);

@@ -36,7 +36,7 @@ export function renderCalendar(user) {
 
       <div class="cal-header">
         <div>
-          <h1>Takvim</h1>
+          <h1>Tak<span>vim</span></h1>
           <p class="cal-subtitle">Etkinlikler, toplantılar, raporlar ve projeler</p>
         </div>
       </div>

@@ -40,36 +40,39 @@
   --accent-glow: rgba(123, 143, 161, 0.18);
   --accent-active: #a8bccf;
 
-<<<<<<< HEAD
   --logout-hover: rgba(124, 58, 237, 0.15);
   --logout-color: #a78bfa;
-=======
-  --logout-hover: rgba(255, 255, 255, 0.05);
-  --logout-hover: rgba(255, 255, 255, 0.05);
-  --logout-color: var(--text-primary);
->>>>>>> d40aa219f76fb538b1eb0716396235a72b8fa0a0
-
   font-family: 'Figtree', sans-serif;
 }
 
 /* ── Light Theme Variables ───────────────────────────────────── */
 body.light-theme {
-  --bg-darkest:   #f8fafc;   /* açık gri zemin */
-  --bg-dark:      #ffffff;   /* sidebar arka planı beyaz */
-  --bg-mid:       #f1f5f9;   /* kartlar, hover grimsi */
-  --bg-light:     #e2e8f0;   /* hafif yüzeyler */
-  --bg-topbar:    #ffffff;   /* topbar beyaz */
+  --bg-darkest: #f8fafc;
+  /* açık gri zemin */
+  --bg-dark: #ffffff;
+  /* sidebar arka planı beyaz */
+  --bg-mid: #f1f5f9;
+  /* kartlar, hover grimsi */
+  --bg-light: #e2e8f0;
+  /* hafif yüzeyler */
+  --bg-topbar: #ffffff;
+  /* topbar beyaz */
 
-  --border:       rgba(0, 0, 0, 0.08);
+  --border: rgba(0, 0, 0, 0.08);
   --border-hover: rgba(0, 0, 0, 0.15);
 
-  --text-primary:  #0f172a;  /* koyu gri-siyah metin */
-  --text-secondary: #475569; /* ikincil metin */
-  --text-muted:    #64748b;  /* soluk metin */
+  --text-primary: #0f172a;
+  /* koyu gri-siyah metin */
+  --text-secondary: #475569;
+  /* ikincil metin */
+  --text-muted: #64748b;
+  /* soluk metin */
 
-  --accent:        #3b82f6;   /* vurgu (mavi) */
-  --accent-glow:   rgba(59, 130, 246, 0.15);
-  --accent-active: #2563eb;   /* aktif durum */
+  --accent: #3b82f6;
+  /* vurgu (mavi) */
+  --accent-glow: rgba(59, 130, 246, 0.15);
+  --accent-active: #2563eb;
+  /* aktif durum */
 
   --logout-hover: rgba(0, 0, 0, 0.05);
 }
@@ -117,14 +120,18 @@ svg {
   width: 10px;
   height: 10px;
 }
+
 ::-webkit-scrollbar-track {
   background: var(--bg-darkest);
 }
+
 ::-webkit-scrollbar-thumb {
-  background: #3b82f6; /* Harmonious blue tone */
+  background: #3b82f6;
+  /* Harmonious blue tone */
   border-radius: 10px;
   border: 2px solid var(--bg-darkest);
 }
+
 ::-webkit-scrollbar-thumb:hover {
   background: #2563eb;
 }
@@ -672,15 +679,9 @@ svg {
 }
 
 .topbar-logout:hover {
-<<<<<<< HEAD
-  background: var(--logout-hover);
-  color: var(--logout-color);
-  border-color: rgba(124, 58, 237, 0.25);
-=======
   background: var(--bg-mid);
   color: var(--text-primary);
-  border-color: rgba(255,255,255,0.1);
->>>>>>> d40aa219f76fb538b1eb0716396235a72b8fa0a0
+  border-color: rgba(255, 255, 255, 0.1);
 }
 
 .logout-label {

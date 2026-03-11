@@ -20,6 +20,7 @@ const ROLE_LABELS = {
   elci_yardimcisi: "Elçi Yardımcısı",
   genel_sekreter: "Genel Sekreter",
   insan_kaynaklari: "İnsan Kaynakları",
+  komite_lideri: "Komite Lideri",
   lider: "Komite Lideri",
   uye: "Üye",
   mezun: "Mezun",
@@ -159,7 +160,7 @@ export function renderMembers(user) {
                 <label>Rol</label>
                 <select id="memberRole" required>
                   <option value="uye">Üye</option>
-                  <option value="departman_lideri">Komite Lideri</option>
+                  <option value="komite_lideri">Komite Lideri</option>
                   <option value="insan_kaynaklari">İnsan Kaynakları</option>
                   <option value="genel_sekreter">Genel Sekreter</option>
                   <option value="elci_yardimcisi">Elçi Yardımcısı</option>
@@ -545,9 +546,11 @@ export function initMembers() {
     document.getElementById("memberDepartment").value = mem.department || '';
     // Map legacy role values to new enum values
     let roleValue = mem.role || 'UYE';
-    if (roleValue === 'lider') roleValue = 'departman_lideri';
-    if (roleValue === 'genel_sekreter') roleValue = 'insan_kaynaklari';
-    document.getElementById("memberRole").value = roleValue;
+    if (roleValue === 'lider' || roleValue === 'departman_lideri') roleValue = 'komite_lideri';
+    if (roleValue === 'genel_sekreter' && !['genel_sekreter', 'insan_kaynaklari'].includes(roleValue)) {
+       // Logic depends on what we want to map here, but let's stick to simple role mapping
+    }
+    document.getElementById("memberRole").value = roleValue.toLowerCase();
     document.getElementById("memberUniDepartment").value = mem.university_department || '';
     document.getElementById("memberClass").value = mem.class_ || '';
 

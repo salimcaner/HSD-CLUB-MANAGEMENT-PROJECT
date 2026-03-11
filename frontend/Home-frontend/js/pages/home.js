@@ -24,7 +24,7 @@ function updateDashboardDisplay(stats, activities, committeeRes) {
     if (!p || !h3) return;
     const label = p.innerText.trim().toLowerCase();
     let targetValue = 0;
-    
+
     if (label.includes('toplantı')) targetValue = stats.meeting_count || 0;
     else if (label.includes('akademi')) targetValue = stats.academy_count || 0;
     else if (label.includes('topluluk') || label.includes('etkinlik')) targetValue = stats.total_events || 0;
@@ -39,74 +39,6 @@ function updateDashboardDisplay(stats, activities, committeeRes) {
     committeeData.labels = committeeRes.labels;
     committeeData.counts = committeeRes.counts;
 
-    // 2. Etkinlikleri normalize et
-    if (eventsRes.ok) {
-      const eventsData = await eventsRes.json();
-      const eventsList = eventsData.data || [];
-      allEventsList = [...eventsList];
-
-      // Toplantı sayısını hesaplama
-      const meetingCount = eventsList.filter(ev =>
-        ev.event_type && ev.event_type.toLowerCase() === "toplantı"
-      ).length;
-
-      metricCards.forEach(card => {
-        const p = card.querySelector('p');
-        if (p) {
-          const label = p.innerText.trim();
-          const h3 = card.querySelector('h3.counter-number');
-          if (!h3) return;
-
-          if (label.includes('Toplantı Sayısı')) {
-            h3.setAttribute('data-target', meetingCount);
-            h3.innerText = '0';
-            const updateCount = () => {
-              const target = +h3.getAttribute('data-target');
-              const count = +h3.innerText;
-              const speed = 200;
-              const inc = Math.max(1, target / speed);
-              if (count < target) {
-                h3.innerText = Math.ceil(count + inc);
-                setTimeout(updateCount, 10);
-              } else {
-                h3.innerText = target;
-              }
-            };
-            updateCount();
-          }
-          else if (label.includes('Topluluk Etkinliği')) {
-            // "Etkinlik sayfasına eklenen tüm etkinlikler" sayısı
-            h3.setAttribute('data-target', eventsList.length);
-            h3.innerText = '0';
-            const updateCount = () => {
-              const target = +h3.getAttribute('data-target');
-              const count = +h3.innerText;
-              const speed = 200;
-              const inc = Math.max(1, target / speed);
-              if (count < target) {
-                h3.innerText = Math.ceil(count + inc);
-                setTimeout(updateCount, 10);
-              } else {
-                h3.innerText = target;
-              }
-            };
-            updateCount();
-          }
-        }
-      });
-
-      // Sadece en yeni 15 etkinliği son aktiviteler listesi için işleme alalım
-      eventsList.slice(0, 15).forEach(ev => {
-        activities.push({
-          type: "event",
-          id: ev.id,
-          title: "Yeni Etkinlik Oluşturuldu",
-          desc: `"${ev.title}" adlı etkinlik sisteme eklendi.`,
-          dateStr: ev.created_at,
-          dateObj: new Date(ev.created_at),
-          iconClass: "success" // yeşil nokta
-        });
-      });
     if (pieChartInstance) {
       pieChartInstance.data.labels = committeeData.labels;
       pieChartInstance.data.datasets[0].data = committeeData.counts;
@@ -454,7 +386,7 @@ export async function initHome() {
     initNumberCounters();
     initCounterModal();
     initHomeSlider();
-    
+
   } catch (err) {
     console.error("Ana sayfa yükleme hatası:", err);
   }
@@ -930,7 +862,7 @@ function initSocialModal() {
         const params = new URLSearchParams({
           platform: platform.toLowerCase(),
           post_date: date,
-          likes: count, 
+          likes: count,
           comments: 0,
           views: 0
         });
@@ -944,9 +876,9 @@ function initSocialModal() {
           showToast(`${platform} için veriler başarıyla kaydedildi!`, "success");
           overlay.classList.remove('open');
           document.getElementById('social-count').value = '';
-          
+
           // Veri eklendiği için grafiği ve metrikleri yeniliyoruz
-          initHome(); 
+          initHome();
         } else {
           const errData = await res.json();
           showToast("Hata: " + (errData.detail || "Kaydedilemedi"), "error");
@@ -978,5 +910,4 @@ function showToast(message, type = "success") {
     toast.style.animation = 'slideOut 0.3s forwards';
     setTimeout(() => toast.remove(), 300);
   }, 3000);
-}
 }

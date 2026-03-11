@@ -11,7 +11,7 @@ Diğer roller navbar’da bile çıkmaz. */
 export function renderFinance() {
   return `
     <section class="page finance-page">
-      <h1>Finans</h1>
+      <h1>Fin<span>ans</span></h1>
     </section>
   `;
 }

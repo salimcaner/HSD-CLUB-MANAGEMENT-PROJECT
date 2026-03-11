@@ -7,12 +7,13 @@ let currentView = 'list';
 let currentProjectId = null;
 
 import { getToken } from "../store.js";
+import { hasPerm } from "../acl.js";
 const API_URL = "http://localhost:8000";
 
 export function renderProjects(user) {
   globalUser = user;
-  const canManage = globalUser && ['admin', 'elci', 'lider'].includes(globalUser.role?.toLowerCase());
-  const newProjectBtnHtml = canManage
+  const canCreate = hasPerm(globalUser, 'projects:create');
+  const newProjectBtnHtml = canCreate
     ? `<button id="btn-new-project" class="btn btn-primary">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
           Yeni Proje Ekle
@@ -24,7 +25,7 @@ export function renderProjects(user) {
         <div class="projects-page">
             <div class="projects-header">
                 <div class="projects-title-block">
-                    <h1>Projeler <span>Yönetimi</span></h1>
+                    <h1>Proj<span>eler</span></h1>
                 </div>
                 ${newProjectBtnHtml}
             </div>
@@ -49,10 +50,16 @@ export function renderProjects(user) {
                         <input type="text" id="inp-project-desc" placeholder="Proje detayları">
                     </div>
                     <div class="form-group">
-                        <label>Yürütücü (Project Manager)</label>
-                        <select id="inp-project-manager">
-                            <option value="" disabled selected>Yürütücü Seçiniz</option>
-                        </select>
+                        <label>Yürütücü Ekle (Project Manager)</label>
+                        <div style="display: flex; gap: 8px;">
+                            <select id="inp-project-manager" style="flex: 1;">
+                                <option value="" disabled selected>Yürütücü Seçiniz</option>
+                            </select>
+                            <button class="btn btn-ghost" id="btn-add-pm-to-list" style="padding: 0 12px;">Ekle</button>
+                        </div>
+                        <div id="selected-pms-container" style="margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px;">
+                            <!-- Selected PMs will appear as tags here -->
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -167,6 +174,14 @@ async function fetchSystemUsers() {
   }
 }
 
+function getManagersDisplay(managerIds) {
+  if (!managerIds || managerIds.length === 0) return "Atanmadı";
+  return managerIds.map(id => {
+    const user = allUsers.find(u => String(u.id) === String(id));
+    return user ? `${user.first_name} ${user.last_name}` : "Bilinmeyen";
+  }).join(", ");
+}
+
 function renderContentArea() {
   const container = document.getElementById('projects-content-area');
   if (!container) return;
@@ -185,16 +200,20 @@ function generateListView() {
     return `<div class="empty-state">Henüz proje bulunmuyor. Yeni bir proje ekleyebilirsiniz.</div>`;
   }
 
-  const canManage = globalUser && ['admin', 'elci', 'lider'].includes(globalUser.role?.toLowerCase());
+  const canDelete = hasPerm(globalUser, 'projects:delete');
 
   let cardsHtml = projectsData.map(p => `
         <div class="project-card" data-id="${p.id}">
             <div class="project-card-header">
                 <h3>${p.name}</h3>
-                <span class="project-manager-badge">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-                    ${p.manager}
-                </span>
+                <div class="project-managers-list" style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px;">
+                    ${(p.managers || []).map(mId => `
+                        <span class="project-manager-badge">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                            ${allUsers.find(u => String(u.id) === String(mId)) ? `${allUsers.find(u => String(u.id) === String(mId)).first_name} ${allUsers.find(u => String(u.id) === String(mId)).last_name}` : 'Bilinmeyen'}
+                        </span>
+                    `).join('')}
+                </div>
             </div>
             <p class="project-desc">${p.description || ''}</p>
             <div class="project-stats">
@@ -209,7 +228,7 @@ function generateListView() {
             </div>
             <div class="project-actions">
                 <button class="btn btn-ghost btn-view-project" data-id="${p.id}">Detayları Gör</button>
-                ${canManage ? `
+                ${canDelete ? `
                 <button class="btn btn-icon-simple btn-delete-project" data-id="${p.id}" title="Projeyi Sil">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#CF0A2C" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-2 14H7L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"></path></svg>
                 </button>
@@ -233,7 +252,7 @@ function generateDetailView() {
     return '';
   }
 
-  const canManage = globalUser && ['admin', 'elci', 'lider'].includes(globalUser.role?.toLowerCase());
+  const canUpdate = hasPerm(globalUser, 'projects:update');
 
   // Members list
   let membersHtml = project.members.map(m => `
@@ -242,7 +261,7 @@ function generateDetailView() {
                 <strong>${m.name}</strong>
                 <span class="member-role">${m.role}</span>
             </div>
-            ${canManage ? `
+            ${canUpdate ? `
             <button class="btn-icon-simple btn-remove-member" data-id="${m.id}" title="Üyeyi Çıkar">
                 <span>&times;</span>
             </button>
@@ -289,7 +308,7 @@ function generateDetailView() {
                 <p>${project.description || ''}</p>
             </div>
             <div class="project-detail-manager">
-                <span>Yürütücü:</span> ${project.manager}
+                <span>Yürütücüler:</span> ${getManagersDisplay(project.managers)}
             </div>
         </div>
 
@@ -297,7 +316,7 @@ function generateDetailView() {
             <div class="project-sidebar">
                 <div class="sidebar-header">
                     <h3>Ekip Üyeleri</h3>
-                    ${canManage ? `<button id="btn-add-member" class="btn btn-primary btn-sm">+ Üye</button>` : ''}
+                    ${canUpdate ? `<button id="btn-add-member" class="btn btn-primary btn-sm">+ Üye</button>` : ''}
                 </div>
                 <ul class="members-list">
                     ${membersHtml.length ? membersHtml : '<li class="empty-text">Henüz üye eklenmemiş.</li>'}
@@ -344,6 +363,8 @@ function bindGlobalEvents() {
 
   if (btnNew) {
     btnNew.addEventListener('click', () => {
+      window._selectedPMs = [];
+      updateSelectedPMsUI();
       const pmSelect = document.getElementById('inp-project-manager');
       if (pmSelect) {
         let opts = '<option value="" disabled selected>Yürütücü Seçiniz</option>';
@@ -353,6 +374,41 @@ function bindGlobalEvents() {
         pmSelect.innerHTML = opts;
       }
       modalNew.classList.add('open');
+    });
+  }
+
+  // Add PM to list button
+  document.getElementById('btn-add-pm-to-list')?.addEventListener('click', () => {
+    const pmSelect = document.getElementById('inp-project-manager');
+    const mId = pmSelect.value;
+    if (!mId) return;
+    if (window._selectedPMs.includes(mId)) return;
+
+    window._selectedPMs.push(mId);
+    updateSelectedPMsUI();
+    pmSelect.value = "";
+  });
+
+  function updateSelectedPMsUI() {
+    const container = document.getElementById('selected-pms-container');
+    if (!container) return;
+    container.innerHTML = window._selectedPMs.map(mId => {
+      const user = allUsers.find(u => String(u.id) === String(mId));
+      const name = user ? `${user.first_name} ${user.last_name}` : "Bilinmeyen";
+      return `
+        <div class="pm-tag" style="background: var(--bg-secondary); border: 1px solid var(--border-color); padding: 4px 8px; border-radius: 4px; font-size: 12px; display: flex; align-items: center; gap: 6px;">
+          ${name}
+          <span class="remove-pm" data-id="${mId}" style="cursor: pointer; color: var(--text-dim);">&times;</span>
+        </div>
+      `;
+    }).join("");
+
+    container.querySelectorAll('.remove-pm').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const id = e.target.dataset.id;
+        window._selectedPMs = window._selectedPMs.filter(pmId => pmId !== id);
+        updateSelectedPMsUI();
+      });
     });
   }
 
@@ -372,7 +428,7 @@ function bindGlobalEvents() {
       const managerId = document.getElementById('inp-project-manager').value;
 
       if (!name) {
-        alert("Proje adı zorunludur.");
+        showToast("Proje adı zorunludur.", 'warning');
         return;
       }
 
@@ -387,7 +443,7 @@ function bindGlobalEvents() {
           body: JSON.stringify({
             name,
             description: desc,
-            manager_id: managerId || null
+            manager_ids: window._selectedPMs || []
           })
         });
 
@@ -404,7 +460,7 @@ function bindGlobalEvents() {
         }
       } catch (err) {
         console.error(err);
-        alert("Proje oluşturulurken bir hata oluştu.");
+        showToast("Proje oluşturulurken bir hata oluştu.", 'error');
       }
     });
   }
@@ -439,7 +495,7 @@ function bindGlobalEvents() {
       renderContentArea();
     } catch (err) {
       console.error(err);
-      alert(err.message || "Hata oluştu.");
+      showToast(err.message || "Hata oluştu.", 'error');
     }
   });
 
@@ -471,7 +527,7 @@ function bindGlobalEvents() {
       renderContentArea();
     } catch (err) {
       console.error(err);
-      alert("Görev oluşturulamadı.");
+      showToast("Görev oluşturulamadı.", 'error');
     }
   });
 }
@@ -503,7 +559,7 @@ function bindListViewEvents() {
           renderContentArea();
         } catch (err) {
           console.error(err);
-          alert("Projeyi silerken hata oluştu.");
+          showToast("Projeyi silerken hata oluştu.", 'error');
         }
       }
     });
@@ -538,7 +594,7 @@ function bindDetailViewEvents() {
     assigneeSelect.innerHTML = project.members.map(m => `<option value="${m.id}">${m.name} (${m.role})</option>`).join('');
 
     if (project.members.length === 0) {
-      alert("Görev atayabilmek için önce projeye üye eklemelisiniz.");
+      showToast("Görev atayabilmek için önce projeye üye eklemelisiniz.", 'warning');
       return;
     }
 
@@ -562,7 +618,7 @@ function bindDetailViewEvents() {
           renderContentArea();
         } catch (err) {
           console.error(err);
-          alert("Üye çıkarılırken hata oluştu.");
+          showToast("Üye çıkarılırken hata oluştu.", 'error');
         }
       }
     });
@@ -585,7 +641,7 @@ function bindDetailViewEvents() {
           renderContentArea();
         } catch (err) {
           console.error(err);
-          alert("Görev silinirken hata oluştu.");
+          showToast("Görev silinirken hata oluştu.", 'error');
         }
       }
     });
@@ -613,7 +669,7 @@ function bindDetailViewEvents() {
         renderContentArea();
       } catch (err) {
         console.error(err);
-        alert("Durum güncellenirken hata oluştu.");
+        showToast("Durum güncellenirken hata oluştu.", 'error');
       }
     });
   });

@@ -4,12 +4,13 @@ console.log("APP ÇALIŞTI");
 // ── INIT TEMA (Sayfa yüklenirken hemen uygula)
 const savedTheme = localStorage.getItem("theme");
 if (savedTheme === "light") {
-    document.body.classList.add("light-theme");
+  document.body.classList.add("light-theme");
 }
 
 import { renderNav, initNavEvents } from "./nav.js";
 import { getUser, setUser } from "./store.js";
 import { startRouter } from "./router.js";
+import "./notifications.js";
 
 
 let user = getUser();

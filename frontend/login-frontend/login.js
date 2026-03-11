@@ -1,3 +1,4 @@
+import { showToast } from "../Home-frontend/js/notifications.js";
 
 const container = document.querySelector('.container');
 const btn = document.querySelector('.btn');
@@ -6,63 +7,70 @@ const loginEmail = document.querySelector('#loginEmail');
 const loginPassword = document.getElementById('loginPassword');
 const toggleBtn = document.getElementById("togglePassword");
 const toggleIcon = toggleBtn.querySelector("i");
+const loginMessage = document.getElementById('loginMessage');
+
+function showMessage(text, type) {
+    loginMessage.textContent = text;
+    loginMessage.className = `login-message ${type}`;
+
+    // Mesajı belli bir süre sonra temizle (hata ise kalsın, başarı ise yönlendirme zaten olacak)
+    if (type === 'success') {
+        setTimeout(() => {
+            loginMessage.style.display = 'none';
+        }, 3000);
+    }
+}
 
 
-btn.addEventListener('click', () =>{
+btn.addEventListener('click', () => {
     container.classList.remove('active');
 });
 
 loginForm.addEventListener('submit', async (e) => {
-    e.preventDefault(); // Formun varsayılan gönderme işlemini engelle
+    e.preventDefault();
 
     const email = loginEmail.value;
     const password = loginPassword.value;
 
     try {
-        // Backend API'ye giriş isteği gönder
         const response = await fetch(`http://127.0.0.1:8000/auth/login`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({
-                email: email,
-                password: password
-            })
+            body: JSON.stringify({ email, password })
         });
 
         const data = await response.json();
 
         if (response.ok) {
-            // Giriş başarılı
-            console.log("Giriş başarılı! ID Token:", data.idToken);
-            
-            // Token'ı localStorage'a kaydet
             localStorage.setItem('access_token', data.access_token);
             localStorage.setItem('user', JSON.stringify(data.user));
 
-            alert(`Hoş geldiniz ${data.user.full_name}!`);
-            loginEmail.value = ''; // Inputları temizle
+            showMessage(`Hoş geldiniz ${data.user.full_name}!`, 'success');
+            loginEmail.value = '';
             loginPassword.value = '';
 
-            // Kullanıcıyı ana sayfaya yönlendir
-            window.location.href = '../Home-frontend/html/index.html';
+            setTimeout(() => {
+                window.location.href = '../Home-frontend/html/index.html';
+            }, 1000);
         } else {
-            // Backend'den gelen hata mesajını göster
             throw new Error(data.detail || 'Giriş sırasında bir hata oluştu');
         }
 
     } catch (error) {
-        console.error("Giriş hatası:", error);
-        alert(`Hata: ${error.message}`);
-        }
- });
+        const userFriendlyMessage = (error.message === 'Failed to fetch' || error.message === 'Giriş sırasında bir hata oluştu')
+            ? 'Girilen E-posta veya Şifre hatalı'
+            : error.message;
+        showMessage(userFriendlyMessage, 'error');
+    }
+});
 
- toggleBtn.addEventListener("click", () =>{
-        const isHidden = loginPassword.type === "password";
-        loginPassword.type = isHidden ? "text" : "password";
+toggleBtn.addEventListener("click", () => {
+    const isHidden = loginPassword.type === "password";
+    loginPassword.type = isHidden ? "text" : "password";
 
-        toggleIcon.classList.toggle("fa-eye", !isHidden);
-        toggleIcon.classList.toggle("fa-eye-slash", isHidden);
+    toggleIcon.classList.toggle("fa-eye", !isHidden);
+    toggleIcon.classList.toggle("fa-eye-slash", isHidden);
 
- });
+});
