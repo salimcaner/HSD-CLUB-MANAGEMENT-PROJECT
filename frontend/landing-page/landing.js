@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initManagementCarousel();
     initInteractiveFeatures();
     initTeamCarousel();
+    updateTeamImages();
 });
 
 // ==========================================
@@ -551,5 +552,23 @@ function initTeamCarousel() {
     cards.forEach(card => {
         const clone = card.cloneNode(true);
         track.appendChild(clone);
+    });
+}
+
+function updateTeamImages() {
+    const teamImages = document.querySelectorAll('.team-img');
+    teamImages.forEach(img => {
+        const placeholder = img.nextElementSibling;
+        if (img.getAttribute('src') && img.getAttribute('src').trim() !== "") {
+            img.style.display = 'block';
+            if (placeholder && placeholder.classList.contains('image-placeholder')) {
+                placeholder.style.display = 'none';
+            }
+        } else {
+            img.style.display = 'none';
+            if (placeholder && placeholder.classList.contains('image-placeholder')) {
+                placeholder.style.display = 'block';
+            }
+        }
     });
 }

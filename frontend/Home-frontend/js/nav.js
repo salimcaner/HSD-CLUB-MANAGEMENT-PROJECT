@@ -102,10 +102,7 @@ export function renderNav(user) {
         <!-- LOGO ALANI — kendi logonu buraya ekleyebilirsin -->
         <div class="sidebar-logo">
           <div class="logo-mark">
-            <!-- Logo img etiketi: <img src="../picture/logobeyaz.png" alt="Logo" class="logo-img"> -->
-            <div class="logo-placeholder">
-              <svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="14" stroke="currentColor" stroke-width="1.5"/><path d="M10 16l4 4 8-8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </div>
+            <img src="../../picture/logo-removebg-preview.png" alt="Logo" class="logo-img">
           </div>
           <div class="logo-text">
             <span class="logo-title">Kulüp</span>
