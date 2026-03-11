@@ -1,5 +1,3 @@
-import { showToast } from "../Home-frontend/js/notifications.js";
-
 const container = document.querySelector('.container');
 const btn = document.querySelector('.btn');
 const loginForm = document.querySelector('#LoginForm');

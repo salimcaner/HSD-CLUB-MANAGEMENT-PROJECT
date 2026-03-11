@@ -171,10 +171,8 @@ svg {
 .sidebar-logo {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 28px 20px 20px;
-  cursor: pointer;
-  transition: transform 0.2s ease;
+  gap: 12px;
+  padding: 20px 18px 18px;
 }
 
 .sidebar-logo:hover {
@@ -182,23 +180,31 @@ svg {
 }
 
 .logo-mark {
-  width: 64px;
-  height: 64px;
+  width: 36px;
+  height: 36px;
   flex-shrink: 0;
+}
+.logo-placeholder {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--bg-light), var(--bg-mid));
+  border: 1px solid var(--border-hover);
   display: flex;
   align-items: center;
   justify-content: center;
+  color: var(--accent);
+}
+.logo-placeholder svg {
+  width: 20px;
+  height: 20px;
 }
 
-/* .logo-placeholder styles were removed as they are no longer used */
-
-/* Eğer gerçek logo resmi kullanılacaksa: */
 .logo-img {
-  width: 170px;
-  height: 130px;
+    width: 36px;
+  height: 36px;
   object-fit: contain;
-  transition: all 0.3s ease;
-  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.2));
+  border-radius: 8px;
 }
 
 .sidebar-logo:hover .logo-img {
@@ -213,23 +219,19 @@ svg {
 }
 
 .logo-title {
-  font-size: 19px;
-  font-weight: 800;
+  font-size: 18px;
+  font-weight: 600;
   color: var(--text-primary);
-  letter-spacing: -0.01em;
-  background: linear-gradient(135deg, var(--text-primary), #6366f1);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
+  letter-spacing: 0.02em;
 }
 
 .logo-sub {
-  font-size: 11px;
-  font-weight: 600;
-  color: #3b82f6;
-  letter-spacing: 0.15em;
+
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-muted);
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  margin-top: -1px;
 }
 
 /* ── Sidebar Collapse Butonu ─────────────────────────────────── */
