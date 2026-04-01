@@ -47,8 +47,11 @@ app.include_router(community.router)
 frontend_path = os.path.join(os.path.dirname(__file__), "..", "..", "frontend")
 app.mount("/frontend", StaticFiles(directory=frontend_path), name="frontend")
 
+from fastapi.responses import RedirectResponse
+
 @app.get("/")
 async def root():
-    return {"message": "Kulüp Yönetim Sistemi API'sine Hoşgeldiniz!"}
+    # Siteye girildiğinde otomatik olarak landing page açılsın (önceki adımda index.html yaptığımız için adı değişti)
+    return RedirectResponse(url="/frontend/landing-page/index.html")
 
 
