@@ -14,8 +14,8 @@ app = FastAPI(
 # CORS - Frontend ile konuşabilmek için GEREKLİ
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # Geliştirme aşamasında tüm originlere izin veriyoruz
-    allow_credentials=True,
+    allow_origins=["*"], # Frontend'in çalıştığı her yere (file:/// vs) izin ver
+    allow_credentials=False, # credentials=True ile '*' aynı anda kullanılmaz, bu yüzden False yapıyoruz
     allow_methods=["*"],
     allow_headers=["*"],     
 )
