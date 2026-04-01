@@ -434,14 +434,14 @@ export async function initEvents() {
         showDetailModal(id);
       }
 
-        const removeBtn = e.target.closest("#removeImageBtn");
-        if (removeBtn) {
-          e.preventDefault();
-          e.stopPropagation();
-          clearImageSelection();
-        }
+      const removeBtn = e.target.closest("#removeImageBtn");
+      if (removeBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        clearImageSelection();
+      }
 
-        const detailCloseBtn = e.target.closest("#detailCloseBtn");
+      const detailCloseBtn = e.target.closest("#detailCloseBtn");
       if (detailCloseBtn || e.target.id === "eventDetailOverlay") {
         hideDetailModal();
       }
@@ -541,11 +541,11 @@ function renderEventList() {
           ${dateObj >= new Date()
           ? `<span class="period-badge upcoming">Gelecek Etkinlik</span>`
           : `<span class="period-badge past">Geçmiş Etkinlik</span>`
-          }
+        }
           ${ev.image_url
           ? `<img src="${ev.image_url}" class="event-card-image" alt="Event Cover">`
           : `<img src="${EVENT_TYPE_DEFAULTS[ev.event_type] || EVENT_TYPE_DEFAULTS['default']}" class="event-card-image" alt="Event Cover">`
-          }
+        }
           <div class="event-card-body">
             <h3 class="event-card-title">${ev.title}</h3>
             <p class="event-card-desc">${ev.description}</p>
@@ -699,7 +699,7 @@ function updateParticipantRequirement() {
 
   if (participantGroup && participantLabel) {
     // Her durumda göster ve opsiyonel olarak işaretle
-    participantGroup.style.display = "block"; 
+    participantGroup.style.display = "block";
     participantLabel.innerHTML = `Katılımcı Sayısı <span style="font-size:11px; color:#888;">(Opsiyonel)</span>`;
   }
 }
@@ -749,7 +749,7 @@ function clearImageSelection() {
   base64PreviewString = "";
   const evImageInput = document.getElementById("evImage");
   if (evImageInput) evImageInput.value = "";
-  
+
   const previewDiv = document.getElementById("imagePreview");
   if (previewDiv) previewDiv.style.display = "none";
 }
@@ -768,7 +768,7 @@ function hideModal() {
   document.getElementById("evCommittee").value = "";
   if (document.getElementById("evType")) document.getElementById("evType").value = "";
   document.getElementById("evParticipantCount").value = "";
-  
+
   // Katılımcı sayısı alanını opsiyonel olarak sıfırla
   updateParticipantRequirement();
 

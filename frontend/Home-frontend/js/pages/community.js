@@ -88,10 +88,10 @@ async function fetchAndRender() {
     if (!res.ok) throw new Error("Yüklenemedi");
     const response = await res.json();
     console.log("Fetched Community Response: ", response);
-    
+
     // Extract members array from response object
     const members = response.data || response;
-    
+
     window._commAllMembers = members;
     renderList(members, "");
   } catch (e) {

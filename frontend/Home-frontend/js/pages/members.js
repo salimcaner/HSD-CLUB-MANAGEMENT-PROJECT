@@ -548,7 +548,7 @@ export function initMembers() {
     let roleValue = mem.role || 'UYE';
     if (roleValue === 'lider' || roleValue === 'departman_lideri') roleValue = 'komite_lideri';
     if (roleValue === 'genel_sekreter' && !['genel_sekreter', 'insan_kaynaklari'].includes(roleValue)) {
-       // Logic depends on what we want to map here, but let's stick to simple role mapping
+      // Logic depends on what we want to map here, but let's stick to simple role mapping
     }
     document.getElementById("memberRole").value = roleValue.toLowerCase();
     document.getElementById("memberUniDepartment").value = mem.university_department || '';
