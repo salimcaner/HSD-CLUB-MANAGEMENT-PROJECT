@@ -144,3 +144,22 @@
 body.light-theme .settings-card-header {
   background: rgba(0, 0, 0, 0.02);
 }
+
+/* Şifremi Unuttum Butonu */
+.forgot-password-btn {
+  background: var(--bg-mid);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.forgot-password-btn:hover {
+  border-color: var(--accent);
+  background: var(--accent-glow);
+}

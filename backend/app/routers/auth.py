@@ -29,11 +29,15 @@ async def login(request: LoginRequest, response: Response):
         "access_token": access_token,
         "token_type": "bearer",
         "user": {
-            "id": user["id"],
-            "email": user["email"],
-            "first_name": user["first_name"],
-            "last_name": user["last_name"],
-            "role": user["role"],
+            "id": user.get("id"),
+            "email": user.get("email"),
+            "first_name": user.get("first_name"),
+            "last_name": user.get("last_name"),
+            "role": user.get("role"),
+            "department": user.get("department"),
+            "class_": user.get("class"),
+            "university_department": user.get("university_department"),
+            "created_at": user.get("created_at")
         }
     }
 
