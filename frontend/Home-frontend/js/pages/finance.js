@@ -1,4 +1,43 @@
-export function renderFinance() {
+import { getToken } from "../store.js";
+import { hasPerm } from "../acl.js";
+
+const API_URL = "http://127.0.0.1:8000/api/finance";
+
+function getHeaders() {
+  const token = getToken();
+  return {
+    "Content-Type": "application/json",
+    ...(token ? { "Authorization": `Bearer ${token}` } : {})
+  };
+}
+
+// Helper to map backend format to frontend format
+function mapToFrontend(t) {
+  return {
+    id: t.id,
+    type: t.tur === 'gelir' ? 'income' : 'expense',
+    category: t.kategori,
+    desc: t.baslik || t.aciklama || '', // Backend 'baslik' is our 'desc'
+    amount: t.miktar,
+    date: t.tarih,
+    note: (t.baslik && t.aciklama) ? t.aciklama : '' // If both exist, aciklama is our 'note'
+  };
+}
+
+// Helper to map frontend format to backend format
+function mapToBackend(t) {
+  return {
+    baslik: t.desc, // "Açıklama" -> baslik
+    miktar: parseFloat(t.amount),
+    tur: t.type === 'income' ? 'gelir' : 'gider',
+    kategori: t.category,
+    aciklama: t.note || null, // "Notlar" -> aciklama
+    tarih: t.date
+  };
+}
+
+export function renderFinance(user) {
+  const canCreate = hasPerm(user, 'finance:create');
 
 
   return `
@@ -11,12 +50,14 @@ export function renderFinance() {
         </div>
         <div class="fin-actions">
           <!-- EXPORTS MOVED TO TRANSACTIONS AREA -->
+          ${canCreate ? `
           <button class="btn btn-primary" id="btn-add-transaction" style="box-shadow: 0 0 20px rgba(124, 58, 237, 0.5);">
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
             </svg>
             Yeni İşlem
           </button>
+          ` : ''}
         </div>
       </div>
 
@@ -82,7 +123,7 @@ export function renderFinance() {
         <div class="fin-panel-glass" style="flex: 1;">
           <div class="fin-panel-header">
             <h2>Düzenli Planlar</h2>
-            <button class="btn btn-outline" style="padding: 4px 10px; font-size: 16px; border-radius: 6px;" id="btn-add-recurring">+</button>
+            ${canCreate ? `<button class="btn btn-outline" style="padding: 4px 10px; font-size: 16px; border-radius: 6px;" id="btn-add-recurring">+</button>` : ''}
           </div>
           <ul class="fin-recurring-list" id="recurring-list">
             <!-- JS Render -->
@@ -272,7 +313,6 @@ export function renderFinance() {
 
         <div class="fin-drawer-footer">
           <button type="button" class="btn btn-outline" id="btn-cancel-tr">İptal</button>
-          <button type="button" class="btn btn-outline" id="btn-draft-tr" style="color: var(--text-dim); border-color: var(--border-color);">Taslak Kaydet</button>
           <button type="submit" form="transaction-form" class="btn btn-primary" style="flex: 1;">İşlemi Kaydet</button>
         </div>
       </div>
@@ -280,34 +320,112 @@ export function renderFinance() {
   `;
 }
 
-// --- MOCK DATA ---
+// --- STATE ---
 const state = {
-  transactions: [
-    { id: 1, type: 'income', category: 'Sponsorluk ve Organizasyon Komitesi', desc: 'Ana Sponsorluk Anlaşması', amount: 15000, date: '2026-03-15' },
-    { id: 2, type: 'expense', category: 'Pazarlama ve Sosyal Medya Komitesi', desc: 'Sosyal Medya Reklamı', amount: 1200, date: '2026-03-20' },
-    { id: 3, type: 'expense', category: 'Proje Komitesi', desc: 'Zirve Salon Kirası', amount: 5000, date: '2026-03-28' },
-    { id: 4, type: 'income', category: 'Akademi Komitesi', desc: 'Bilet Satışları', amount: 3500, date: '2026-04-01' }
-  ],
-  recurring: [
-    { id: 1, name: 'Aylık Zoom Aboneliği', amount: 150 },
-    { id: 2, name: 'Sunucu & Domain', amount: 250 }
-  ],
+  transactions: [],
+  recurring: [],
+  summary: {
+    income: 0,
+    expense: 0,
+    balance: 0
+  },
   budget: {
-    planned: 10000
+    planned: 10000 // Placeholder constant as backend doesn't have budget management yet
   },
   filters: {
+    search: '',
     type: 'all',
     category: 'all',
-    date: ''
-  }
+    minAmt: '',
+    maxAmt: '',
+    startDate: '',
+    endDate: '',
+    sort: 'date-desc',
+    quickChip: '',
+    chartPeriod: 'week'
+  },
+  loading: false,
+  error: null,
+  user: null,
+  submitting: false
 };
 
 let elements = {};
 
-export async function initFinance() {
+export async function initFinance(user) {
+  if (!document.querySelector('.finance-page')) return;
+  
+  state.user = user;
   cacheElements();
   bindEvents();
-  renderAll();
+  
+  await fetchFinanceData();
+}
+
+async function fetchFinanceData(silent = false) {
+  if (!silent) {
+    state.loading = true;
+    state.error = null;
+    renderAll();
+  }
+
+  try {
+    const headers = getHeaders();
+    
+    // Fetch Summary, Transactions, and Recurring in parallel
+    const [summaryRes, transRes, recurringRes] = await Promise.all([
+      fetch(`${API_URL}/summary`, { headers }),
+      fetch(`${API_URL}/transactions`, { headers }),
+      fetch(`${API_URL}/recurring`, { headers })
+    ]);
+
+    if (!summaryRes.ok || !transRes.ok || !recurringRes.ok) {
+      const errorData = !summaryRes.ok ? await summaryRes.json().catch(()=>({})) : (!transRes.ok ? await transRes.json().catch(()=>({})) : await recurringRes.json().catch(()=>({})));
+      console.error("Backend Validation/Auth Error:", errorData);
+      throw new Error(errorData.detail || "Veriler alınırken bir hata oluştu.");
+    }
+
+    const summaryData = await summaryRes.json();
+    const transData = await transRes.json();
+    const recurringData = await recurringRes.json();
+
+    // Map and Store
+    state.summary = {
+      income: summaryData.toplam_gelir || 0,
+      expense: summaryData.toplam_gider || 0,
+      balance: summaryData.net_bakiye || 0
+    };
+    
+    state.transactions = (transData || []).map(mapToFrontend);
+    state.recurring = (recurringData || []).map(r => ({
+      id: r.id,
+      name: r.baslik || r.ad || 'İsimsiz Plan',
+      amount: r.miktar
+    }));
+
+  } catch (err) {
+    console.error("Finance fetch error:", err);
+    if (!silent) state.error = "Veriler yüklenemedi. Lütfen internet bağlantınızı kontrol edip tekrar deneyin.";
+  } finally {
+    if (!silent) state.loading = false;
+    renderAll();
+  }
+}
+
+// Local recalculation for speed
+function recalculateLocalSummary() {
+  const income = state.transactions
+    .filter(t => t.type === 'income')
+    .reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
+  const expense = state.transactions
+    .filter(t => t.type === 'expense')
+    .reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
+  
+  state.summary = {
+    income: income,
+    expense: expense,
+    balance: income - expense
+  };
 }
 
 function cacheElements() {
@@ -393,9 +511,6 @@ function bindEvents() {
   document.getElementById('btn-close-tr-modal').addEventListener('click', closeModal);
   document.getElementById('btn-cancel-tr').addEventListener('click', closeModal);
   
-  const draftBtn = document.getElementById('btn-draft-tr');
-  if(draftBtn) draftBtn.addEventListener('click', () => { showToast('Taslak olarak kaydedildi (Simülasyon)'); closeModal(); });
-
   elements.form.addEventListener('submit', handleTransactionSubmit);
 
   // Advanced Filters
@@ -444,19 +559,19 @@ function bindEvents() {
   elements.tbody.addEventListener('click', (e) => {
     const btn = e.target.closest('button');
     if (!btn) return;
-    const id = parseInt(btn.dataset.id);
+    const id = btn.dataset.id; // Switch to string ID support
     if (btn.classList.contains('fin-btn-edit')) editTransaction(id);
     if (btn.classList.contains('fin-btn-delete')) deleteTransaction(id);
   });
 
-  document.getElementById('btn-add-recurring').addEventListener('click', () => {
-    const name = prompt('Düzenli Gider Adı:');
-    if (!name) return;
-    const amount = prompt('Aylık Tutar (₺):');
-    if (!amount || isNaN(amount)) return;
-    state.recurring.push({ id: Date.now(), name, amount: parseFloat(amount) });
-    renderRecurring();
-  });
+  const addRecBtn = document.getElementById('btn-add-recurring');
+  if (addRecBtn) {
+    addRecBtn.addEventListener('click', () => {
+      openModal();
+      const recCheck = document.getElementById('tr-recurring-check');
+      if (recCheck) recCheck.checked = true; // Pre-check for unified UI
+    });
+  }
 
   let currentChartPeriod = 'week';
   
@@ -546,6 +661,15 @@ function getFilteredTransactions() {
 }
 
 function renderAll() {
+  if (state.loading) {
+    renderLoading();
+    return;
+  }
+  if (state.error) {
+    renderError(state.error);
+    return;
+  }
+
   renderDashboard();
   renderTable();
   renderCategoryDistribution();
@@ -553,35 +677,29 @@ function renderAll() {
   renderAnalyticsChart();
 }
 
+function renderLoading() {
+  const loadingHtml = `<div class="fin-loading-spinner">Veriler yükleniyor...</div>`;
+  if (elements.tbody) elements.tbody.innerHTML = `<tr><td colspan="6">${loadingHtml}</td></tr>`;
+  if (elements.chartSummary) elements.chartSummary.textContent = "Yükleniyor...";
+}
+
+function renderError(msg) {
+  const errorHtml = `<div class="fin-error-message">${msg} <button class="btn btn-outline btn-sm" onclick="location.reload()">Tekrar Dene</button></div>`;
+  if (elements.tbody) elements.tbody.innerHTML = `<tr><td colspan="6">${errorHtml}</td></tr>`;
+  if (elements.chartSummary) elements.chartSummary.textContent = "Hata oluştu.";
+}
+
 function renderDashboard() {
-  const data = getFilteredTransactions();
-  const totals = data.reduce((acc, t) => {
-    if (t.type === 'income') acc.income += t.amount;
-    else acc.expense += t.amount;
-    return acc;
-  }, { income: 0, expense: 0 });
+  const income = state.summary.income;
+  const expense = state.summary.expense;
+  const balance = state.summary.balance;
 
-  const net = totals.income - totals.expense;
+  elements.totalIncome.textContent = `₺${income.toLocaleString()}`;
+  elements.totalExpense.textContent = `₺${expense.toLocaleString()}`;
+  elements.netBalance.textContent = `₺${balance.toLocaleString()}`;
 
-  elements.totalIncome.textContent = `₺${totals.income.toLocaleString()}`;
-  elements.totalExpense.textContent = `₺${totals.expense.toLocaleString()}`;
-  elements.netBalance.textContent = `₺${net.toLocaleString()}`;
-
-  if (net >= 0) elements.netBalance.className = 'fin-text-gradient-success';
+  if (balance >= 0) elements.netBalance.className = 'fin-text-gradient-success';
   else elements.netBalance.className = 'fin-text-gradient-danger';
-
-  /* Budget Plan (Yorum Satırına Alındı)
-  const totalExpenseAll = state.transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
-  const percent = Math.min((totalExpenseAll / state.budget.planned) * 100, 100);
-
-  elements.budgetProgress.style.width = `${percent}%`;
-  if (percent > 85) elements.budgetProgress.style.background = 'var(--danger, #ef4444)';
-  else elements.budgetProgress.style.background = 'var(--accent, #7c3aed)';
-
-  elements.budgetSpent.textContent = `₺${totalExpenseAll.toLocaleString()} harcandı`;
-  elements.budgetPlanned.textContent = `Hedef: ₺${state.budget.planned.toLocaleString()}`;
-  elements.budgetWarning.style.display = percent >= 90 ? 'block' : 'none';
-  */
 }
 
 function renderTable() {
@@ -606,6 +724,9 @@ function renderTable() {
     return;
   }
 
+  const canUpdate = hasPerm(state.user, 'finance:update');
+  const canDelete = hasPerm(state.user, 'finance:delete');
+
   elements.tbody.innerHTML = data.map(t => {
     const isIncome = t.type === 'income';
     return `
@@ -623,12 +744,14 @@ function renderTable() {
         </td>
         <td>
           <div class="fin-action-group">
+            ${canUpdate ? `
             <button class="fin-btn-icon fin-btn-edit" data-id="${t.id}" title="Düzenle">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
-            </button>
+            </button>` : ''}
+            ${canDelete ? `
             <button class="fin-btn-icon fin-btn-delete" data-id="${t.id}" title="Sil">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-            </button>
+            </button>` : ''}
           </div>
         </td>
       </tr>
@@ -810,35 +933,131 @@ function closeModal() {
   elements.form.reset();
 }
 
-function handleTransactionSubmit(e) {
+async function handleTransactionSubmit(e) {
   e.preventDefault();
+  if (state.submitting) return;
+
   const idStr = document.getElementById('tr-id').value;
+  const isNew = !idStr;
+  const isRecurringRequested = document.getElementById('tr-recurring-check')?.checked;
+
   const typeVal = document.querySelector('input[name="tr-type"]:checked').value;
   const t = {
-    id: idStr ? parseInt(idStr) : Date.now(),
     type: typeVal,
     category: document.getElementById('tr-category').value,
     desc: document.getElementById('tr-desc').value,
     amount: parseFloat(document.getElementById('tr-amount').value),
-    date: document.getElementById('tr-date').value
+    date: document.getElementById('tr-date').value,
+    note: document.getElementById('tr-note').value
   };
 
-  const isRecurring = document.getElementById('tr-recurring-check')?.checked;
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+  const originalBtnText = submitBtn ? submitBtn.textContent : 'İşlemi Kaydet';
 
-  if (idStr) {
-    const idx = state.transactions.findIndex(x => x.id === t.id);
-    if (idx !== -1) state.transactions[idx] = t;
-    showToast('İşlem başarıyla güncellendi.');
-  } else {
-    state.transactions.push(t);
-    showToast('Yeni işlem başarıyla eklendi.');
-    if (isRecurring) {
-      state.recurring.push({ id: Date.now(), name: t.desc, amount: t.amount });
+  // Snapshot for potential rollback
+  const prevTransactions = [...state.transactions];
+  const tempId = 'temp-' + Date.now();
+  
+  try {
+    state.submitting = true;
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Kaydediliyor...';
+    }
+
+    const method = idStr ? 'PUT' : 'POST';
+    const requiredPerm = idStr ? 'finance:update' : 'finance:create';
+    
+    if (!hasPerm(state.user, requiredPerm)) {
+      throw new Error("Bu işlemi yapmaya yetkiniz yok.");
+    }
+
+    // --- OPTIMISTIC UPDATE ---
+    if (isNew) {
+      state.transactions.push({ ...t, id: tempId });
+    } else {
+      const idx = state.transactions.findIndex(x => x.id == idStr);
+      if (idx !== -1) state.transactions[idx] = { ...t, id: idStr };
+    }
+    recalculateLocalSummary();
+    renderAll();
+    closeModal();
+    // -------------------------
+
+    const url = idStr ? `${API_URL}/transactions/${idStr}` : `${API_URL}/transactions`;
+    
+    // 1. Create/Update transaction
+    const response = await fetch(url, {
+      method: method,
+      headers: getHeaders(),
+      body: JSON.stringify(mapToBackend(t))
+    });
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.detail || 'İşlem kaydedilemedi.');
+    }
+
+    const savedData = await response.json();
+
+    // --- SYNC REAL ID ---
+    if (isNew && savedData.id) {
+       const idx = state.transactions.findIndex(x => x.id === tempId);
+       if(idx !== -1) state.transactions[idx].id = savedData.id;
+    }
+    // --------------------
+
+    // 2. If RECURRING is checked, create the recurring plan 
+    if (isRecurringRequested) {
+      if (!hasPerm(state.user, 'finance:create')) {
+        console.warn("User lacks finance:create permission for recurring.");
+      } else {
+        try {
+          const recurringResponse = await fetch(`${API_URL}/recurring`, {
+            method: 'POST',
+            headers: getHeaders(),
+            body: JSON.stringify({
+              baslik: t.desc, 
+              miktar: t.amount,
+              kategori: t.category,
+              aciklama: t.note || 'Otomatik eklenen düzenli plan',
+              periyot: 'aylik',
+              baslangic_tarihi: t.date
+            })
+          });
+
+          if (!recurringResponse.ok) {
+            const recErrData = await recurringResponse.json().catch(() => ({}));
+            console.error("Recurring creation failed (Transaction succeeded):", recErrData);
+            alert("İşlem kaydedildi fakat düzenli plan oluşturulamadı: " + (recErrData.detail || "Yetki veya sunucu hatası"));
+          } else {
+            console.log("Recurring plan created successfully.");
+          }
+        } catch (recErr) {
+          console.error("Recurring API network error:", recErr);
+          alert("İşlem kaydedildi fakat düzenli plan için sunucuya erişilemedi.");
+        }
+      }
+    }
+
+    showToast(isNew ? 'Yeni işlem eklendi.' : 'İşlem güncellendi.');
+    
+    // Silent background refresh to ensure consistency
+    fetchFinanceData(true); 
+  } catch (err) {
+    console.error("Submission error:", err);
+    // ROLLBACK
+    state.transactions = prevTransactions;
+    recalculateLocalSummary();
+    renderAll();
+    alert('Hata: ' + err.message);
+  } finally {
+    state.submitting = false;
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = originalBtnText;
     }
   }
-
-  closeModal();
-  renderAll();
 }
 
 function showToast(msg) {
@@ -855,14 +1074,46 @@ function showToast(msg) {
 }
 
 function editTransaction(id) {
+  if (!hasPerm(state.user, 'finance:update')) {
+    alert("Düzenleme yetkiniz yok.");
+    return;
+  }
   const t = state.transactions.find(x => x.id === id);
   if (t) openModal(t);
 }
 
-function deleteTransaction(id) {
+async function deleteTransaction(id) {
+  if (!hasPerm(state.user, 'finance:delete')) {
+    alert("Silme yetkiniz yok.");
+    return;
+  }
   if (confirm('Bu işlemi silmek istediğinize emin misiniz?')) {
-    state.transactions = state.transactions.filter(x => x.id !== id);
-    renderAll();
+    const prevTransactions = [...state.transactions];
+    
+    try {
+      // --- OPTIMISTIC DELETE ---
+      state.transactions = state.transactions.filter(x => x.id != id);
+      recalculateLocalSummary();
+      renderAll();
+      // -------------------------
+
+      const response = await fetch(`${API_URL}/transactions/${id}`, {
+        method: 'DELETE',
+        headers: getHeaders()
+      });
+
+      if (!response.ok) throw new Error('Silme işlemi başarısız. Yetkiniz olmayabilir.');
+      
+      showToast('İşlem silindi.');
+      // Update data in background
+      fetchFinanceData(true);
+    } catch (err) {
+      // ROLLBACK
+      state.transactions = prevTransactions;
+      recalculateLocalSummary();
+      renderAll();
+      alert('Hata: ' + err.message);
+    }
   }
 }
 

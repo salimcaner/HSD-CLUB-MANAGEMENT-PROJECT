@@ -129,7 +129,7 @@ export function router() {
   }
 
   if (path === "/finance") {
-    initFinance();
+    initFinance(user);
   }
 
   if (path === "/settings") {

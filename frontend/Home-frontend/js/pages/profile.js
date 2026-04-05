@@ -25,11 +25,6 @@ export function renderProfile() {
   }) : "—";
 
   return `
-<<<<<<< HEAD
-    <section class="page profile-page">
-      <h1>Profil</h1>
-    </section>
-=======
     <link rel="stylesheet" href="../css/profile.css">
     <div class="profile-page">
       <div class="profile-header">
@@ -80,6 +75,5 @@ export function renderProfile() {
         </div>
       </div>
     </div>
->>>>>>> origin/feature/frontend-merge
   `;
 }
