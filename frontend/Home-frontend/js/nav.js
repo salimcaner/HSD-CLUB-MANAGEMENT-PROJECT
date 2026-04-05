@@ -133,8 +133,8 @@ export function renderNav(user) {
         <div class="sidebar-footer">
           <div class="sidebar-divider"></div>
           <div class="user-card">
-            <div class="user-avatar">${initials}</div>
-            <div class="user-details">
+            <div class="user-avatar" onclick="window.location.hash='#/profile'" style="cursor:pointer;" title="Profile Git">${initials}</div>
+            <div class="user-details" onclick="window.location.hash='#/profile'" style="cursor:pointer;" title="Profile Git">
               <span class="user-name">${fullName}</span>
               <span class="user-role">${user.role}</span>
             </div>
