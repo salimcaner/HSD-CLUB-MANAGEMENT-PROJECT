@@ -581,12 +581,8 @@ svg {
   }
 }
 
-.topbar-page-title {
-  font-size: 17px;
-  font-weight: 500;
-  color: var(--text-primary);
-  letter-spacing: 0.01em;
-}
+/* .topbar-page-title removed */
+
 
 /* ── Topbar Sağ ──────────────────────────────────────────────── */
 .topbar-right {
@@ -706,6 +702,7 @@ svg {
     height: 100vh;
     transform: translateX(-100%);
     box-shadow: 4px 0 24px rgba(0, 0, 0, 0.4);
+    z-index: 1000;
   }
 
   .sidebar.sidebar--open {
@@ -713,8 +710,28 @@ svg {
   }
 
   .main-area {
-    margin-left: 0;
+    margin-left: 0 !important;
     width: 100%;
+  }
+
+  .topbar {
+    padding: 0 12px;
+    gap: 8px;
+  }
+
+  .topbar-right {
+    gap: 4px;
+  }
+
+  .topbar-avatar {
+    width: 32px;
+    height: 32px;
+    font-size: 12px;
+  }
+
+  .topbar-icon-btn {
+    width: 36px;
+    height: 36px;
   }
 
   .logout-label {
@@ -726,4 +743,4 @@ svg {
     padding: 0;
     justify-content: center;
   }
-}
+}

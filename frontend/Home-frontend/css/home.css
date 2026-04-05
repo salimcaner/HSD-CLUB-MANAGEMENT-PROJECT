@@ -683,13 +683,69 @@ body.light-theme .slider-dot.active {
   background: var(--accent);
 }
 
-@media (max-width: 768px) {
-  .slider-slide {
-    height: 220px;
+/* ─── RESPONSIVE ─── */
+@media (max-width: 1024px) {
+  .home-page {
+    padding: 24px;
+    width: 95%;
+    margin: 20px auto;
   }
 
-  .slider-arrow {
-    width: 36px;
-    height: 36px;
+  .home-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .home-welcome h1 {
+    font-size: 28px;
   }
 }
+
+@media (max-width: 768px) {
+  .home-page {
+    padding: 16px;
+    width: 100%;
+    margin: 0;
+  }
+
+  .home-welcome h1 {
+    font-size: 24px;
+  }
+
+  .home-welcome p {
+    font-size: 14px;
+  }
+
+  .metrics-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .countdown-grid {
+    grid-template-columns: repeat(2, 1fr);
+    padding: 20px 10px;
+  }
+
+  .countdown-number {
+    font-size: 32px;
+  }
+
+  .slider-slide {
+    height: 200px;
+  }
+
+  .metric-card {
+    padding: 16px;
+    gap: 12px;
+  }
+
+  .metric-icon {
+    width: 44px;
+    height: 44px;
+  }
+
+  .metric-info h3 {
+    font-size: 24px;
+  }
+}

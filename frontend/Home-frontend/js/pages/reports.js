@@ -234,7 +234,7 @@ export function renderReports(user) {
     <div class="reports-page">
       <div class="reports-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-light); padding-bottom: 20px; margin-bottom: 20px;">
         <div class="reports-title-block">
-          <h1 style="font-family: 'Figtree', sans-serif; font-size: 28px; font-weight: 700; margin: 0;">Rapo<span>rlar</span></h1>
+          <h1 style="font-family: 'Figtree', sans-serif; font-size: 28px; font-weight: 700; margin: 0;">Raporlar</h1>
         </div>
         ${canCreate ? `<button class="btn btn-primary" id="createReportBtn">
           + Yeni Rapor

@@ -18,7 +18,7 @@ Bu sayfa backend gelince kullanıcı profilini API’den çekebilir. Şimdilik s
 export function renderProfile() {
   return `
     <section class="page profile-page">
-      <h1>Pro<span>fil</span></h1>
+      <h1>Profil</h1>
     </section>
   `;
 }

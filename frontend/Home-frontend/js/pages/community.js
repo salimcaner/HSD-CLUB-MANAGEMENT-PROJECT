@@ -28,7 +28,7 @@ export function renderCommunity() {
     <section class="community-page">
       <div class="comm-header">
         <div>
-          <h1>Topl<span>uluk</span></h1>
+          <h1>Topluluk</h1>
           <p class="comm-subtitle">Tüm üyeler — komite sırasına göre</p>
         </div>
         <div class="comm-search-wrap">

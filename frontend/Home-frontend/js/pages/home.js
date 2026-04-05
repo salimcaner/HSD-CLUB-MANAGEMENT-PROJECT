@@ -31,7 +31,7 @@ function updateDashboardDisplay(stats, activities, committeeRes) {
     else if (label.includes('üye')) targetValue = stats.total_members || 0;
 
     h3.setAttribute('data-target', targetValue);
-    animateSingleCounter(h3, targetValue);
+    h3.innerText = targetValue;
   });
 
   // 2. Komite Dağılımı (Pie Chart) Verisini Hazırla
@@ -125,7 +125,7 @@ export function renderHome(user) {
     <section class="page home-page">
       <div class="home-header">
         <div class="home-welcome">
-          <h1>Merhaba, <span>${userName}</span> 🎉</h1>
+          <h1>Merhaba, ${userName} 🎉</h1>
           <p>Kulüp Yönetim Sistemi'ne hoş geldin. İşte bugünkü genel bakış.</p>
         </div>
         <div class="home-actions">
@@ -272,7 +272,7 @@ export function renderHome(user) {
     <div class="modal-overlay" id="social-modal-overlay">
       <div class="modal">
         <div class="modal-header">
-          <h2>Sosyal Medya Paylaşımı <span>Ekle</span></h2>
+          <h2>Sosyal Medya Paylaşımı Ekle</h2>
           <button class="modal-close" id="btn-close-social-modal">
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
@@ -307,7 +307,7 @@ export function renderHome(user) {
     <div class="modal-overlay" id="counter-modal-overlay">
       <div class="modal">
         <div class="modal-header">
-          <h2>Etkinlik <span>Sayacı Oluştur</span></h2>
+          <h2>Etkinlik Sayacı Oluştur</h2>
           <button class="modal-close" id="btn-close-counter-modal">
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
@@ -354,18 +354,18 @@ export async function initHome() {
 
     // 1. Tüm verileri PARALEL olarak çek
     const [statsRes, committeeRes, activitiesRes, eventsRes, socialRes, countdownRes] = await Promise.all([
-      fetch(`${API_URL}/dashboard/stats`, { headers }),
-      fetch(`${API_URL}/dashboard/committees`, { headers }),
-      fetch(`${API_URL}/dashboard/activities`, { headers }),
-      fetch(`${API_URL}/events/?limit=100`, { headers }),
-      fetch(`${API_URL}/social-media/`, { headers }),
-      fetch(`${API_URL}/dashboard/countdown`, { headers })
+      fetch(`${API_URL}/dashboard/stats`, { headers }).catch(() => ({ ok: false, json: () => ({}) })),
+      fetch(`${API_URL}/dashboard/committees`, { headers }).catch(() => ({ ok: false, json: () => ({}) })),
+      fetch(`${API_URL}/dashboard/activities`, { headers }).catch(() => ({ ok: false, json: () => ({ activities: [] }) })),
+      fetch(`${API_URL}/events/?limit=100`, { headers }).catch(() => ({ ok: false, json: () => ({ data: [] }) })),
+      fetch(`${API_URL}/social-media/`, { headers }).catch(() => ({ ok: false, json: () => ({ data: [] }) })),
+      fetch(`${API_URL}/dashboard/countdown`, { headers }).catch(() => ({ ok: false, json: () => ({ success: false }) }))
     ]);
 
     // 2. Yanıtları JSON olarak işle
     const [stats, committee, activities, eventsData, socialPosts, countdown] = await Promise.all([
       statsRes.ok ? statsRes.json() : { total_members: 0, meeting_count: 0, academy_count: 0, total_events: 0 },
-      committeeRes.ok ? committeeRes.json() : null,
+      committeeRes.ok ? committeeRes.json() : { activities: [] },
       activitiesRes.ok ? activitiesRes.json() : { activities: [] },
       eventsRes.ok ? eventsRes.json() : { data: [] },
       socialRes.ok ? socialRes.json() : { data: [] },
@@ -382,10 +382,9 @@ export async function initHome() {
 
     // 5. Bağımsız görsel efektleri başlat
     initSocialModal();
-    initTiltEffect();
-    initNumberCounters();
     initCounterModal();
     initHomeSlider();
+
 
   } catch (err) {
     console.error("Ana sayfa yükleme hatası:", err);
@@ -426,11 +425,9 @@ function initHomeSlider() {
   const nextSlide = () => updateSlider(currentIndex + 1);
   const prevSlide = () => updateSlider(currentIndex - 1);
 
-  // Otomatik oynatma başlat
-  const startAutoPlay = () => {
-    stopAutoPlay(); // Varsa temizle
-    autoPlayInterval = setInterval(nextSlide, 2000); // 5 saniyede bir
-  };
+  // Otomatik oynatma kaldırıldı
+  const startAutoPlay = () => {};
+
 
   const stopAutoPlay = () => {
     if (autoPlayInterval) clearInterval(autoPlayInterval);
@@ -791,13 +788,8 @@ function renderCharts(socialPosts) {
         options: {
           responsive: true,
           maintainAspectRatio: false,
+          animation: false,
           cutout: '65%',
-          animation: {
-            animateScale: true,
-            animateRotate: true,
-            duration: 2500, // Daha belirgin bir çıkış
-            easing: 'easeInOutCirc'
-          },
           plugins: {
             legend: {
               position: 'bottom',

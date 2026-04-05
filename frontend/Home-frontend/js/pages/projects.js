@@ -25,7 +25,7 @@ export function renderProjects(user) {
         <div class="projects-page">
             <div class="projects-header">
                 <div class="projects-title-block">
-                    <h1>Proj<span>eler</span></h1>
+                    <h1>Projeler</h1>
                 </div>
                 ${newProjectBtnHtml}
             </div>
@@ -37,7 +37,7 @@ export function renderProjects(user) {
         <div id="modal-new-project" class="modal-overlay">
             <div class="modal">
                 <div class="modal-header">
-                    <h2>Yeni <span>Proje</span></h2>
+                    <h2>Yeni Proje</h2>
                     <button class="modal-close window-close-btn">&times;</button>
                 </div>
                 <div class="modal-body">
@@ -73,7 +73,7 @@ export function renderProjects(user) {
         <div id="modal-add-member" class="modal-overlay">
             <div class="modal">
                 <div class="modal-header">
-                    <h2>Üye <span>Ekle</span></h2>
+                    <h2>Üye Ekle</h2>
                     <button class="modal-close window-close-btn">&times;</button>
                 </div>
                 <div class="modal-body">
@@ -99,7 +99,7 @@ export function renderProjects(user) {
         <div id="modal-add-task" class="modal-overlay">
             <div class="modal">
                 <div class="modal-header">
-                    <h2>Görev <span>Ata</span></h2>
+                    <h2>Görev Ata</h2>
                     <button class="modal-close window-close-btn">&times;</button>
                 </div>
                 <div class="modal-body">

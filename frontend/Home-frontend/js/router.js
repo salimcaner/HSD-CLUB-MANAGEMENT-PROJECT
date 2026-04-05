@@ -23,7 +23,7 @@ import { renderEvents, initEvents } from "./pages/events.js";
 import { renderProjects, initProjects } from "./pages/projects.js";
 import { renderReports, initReports } from "./pages/reports.js";
 import { renderCalendar, initCalendar } from "./pages/calendar.js";
-import { renderFinance } from "./pages/finance.js";
+import { renderFinance, initFinance } from "./pages/finance.js";
 import { renderMembers, initMembers } from "./pages/members.js";
 import { renderProfile } from "./pages/profile.js";
 import { renderSettings, initSettings } from "./pages/settings.js";
@@ -126,6 +126,10 @@ export function router() {
 
   if (path === "/events") {
     initEvents();
+  }
+
+  if (path === "/finance") {
+    initFinance();
   }
 
   if (path === "/settings") {

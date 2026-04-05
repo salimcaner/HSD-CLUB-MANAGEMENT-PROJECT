@@ -21,9 +21,7 @@
     --c-diger: #fb923c;
 }
 
-.cal-header h1 span {
-    color: var(--cal-accent);
-}
+/* Removed span styling */
 
 *,
 *::before,
@@ -365,9 +363,7 @@
     font-weight: 700;
 }
 
-.cal-modal-header h2 span {
-    color: var(--cal-accent);
-}
+/* Removed span styling */
 
 .cal-modal-close {
     background: none;
@@ -658,28 +654,102 @@
     }
 }
 
+/* ─── RESPONSIVE ─── */
+@media (max-width: 1024px) {
+    .calendar-page {
+        padding: 24px;
+        width: 95%;
+        margin: 20px auto;
+    }
+}
+
 @media (max-width: 768px) {
     .calendar-page {
-        padding: 20px;
-        width: 95%;
+        padding: 16px;
+        width: 100%;
+        margin: 0;
+        border-radius: 0;
+        border: none;
+    }
+
+    .cal-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 16px;
+    }
+
+    .cal-header h1 {
+        font-size: 24px;
+        text-align: center;
+    }
+
+    .cal-subtitle {
+        text-align: center;
+    }
+
+    .cal-nav {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .cal-month-label {
+        width: 100%;
+        order: -1;
+        margin-bottom: 12px;
+    }
+
+    .cal-grid-wrap {
+        margin: 0 -16px;
+        border-radius: 0;
+        border-left: none;
+        border-right: none;
     }
 
     .cal-cell {
         min-height: 60px;
+        padding: 6px 4px;
     }
 
-    .cal-pill {
-        display: none;
+    .cal-day-num {
+        font-size: 11px;
+        width: 20px;
+        height: 20px;
+    }
+
+    .cal-cell--today .cal-day-num {
+        width: 20px;
+        height: 20px;
+    }
+
+    .cal-dots {
+        gap: 2px;
+    }
+
+    .cal-dot {
+        width: 6px;
+        height: 6px;
+    }
+
+    .cal-legend {
+        justify-content: center;
+        gap: 12px;
+    }
+
+    .cal-modal {
+        width: 100%;
+        height: 100%;
+        max-height: 100vh;
+        border-radius: 0;
+    }
+
+    .cal-form-row {
+        grid-template-columns: 1fr;
     }
 
     .cal-drawer {
         width: 100%;
         border-left: none;
         border-top: 1px solid var(--cal-border);
-    }
-
-    .cal-form-row {
-        grid-template-columns: 1fr;
     }
 }
 
@@ -724,5 +794,4 @@ body.light-theme .cal-drawer-type {
 
 body.light-theme .cal-form-group input[type="date"]::-webkit-calendar-picker-indicator {
     filter: invert(0) opacity(0.5);
-    /* Black calendar icon in light theme */
-}
+}
