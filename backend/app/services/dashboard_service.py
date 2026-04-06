@@ -106,64 +106,22 @@ async def get_committee_stats():
 
 async def get_recent_activities(limit: int = 7):
     try:
-        activities = []
+        # Yeni N+1 çözümümüz olan Supabase RPC fonksiyonunu çağırıyoruz
+        # Bu fonksiyon events ve profiles tablolarını birleştirip sıralı olarak hazır formatta döner.
+        response = supabase.rpc("get_dashboard_recent_activities").execute()
         
-        # 1. En Yeni Etkinlikleri Çek
-        # Etkinliklerin oluşturulma tarihine göre azalan (desc) sırada son 10 tanesini alıyoruz
-        events_response = supabase.table("events") \
-            .select("id, title, created_at") \
-            .order("created_at", desc=True) \
-            .limit(10) \
-            .execute()
-            
-        events_data = events_response.data or []
+        # RPC'den dönen 'data' listesini alıyoruz
+        activities = response.data or []
         
-        for ev in events_data:
-            activities.append({
-                "id": str(ev.get("id")),
-                "type": "event",
-                "title": "Yeni Etkinlik Oluşturuldu",
-                "desc": f'"{ev.get("title", "İsimsiz")}" adlı etkinlik sisteme eklendi.',
-                "created_at": ev.get("created_at"),
-                "iconClass": "success"  # Yeşil nokta
-            })
-            
-        # 2. En Yeni Üyeleri Çek
-        # Üyelerin kayıt tarihine (created_at) göre en yeni 10 tanesini alıyoruz
-        users_response = supabase.table("profiles") \
-            .select("id, first_name, last_name, created_at") \
-            .order("created_at", desc=True) \
-            .limit(10) \
-            .execute()
-            
-        users_data = users_response.data or []
-        
-        for user in users_data:
-            first_name = user.get("first_name") or ""
-            last_name = user.get("last_name") or ""
-            full_name = f"{first_name} {last_name}".strip()
-            
-            if not full_name:
-                full_name = "Yeni bir üye"
-                
-            activities.append({
-                "id": str(user.get("id")),
-                "type": "member",
-                "title": "Yeni Üye Katıldı",
-                "desc": f"{full_name} aramıza katıldı.",
-                "created_at": user.get("created_at"),
-                "iconClass": "info"  # Mavi nokta
-            })
-            
-        # 3. Listeleri Birleştir ve Tarihe Göre Sırala (En Yeni En Üstte)
-        # created_at datetime string olarak geliyor, ona göre ters (Reverse) sıralıyoruz
-        sorted_activities = sorted(activities, key=lambda x: x["created_at"], reverse=True)
-        
-        # 4. Sadece İstenen Sayıda (Örn: 7) Döndür
+        # Frontend'in beklediği orjinal format: {'activities': [...]} yapısında döndürüyoruz
+        # limit değerini ek bir güvenlik olarak uygulayabiliriz (zaten 7 dönmesi beklense bile)
         return {
-            "activities": sorted_activities[:limit]
+            "activities": activities[:limit]
         }
     except Exception as e:
+        import traceback
+        print("!!! RPC ÇAĞRISINDA HATA MEYDANA GELDİ !!!")
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Son aktiviteler çekilirken hata oluştu: {str(e)}")
     
 

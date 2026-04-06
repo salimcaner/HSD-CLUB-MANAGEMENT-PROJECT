@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Response, Depends
+from fastapi import APIRouter, Response, Depends, BackgroundTasks
 from app.schemas.auth import InviteRequest, LoginRequest,ChangePasswordRequest, ForgotPasswordRequest, ResetPasswordRequest
 from app.services.auth_service import invite_user, login_user,change_password, forgot_password, reset_password
 from app.core import security
@@ -65,6 +65,7 @@ async def get_current_user_info(
 @router.post("/invite")
 async def invite_endpoint(
     request: InviteRequest,
+    background_tasks: BackgroundTasks,
     current_user = Depends(security.require_lider_or_above)
 ):
     print(f"DEBUG: İstek geldi! Email: {request.email}") # <--- Bunu en başa ekle
@@ -75,7 +76,8 @@ async def invite_endpoint(
         role=request.role,
         department=request.department,
         class_=request.class_,
-        university_department=request.university_department
+        university_department=request.university_department,
+        background_tasks=background_tasks
     )
     return {"message": f"{request.email} için davet gönderildi."}
 
