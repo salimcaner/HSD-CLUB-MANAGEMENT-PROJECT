@@ -148,7 +148,7 @@ body.light-theme {
 }
 
 .metric-card:hover {
-  transform: translateY(-6px);
+  /* transform: translateY(-6px); */
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
   border-color: rgba(124, 58, 237, 0.3);
 }
@@ -370,7 +370,7 @@ body.light-theme {
 }
 
 .pulse-infinite {
-  animation: excitingPulse 1s infinite alternate;
+  /* animation: excitingPulse 1s infinite alternate; (performans için kaldırıldı) */
 }
 
 @keyframes excitingPulse {

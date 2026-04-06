@@ -245,7 +245,7 @@
     border: 3px solid rgba(124, 58, 237, 0.2);
     border-top-color: #7c3aed;
     border-radius: 50%;
-    animation: commSpin 0.8s linear infinite;
+    /* animation: commSpin 0.8s linear infinite; (performans için kaldırıldı) */
 }
 
 @keyframes commSpin {

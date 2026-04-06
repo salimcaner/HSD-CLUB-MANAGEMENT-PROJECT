@@ -222,16 +222,10 @@ function initPanelAnimation(panelName) {
 
 // 1️⃣ NETWORK ANIMATION - Üye Yönetimi
 function initNetworkAnimation() {
-    const canvas = document.getElementById('dotsCanvas');
     const btn = document.getElementById('activateNetwork');
 
-    if (!canvas || !btn) return;
+    if (!btn) return;
 
-    const ctx = canvas.getContext('2d');
-    canvas.width = 600;
-    canvas.height = 350;
-
-    let dots = [];
     let activated = false;
 
     btn.addEventListener('click', () => {
@@ -239,70 +233,9 @@ function initNetworkAnimation() {
         activated = true;
         btn.style.opacity = '0';
         btn.style.pointerEvents = 'none';
-
-        // Create dots
-        for (let i = 0; i < 20; i++) {
-            setTimeout(() => {
-                dots.push({
-                    x: Math.random() * canvas.width,
-                    y: Math.random() * canvas.height,
-                    radius: 0,
-                    targetRadius: Math.random() * 4 + 3,
-                    opacity: 0
-                });
-            }, i * 100);
-        }
-
-        animate();
+        
+        // Animasyon kaldırıldı - performans tasarrufu
     });
-
-    function animate() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        // Update and draw dots
-        dots.forEach((dot, i) => {
-            if (dot.radius < dot.targetRadius) {
-                dot.radius += 0.2;
-                dot.opacity = Math.min(1, dot.opacity + 0.05);
-            }
-
-            // Draw glow
-            const gradient = ctx.createRadialGradient(dot.x, dot.y, 0, dot.x, dot.y, dot.radius * 3);
-            gradient.addColorStop(0, `rgba(207, 10, 44, ${dot.opacity * 0.6})`);
-            gradient.addColorStop(1, 'rgba(207, 10, 44, 0)');
-
-            ctx.fillStyle = gradient;
-            ctx.beginPath();
-            ctx.arc(dot.x, dot.y, dot.radius * 3, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Draw dot
-            ctx.fillStyle = `rgba(207, 10, 44, ${dot.opacity})`;
-            ctx.beginPath();
-            ctx.arc(dot.x, dot.y, dot.radius, 0, Math.PI * 2);
-            ctx.fill();
-        });
-
-        // Draw connections
-        for (let i = 0; i < dots.length; i++) {
-            for (let j = i + 1; j < dots.length; j++) {
-                const dist = Math.hypot(dots[i].x - dots[j].x, dots[i].y - dots[j].y);
-                if (dist < 150) {
-                    const opacity = (1 - dist / 150) * Math.min(dots[i].opacity, dots[j].opacity) * 0.3;
-                    ctx.strokeStyle = `rgba(207, 10, 44, ${opacity})`;
-                    ctx.lineWidth = 1;
-                    ctx.beginPath();
-                    ctx.moveTo(dots[i].x, dots[i].y);
-                    ctx.lineTo(dots[j].x, dots[j].y);
-                    ctx.stroke();
-                }
-            }
-        }
-
-        if (activated) {
-            requestAnimationFrame(animate);
-        }
-    }
 }
 
 // 2️⃣ CALENDAR - Interactive Calendar
@@ -496,24 +429,15 @@ function initProjectProgress() {
 
     if (!fill || !text) return;
 
-    let progress = 0;
+    // Animasyon kaldırıldı, doğrudan 100% durumuna geçiş yapılıyor (performans tasarrufu için)
+    fill.style.width = '100%';
+    text.textContent = '100%';
 
-    const interval = setInterval(() => {
-        progress += 2;
-        fill.style.width = progress + '%';
-        text.textContent = progress + '%';
-
-        if (progress >= 33 && !tasks[0].classList.contains('checked')) {
-            tasks[0].classList.add('checked');
+    tasks.forEach(task => {
+        if (!task.classList.contains('checked')) {
+            task.classList.add('checked');
         }
-        if (progress >= 66 && !tasks[1].classList.contains('checked')) {
-            tasks[1].classList.add('checked');
-        }
-        if (progress >= 100) {
-            tasks[2].classList.add('checked');
-            clearInterval(interval);
-        }
-    }, 30);
+    });
 }
 
 // ==========================================

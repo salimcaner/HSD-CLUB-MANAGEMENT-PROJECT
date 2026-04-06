@@ -385,7 +385,7 @@ html {
 }
 
 .mgmt-card:hover {
-    transform: translateY(-8px);
+    /* transform: translateY(-8px); */
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
 }
 
@@ -712,7 +712,7 @@ html {
 }
 
 .event-card-new:hover {
-    transform: translateY(-5px);
+    /* transform: translateY(-5px); */
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
 }
 
@@ -732,7 +732,7 @@ html {
 .event-badge-status.live-pulse {
     background: rgba(0, 0, 0, 0.7);
     color: #4ade80;
-    animation: pulse 2s infinite;
+    /* animation: pulse 2s infinite; (performans için kaldırıldı) */
 }
 
 @keyframes pulse {
@@ -918,7 +918,7 @@ html {
 }
 
 .about-card:hover {
-    transform: translateY(-5px);
+    /* transform: translateY(-5px); */
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
 }
 
