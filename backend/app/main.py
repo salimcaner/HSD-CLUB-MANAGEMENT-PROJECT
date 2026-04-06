@@ -11,17 +11,36 @@ app = FastAPI(
     }
 )
 
-# CORS - Frontend ile konuşabilmek için GEREKLİ
+import os
+from fastapi.staticfiles import StaticFiles
+
+# CORS - Frontend ile konuşabilmek için deploya hazır ve localde çalışan yapı
+origins = [
+    "http://localhost",
+    "http://localhost:8000",
+    "http://localhost:3000",
+    "http://localhost:5173", # Vite
+    "http://127.0.0.1",
+    "http://127.0.0.1:8000",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:5500", # Live Server
+    "null", # file:/// üzerinden erişimler için
+]
+
+# Canlı (Production) ortamından eklenecek origin'leri ENV üzerinden alır
+env_origins = os.getenv("ALLOWED_ORIGINS")
+if env_origins:
+    origins.extend([origin.strip() for origin in env_origins.split(",") if origin.strip()])
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # Frontend'in çalıştığı her yere (file:/// vs) izin ver
-    allow_credentials=False, # credentials=True ile '*' aynı anda kullanılmaz, bu yüzden False yapıyoruz
+    allow_origins=origins,
+    allow_credentials=True, # Artık true yapabiliyoruz çünkü spesifik originler belirttik
     allow_methods=["*"],
     allow_headers=["*"],     
 )
 
-import os
-from fastapi.staticfiles import StaticFiles
 
 # Auth router
 
