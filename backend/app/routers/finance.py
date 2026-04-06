@@ -51,9 +51,11 @@ async def remove_transaction(
 
 @router.get("/summary")
 async def summary(
+    baslangic: Optional[date] = None,
+    bitis: Optional[date] = None,
     current_user = Depends(security.require_authenticated)
 ):
-    return get_summary()
+    return get_summary(baslangic, bitis)
 
 @router.get("/recurring")
 async def list_recurring(

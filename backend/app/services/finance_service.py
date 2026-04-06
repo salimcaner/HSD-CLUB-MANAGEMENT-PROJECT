@@ -60,9 +60,16 @@ def delete_transaction(id: str):
 # -------------------------
 # Özet (Dashboard)
 # -------------------------
-def get_summary():
+def get_summary(baslangic: date = None, bitis: date = None):
     supabase = get_supabase()
-    response = supabase.table("transactions").select("miktar, tur").execute()
+    query = supabase.table("transactions").select("miktar, tur")
+    
+    if baslangic:
+        query = query.gte("tarih", str(baslangic))
+    if bitis:
+        query = query.lte("tarih", str(bitis))
+    
+    response = query.execute()
     
     toplam_gelir = sum(r["miktar"] for r in response.data if r["tur"] == "gelir")
     toplam_gider = sum(r["miktar"] for r in response.data if r["tur"] == "gider")
@@ -72,7 +79,6 @@ def get_summary():
         "toplam_gider": toplam_gider,
         "net_bakiye": toplam_gelir - toplam_gider
     }
-
 # -------------------------
 # Düzenli Giderler
 # -------------------------
