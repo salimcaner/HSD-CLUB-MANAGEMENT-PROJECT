@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routers import auth, users, reports, events, projects, calendar, dashboard,social_media, community
+from app.routers import auth, users, reports, events, projects, calendar, dashboard,social_media, community,finance
 app = FastAPI(
     title="Kulüp Yönetim Sistemi API",
     description="Üniversite kulüplerini yönetmek için geliştirilen API.",
@@ -53,6 +53,7 @@ app.include_router(calendar.router)
 app.include_router(dashboard.router)
 app.include_router(social_media.router)
 app.include_router(community.router)
+app.include_router(finance.router)
 
 
 # Frontend klasörünü statik olarak sun (http://127.0.0.1:8000/frontend/...)

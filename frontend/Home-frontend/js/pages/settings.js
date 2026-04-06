@@ -38,6 +38,23 @@ export function renderSettings() {
           </div>
         </div>
         
+        <!-- Güvenlik Kartı -->
+        <div class="settings-card">
+          <div class="settings-card-header">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+            <h2>Güvenlik</h2>
+          </div>
+          <div class="settings-card-body">
+            <p class="settings-desc">Hesap güvenliğiniz için şifre işlemlerini buradan yapabilirsiniz.</p>
+            <div class="security-options">
+              <button class="forgot-password-btn" onclick="window.location.href='../../password/ConfirmPassword/password.html'">Şifremi Unuttum</button>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
   `;

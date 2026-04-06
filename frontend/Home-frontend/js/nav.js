@@ -133,8 +133,8 @@ export function renderNav(user) {
         <div class="sidebar-footer">
           <div class="sidebar-divider"></div>
           <div class="user-card">
-            <div class="user-avatar">${initials}</div>
-            <div class="user-details">
+            <div class="user-avatar" onclick="window.location.hash='#/profile'" style="cursor:pointer;" title="Profile Git">${initials}</div>
+            <div class="user-details" onclick="window.location.hash='#/profile'" style="cursor:pointer;" title="Profile Git">
               <span class="user-name">${fullName}</span>
               <span class="user-role">${user.role}</span>
             </div>
@@ -160,7 +160,6 @@ export function renderNav(user) {
             <button class="sidebar-toggle" id="sidebarToggle" aria-label="Menüyü aç/kapat">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
             </button>
-            <span class="topbar-page-title" id="pageTitle">Ana Sayfa</span>
           </div>
 
           <div class="topbar-right">
@@ -205,22 +204,6 @@ export function renderNav(user) {
 
 export function initNavEvents() {
   function syncNavState(path) {
-    // Topbar'daki sayfa başlığını güncelle
-    const titleEl = document.getElementById("pageTitle");
-    const currentItem = NAV_ITEMS.find(item => item.path === path);
-
-    if (titleEl) {
-      if (currentItem) {
-        titleEl.textContent = currentItem.label;
-      } else if (path === "/profile") {
-        titleEl.textContent = "Profil";
-      } else if (path === "/settings") {
-        titleEl.textContent = "Ayarlar";
-      } else {
-        titleEl.textContent = "Ana Sayfa";
-      }
-    }
-
     // Seçili link işaretini (active sınıfı) güncelle
     document.querySelectorAll(".nav-link[data-path]").forEach(link => {
       if (link.dataset.path === path) {

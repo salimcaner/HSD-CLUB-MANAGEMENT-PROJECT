@@ -87,7 +87,7 @@ export function renderMembers(user) {
     <section class="members-page">
       <div class="members-header">
         <div class="members-title-block">
-          <h1>Üye <span>İşlemleri</span></h1>
+          <h1>Üye İşlemleri</h1>
           <p>Topluluk üyelerini yönetin ve düzenleyin</p>
         </div>
         ${canCreate ? `<button class="btn btn-primary" id="btnAddMember">
@@ -121,7 +121,7 @@ export function renderMembers(user) {
     <div class="modal-overlay" id="memberModalOverlay">
       <div class="modal">
         <div class="modal-header">
-          <h2 id="memberModalTitle">Yeni <span>Üye Ekle</span></h2>
+          <h2 id="memberModalTitle">Yeni Üye Ekle</h2>
           <button class="modal-close" id="btnMemberModalClose">
              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
           </button>
@@ -393,7 +393,7 @@ export function initMembers() {
     btnAddMember.addEventListener("click", () => {
       document.getElementById("memberForm").reset();
       document.getElementById("memberId").value = "";
-      document.getElementById("memberModalTitle").innerHTML = `Yeni <span>Üye Ekle</span>`;
+      document.getElementById("memberModalTitle").innerText = "Yeni Üye Ekle";
       memberModalOverlay.classList.add("open");
     });
   }
@@ -554,7 +554,7 @@ export function initMembers() {
     document.getElementById("memberUniDepartment").value = mem.university_department || '';
     document.getElementById("memberClass").value = mem.class_ || '';
 
-    document.getElementById("memberModalTitle").innerHTML = `Üye <span>Düzenle</span>`;
+    document.getElementById("memberModalTitle").innerText = "Üye Düzenle";
     memberModalOverlay.classList.add("open");
   };
 

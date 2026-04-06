@@ -82,9 +82,7 @@ body {
   color: var(--text-main);
 }
 
-.members-title-block h1 span {
-  color: var(--accent);
-}
+/* Removed span styling */
 
 .members-title-block p {
   margin: 4px 0 0;
@@ -461,9 +459,7 @@ body {
   margin: 0;
 }
 
-.modal-header h2 span {
-  color: var(--accent);
-}
+/* Removed span styling */
 
 .modal-close {
   background: none;
@@ -691,6 +687,74 @@ body {
   justify-content: center;
 }
 
+/* ─── RESPONSIVE ─── */
+@media (max-width: 1024px) {
+  .members-page {
+    padding: 24px;
+    width: 95%;
+    margin: 20px auto;
+  }
+}
+
+@media (max-width: 768px) {
+  .members-page {
+    padding: 16px;
+    width: 100%;
+    margin: 0;
+    border-radius: 0;
+    border: none;
+  }
+
+  .members-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+  }
+
+  .members-title-block h1 {
+    font-size: 24px;
+    text-align: center;
+  }
+
+  .members-title-block p {
+    text-align: center;
+  }
+
+  .members-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .search-box {
+    min-width: 100%;
+  }
+
+  .filter-select {
+    width: 100%;
+  }
+
+  .members-table-wrap {
+    margin: 0 -16px;
+  }
+
+  .members-table th, .members-table td {
+    padding: 12px 10px;
+    font-size: 13px;
+  }
+
+  .modal {
+    width: 100%;
+    height: 100%;
+    max-height: 100vh;
+    border-radius: 0;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+}
+
 /* ── LIGHT THEME OVERRIDES ── */
 body.light-theme .members-table td {
   border-bottom-color: rgba(0, 0, 0, 0.04);
@@ -733,4 +797,4 @@ body.light-theme .role-INSAN_KAYNAKLARI {
   color: #d97706;
   background: rgba(217, 119, 6, 0.1);
   border-color: rgba(217, 119, 6, 0.2);
-}
+}

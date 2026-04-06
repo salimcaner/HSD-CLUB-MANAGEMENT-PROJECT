@@ -45,7 +45,8 @@ loginForm.addEventListener('submit', async (e) => {
             localStorage.setItem('access_token', data.access_token);
             localStorage.setItem('user', JSON.stringify(data.user));
 
-            showMessage(`Hoş geldiniz ${data.user.full_name}!`, 'success');
+            const fullName = `${data.user.first_name || ''} ${data.user.last_name || ''}`.trim();
+            showMessage(`Hoş geldiniz ${fullName}!`, 'success');
             loginEmail.value = '';
             loginPassword.value = '';
 

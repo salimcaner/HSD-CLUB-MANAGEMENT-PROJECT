@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Response, Depends
+from fastapi import APIRouter, Response, Depends, BackgroundTasks
 from app.schemas.auth import InviteRequest, LoginRequest,ChangePasswordRequest, ForgotPasswordRequest, ResetPasswordRequest
 from app.services.auth_service import invite_user, login_user,change_password, forgot_password, reset_password
 from app.core import security
@@ -29,11 +29,15 @@ async def login(request: LoginRequest, response: Response):
         "access_token": access_token,
         "token_type": "bearer",
         "user": {
-            "id": user["id"],
-            "email": user["email"],
-            "first_name": user["first_name"],
-            "last_name": user["last_name"],
-            "role": user["role"],
+            "id": user.get("id"),
+            "email": user.get("email"),
+            "first_name": user.get("first_name"),
+            "last_name": user.get("last_name"),
+            "role": user.get("role"),
+            "department": user.get("department"),
+            "class_": user.get("class"),
+            "university_department": user.get("university_department"),
+            "created_at": user.get("created_at")
         }
     }
 
@@ -61,6 +65,7 @@ async def get_current_user_info(
 @router.post("/invite")
 async def invite_endpoint(
     request: InviteRequest,
+    background_tasks: BackgroundTasks,
     current_user = Depends(security.require_lider_or_above)
 ):
     print(f"DEBUG: İstek geldi! Email: {request.email}") # <--- Bunu en başa ekle
@@ -71,7 +76,8 @@ async def invite_endpoint(
         role=request.role,
         department=request.department,
         class_=request.class_,
-        university_department=request.university_department
+        university_department=request.university_department,
+        background_tasks=background_tasks
     )
     return {"message": f"{request.email} için davet gönderildi."}
 

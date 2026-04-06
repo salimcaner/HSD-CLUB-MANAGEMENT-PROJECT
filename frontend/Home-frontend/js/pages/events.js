@@ -171,7 +171,7 @@ export function renderEvents(user) {
     <div class="events-page">
       <div class="events-header">
         <div class="events-title-block">
-          <h1>Etkin<span>likler</span></h1>
+          <h1>Etkinlikler</h1>
         </div>
         ${isAuthorized ? `
           <div class="header-actions">
@@ -231,7 +231,7 @@ export function renderEvents(user) {
     <div class="modal-overlay" id="eventDetailOverlay">
       <div class="modal">
         <div class="modal-header">
-          <h2>Etkinlik <span style="color:var(--accent)">Detayı</span></h2>
+          <h2 id="eventDetailTitle">Etkinlik Detayı</h2>
           <button class="modal-close" id="detailCloseBtn">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>
@@ -256,7 +256,7 @@ function buildModalHtml(committeeOptions) {
     <div class="modal-overlay" id="eventModalOverlay">
       <div class="modal">
         <div class="modal-header">
-          <h2>Etkinlik <span>Ekle</span></h2>
+          <h2 id="eventModalTitle">Etkinlik Ekle</h2>
           <button class="modal-close" id="modalCloseBtn">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>
@@ -396,8 +396,8 @@ export async function initEvents() {
 
         if (addBtn) {
           editingEventId = null;
-          const titleSpan = document.querySelector("#eventModalOverlay h2 span");
-          if (titleSpan) titleSpan.innerText = "Ekle";
+          const titleEl = document.getElementById("eventModalTitle");
+          if (titleEl) titleEl.innerText = "Etkinlik Ekle";
           showModal();
         }
         if (closeBtn || cancelBtn || (overlayDirect && !e.target.closest(".modal"))) {
@@ -686,8 +686,8 @@ function openEditModal(idString) {
     previewDiv.style.display = "none";
   }
 
-  const modalTitleSpan = document.querySelector("#eventModalOverlay h2 span");
-  if (modalTitleSpan) modalTitleSpan.innerText = "Düzenle";
+  const titleEl = document.getElementById("eventModalTitle");
+  if (titleEl) titleEl.innerText = "Etkinlik Düzenle";
 
   showModal();
 }

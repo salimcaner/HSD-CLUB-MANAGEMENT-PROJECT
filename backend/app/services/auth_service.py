@@ -45,7 +45,7 @@ def login_user(email: str, password: str):
 # -------------------------
 # Kullanıcı ekle 
 # -------------------------
-def invite_user(email: str, first_name: str, last_name: str, role: str, department: str = None, class_: int = None, university_department: str = None):
+def invite_user(email: str, first_name: str, last_name: str, role: str, department: str = None, class_: int = None, university_department: str = None, background_tasks = None):
     import requests
     try:
         # Supabase'in 2 mail/saat sinirina takilmamak icin davet linkini arka planda API ile olusturuyoruz
@@ -117,17 +117,6 @@ def invite_user(email: str, first_name: str, last_name: str, role: str, departme
             detail="Davet linki oluşturulamadı."
         )
 
-    # Arka planda kendi Python E-posta servisimiz üzerinden maili gönder
-    from app.services.email_service import send_invite_email
-    try:
-        send_invite_email(email, action_link, first_name, last_name)
-    except Exception as e:
-        # Mail gonderilemediyse olusturulan kullaniciyi siliyoruz ki tekrar davet edilebilsin
-        _delete_user_http(user_id)
-        raise e
-    
-   
-
     #2️⃣ Profiles tablosuna ekle — hata olursa Auth'dan da sil (rollback)
     try:
         create_user(
@@ -149,6 +138,17 @@ def invite_user(email: str, first_name: str, last_name: str, role: str, departme
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Profil oluşturulamadı, davet iptal edildi. Lütfen tekrar deneyin."
         )
+
+    # Arka planda kendi Python E-posta servisimiz üzerinden maili gönder
+    from app.services.email_service import send_invite_email
+    if background_tasks:
+        background_tasks.add_task(send_invite_email, email, action_link, first_name, last_name)
+    else:
+        try:
+            send_invite_email(email, action_link, first_name, last_name)
+        except Exception as e:
+            # Senkron gönderimde hata olursa logluyoruz, artık rollback zor (profil oluşturuldu)
+            print(f"!!! E-POSTA GÖNDERME HATASI: {str(e)}")
         
     return response_data.get("user", {"id": user_id, "email": email})
 

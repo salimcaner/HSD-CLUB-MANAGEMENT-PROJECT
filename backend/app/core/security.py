@@ -103,19 +103,29 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    # Kullanıcı bul
-    user_dict = get_user_by_email(user_email)
-    
-    if user_dict is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Kullanıcı bulunamadı!"
+    # ---------------------------------------------------------
+    # Optimizasyon: Veritabanına gitmek yerine Token'daki (Payload)
+    # bilgileri (sub, email, role) kullanarak objeyi direkt oluştur.
+    # ---------------------------------------------------------
+    try:
+        user = UserInDB(
+            id=payload.get("sub"),
+            email=user_email,
+            role=payload.get("role", "uye"),  # role yoksa uye (varsayılan)
+            # Eğer token'a sonradan ad/soyad da eklerseniz otomatik alması için:
+            first_name=payload.get("first_name"),
+            last_name=payload.get("last_name"),
+            department=payload.get("department"),
+            class_=payload.get("class_") or payload.get("class"),
+            university_department=payload.get("university_department")
         )
-    # Supabase'den "class" gelir ama Python keyword, "class_" olarak değiştir
-    if "class" in user_dict:
-        user_dict["class_"] = user_dict.pop("class")
-    
-    user = UserInDB(**user_dict)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Token formatı geçersiz: {str(e)}",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+        
     return user
 
 # ==========================================
