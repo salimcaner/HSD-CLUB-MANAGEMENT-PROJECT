@@ -214,7 +214,7 @@ export function renderHome(user) {
       <div class="charts-grid">
         <div class="chart-container pie-chart-container">
           <h2 class="section-title">Komite Dağılımı</h2>
-          <div class="canvas-wrapper">
+          <div class="canvas-wrapper" style="min-height: 350px; position: relative;">
              <canvas id="committeePieChart"></canvas>
           </div>
         </div>
@@ -263,7 +263,7 @@ export function renderHome(user) {
               <div class="countdown-label">Saniye</div>
             </div>
           </div>
-          <p class="countdown-event-name">Yapay Zeka Zirvesi 2026</p>
+          <p class="countdown-event-name">Yakın Etkinlik Yok</p>
         </div>
       </div>
     </section>
@@ -336,6 +336,7 @@ export function renderHome(user) {
           </div>
         </div>
         <div class="modal-footer">
+          <button class="btn btn-danger" id="btn-clear-counter" style="margin-right:auto; background:var(--danger); color:#fff; border:none; padding:8px 16px; border-radius:6px; cursor:pointer;">Etkinlik Sayacını Kaldır</button>
           <button class="btn" id="btn-cancel-counter" style="color:var(--text-dim); background:transparent;">İptal</button>
           <button class="btn btn-primary" id="btn-save-counter">Kaydet</button>
         </div>
@@ -511,15 +512,29 @@ function initNumberCounters() {
 let countdownInterval;
 
 function initCountdown(countdownData) {
-  let targetDate;
+  let targetDate = null;
   let targetName = "Yakın Etkinlik Yok";
+  const now = new Date();
 
-  if (countdownData && countdownData.success && countdownData.event_date) {
-    targetDate = new Date(countdownData.event_date);
-    targetName = countdownData.title;
-  } else {
-    // Veri gelmediyse demo veya bugünden başlat
-    targetDate = new Date();
+  // 1. Önce localStorage kontrolü
+  const savedName = localStorage.getItem('countdown_event_name');
+  const savedDateStr = localStorage.getItem('countdown_event_datetime');
+  
+  if (savedName && savedDateStr) {
+    const savedDate = new Date(savedDateStr);
+    if (savedDate > now) {
+      targetDate = savedDate;
+      targetName = savedName;
+    }
+  }
+
+  // 2. LocalStorage'da geçerli yoksa backend verisini kontrol et
+  if (!targetDate && countdownData && countdownData.success && countdownData.event_date) {
+    const backendDate = new Date(countdownData.event_date);
+    if (backendDate > now) {
+      targetDate = backendDate;
+      targetName = countdownData.title;
+    }
   }
 
   const nameEl = document.querySelector('.countdown-event-name');
@@ -533,11 +548,19 @@ function initCountdown(countdownData) {
   if (!daysEl) return;
   if (countdownInterval) clearInterval(countdownInterval);
 
-  function update() {
-    const now = new Date().getTime();
-    const distance = targetDate.getTime() - now;
+  if (!targetDate) {
+      daysEl.textContent = "00";
+      hoursEl.textContent = "00";
+      minutesEl.textContent = "00";
+      secondsEl.textContent = "00";
+      return;
+  }
 
-    if (distance < 0) {
+  function update() {
+    const timeNow = new Date().getTime();
+    const distance = targetDate.getTime() - timeNow;
+
+    if (distance <= 0) {
       clearInterval(countdownInterval);
       daysEl.textContent = "00";
       hoursEl.textContent = "00";
@@ -567,6 +590,7 @@ function initCounterModal() {
   const btnClose = document.getElementById('btn-close-counter-modal');
   const btnCancel = document.getElementById('btn-cancel-counter');
   const btnSave = document.getElementById('btn-save-counter');
+  const btnClear = document.getElementById('btn-clear-counter');
 
   if (btnEnter) {
     btnEnter.addEventListener('click', () => {
@@ -590,16 +614,15 @@ function initCounterModal() {
       const now = new Date();
       const tzOffset = now.getTimezoneOffset() * 60000;
       const localISOTime = (new Date(now - tzOffset)).toISOString().slice(0, 10);
-      document.getElementById('counter-event-date').value = localISOTime;
+      const dateInput = document.getElementById('counter-event-date');
+      dateInput.value = localISOTime;
+      dateInput.min = localISOTime;
 
       const hours = String(now.getHours()).padStart(2, '0');
       const minutes = String(now.getMinutes()).padStart(2, '0');
       document.getElementById('counter-event-time').value = `${hours}:${minutes}`;
 
-      const savedName = localStorage.getItem('countdown_event_name');
-      if (savedName) {
-        document.getElementById('counter-event-name').value = savedName;
-      }
+      document.getElementById('counter-event-name').value = '';
     });
 
     // Handle select change
@@ -647,6 +670,16 @@ function initCounterModal() {
       overlay.classList.remove('open');
 
       initCountdown(); // Restart the countdown with new data
+    });
+  }
+
+  if (btnClear) {
+    btnClear.addEventListener('click', () => {
+      localStorage.removeItem('countdown_event_name');
+      localStorage.removeItem('countdown_event_datetime');
+      showToast("Etkinlik sayacı başarıyla kaldırıldı.", "success");
+      overlay.classList.remove('open');
+      initCountdown(); // Restart without memory
     });
   }
 }
@@ -790,6 +823,9 @@ function renderCharts(socialPosts) {
           maintainAspectRatio: false,
           animation: false,
           cutout: '65%',
+          layout: {
+            padding: 25
+          },
           plugins: {
             legend: {
               position: 'bottom',
