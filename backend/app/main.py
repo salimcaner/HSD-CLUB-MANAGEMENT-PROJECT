@@ -25,6 +25,7 @@ origins = [
     "http://127.0.0.1:3000",
     "http://127.0.0.1:5173",
     "http://127.0.0.1:5500", # Live Server
+    "https://hsd-backend-api.onrender.com",
     "null", # file:/// üzerinden erişimler için
 ]
 
