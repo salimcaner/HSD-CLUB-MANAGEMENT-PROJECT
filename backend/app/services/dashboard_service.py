@@ -7,36 +7,20 @@ supabase = get_supabase()
 
 async def get_dashboard_stats():
     try:
-        # 1. Toplam Üye Sayısı (Ayrım yapmadan herkesi sayar)
+        # 1. Toplam Üye Sayısı (count="exact" ile sadece sayı çekilir, satırlar gelmez)
         members_response = supabase.table("profiles").select("id", count="exact").execute()
         total_members = members_response.count if members_response.count else 0
         
-        # 2. Tüm Etkinlikleri Çek (Sahibi silinmiş olsa bile TÜMÜ çekilir)
-        # Dikkat: profiles!inner(id) gibi bir JOIN kullanmadığımız için 
-        # veritabanı sahibi olmayan etkinlikleri de listeye dahil eder.
-        events_response = supabase.table("events").select("id, event_type").execute()
-        events_data = events_response.data or []
-        total_events = len(events_data)
-        
-        meeting_count = 0
-        academy_count = 0
-        
-        # 3. Kategori Bazlı Sayım (Toplantı & Akademi)
-        for event in events_data:
-            # event_type verisini güvenli bir şekilde alıp küçük harfe çeviriyoruz
-            e_type = str(event.get("event_type") or "").lower()
-            
-            if "toplantı" in e_type:
-                meeting_count += 1
-            elif "akademi" in e_type or "eğitim" in e_type:
-                academy_count += 1
+        # 2. Etkinlik İstatistikleri (RPC ile veritabanında sayılır, Python'a sadece sonuç gelir)
+        event_stats_response = supabase.rpc("get_dashboard_event_stats").execute()
+        event_stats = event_stats_response.data or {}
                 
         # Frontend'in beklediği tüm verileri birleştirip dönüyoruz
         return {
             "total_members": total_members,
-            "total_events": total_events,
-            "meeting_count": meeting_count,
-            "academy_count": academy_count
+            "total_events": event_stats.get("total_events", 0),
+            "meeting_count": event_stats.get("meeting_count", 0),
+            "academy_count": event_stats.get("academy_count", 0)
         }
         
     except Exception as e:
@@ -44,45 +28,10 @@ async def get_dashboard_stats():
 
 async def get_committee_stats():
     try:
-        # Tüm üyeleri çek
-        response = supabase.table("profiles").select("role, department").execute()
-        users = response.data or []
+        # RPC ile komite dağılımını veritabanında hesapla (Python'a sadece sonuç JSON gelir)
+        response = supabase.rpc("get_committee_distribution").execute()
+        dist = response.data or {}
         
-        # Sayaçları sıfırla
-        counts = {
-            'Yönetim Kurulu': 0,
-            'Proje Komitesi': 0,
-            'Pazarlama ve Sosyal Medya Komitesi': 0,
-            'Sponsorluk ve Organizasyon Komitesi': 0,
-            'Akademi Komitesi': 0,
-            'Mezun': 0
-        }
-        
-        for user in users:
-            # None (Boş) gelebilecek değerlere karşı önlem
-            role = str(user.get("role") or "").lower()
-            dept = str(user.get("department") or "").lower()
-            
-            # 1. Yönetim Kurulu Kontrolü
-            if role in ['admin', 'elci', 'genel_sekreter', 'komite_lideri', 'elci_yardimcisi']:
-                counts['Yönetim Kurulu'] += 1
-                
-            # 2. Mezun Kontrolü
-            elif role == 'mezun':
-                counts['Mezun'] += 1
-                
-            # 3. Departmanlara (Komitelere) Göre Dağılım
-            elif "proje" in dept:
-                counts['Proje Komitesi'] += 1
-            elif "eğitim" in dept or "akademi" in dept:
-                counts['Akademi Komitesi'] += 1
-            elif "organizasyon" in dept or "sponsorluk" in dept:
-                counts['Sponsorluk ve Organizasyon Komitesi'] += 1
-            elif any(keyword in dept for keyword in ["tasarım", "medya", "pr", "iletişim", "pazarlama"]):
-                counts['Pazarlama ve Sosyal Medya Komitesi'] += 1
-            else:
-                
-                counts['Proje Komitesi'] += 1
         # Sıralama Frontend'in tam beklediği gibi olmalı
         ordered_labels = [
             'Yönetim Kurulu', 
@@ -93,7 +42,7 @@ async def get_committee_stats():
             'Mezun'
         ]
         
-        ordered_counts = [counts[label] for label in ordered_labels]
+        ordered_counts = [dist.get(label, 0) for label in ordered_labels]
         return {
             "labels": ordered_labels,
             "counts": ordered_counts

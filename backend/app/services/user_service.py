@@ -1,6 +1,6 @@
 from fastapi import HTTPException, status
 from app.schemas.user import User
-import app.core.config as settings
+from app.core.config import settings
 from app.core.supabase_client import get_supabase
 import requests
 
