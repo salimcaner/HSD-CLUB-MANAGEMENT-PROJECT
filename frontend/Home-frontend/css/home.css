@@ -370,7 +370,7 @@ body.light-theme {
 }
 
 .pulse-infinite {
-  /* animation: excitingPulse 1s infinite alternate; (performans için kaldırıldı) */
+  animation: excitingPulse 1s infinite alternate;
 }
 
 @keyframes excitingPulse {
@@ -384,6 +384,12 @@ body.light-theme {
     transform: scale3d(1.1, 1.1, 1.1) translateZ(30px);
     text-shadow: 0 4px 25px rgba(124, 58, 237, 1);
     color: #fff;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pulse-infinite {
+    animation: none;
   }
 }
 

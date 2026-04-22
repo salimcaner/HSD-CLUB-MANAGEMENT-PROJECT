@@ -1,6 +1,7 @@
 import { getUser, getToken } from "../store.js";
+import { BASE_URL } from "../config.js";
 
-const API_URL = "http://localhost:8000";
+const API_URL = BASE_URL;
 
 // --- Global State for Charts ---
 let committeeData = {
@@ -353,28 +354,23 @@ export async function initHome() {
     const token = getToken();
     const headers = token ? { "Authorization": `Bearer ${token}` } : {};
 
-    // 1. Tüm verileri PARALEL olarak çek
-    const [statsRes, committeeRes, activitiesRes, eventsRes, socialRes, countdownRes] = await Promise.all([
+    // 1. Tüm verileri PARALEL olarak çek (etkinlik listesi lazy-load edilir, modal açılınca çekilir)
+    const [statsRes, committeeRes, activitiesRes, socialRes, countdownRes] = await Promise.all([
       fetch(`${API_URL}/dashboard/stats`, { headers }).catch(() => ({ ok: false, json: () => ({}) })),
       fetch(`${API_URL}/dashboard/committees`, { headers }).catch(() => ({ ok: false, json: () => ({}) })),
       fetch(`${API_URL}/dashboard/activities`, { headers }).catch(() => ({ ok: false, json: () => ({ activities: [] }) })),
-      fetch(`${API_URL}/events/?limit=100`, { headers }).catch(() => ({ ok: false, json: () => ({ data: [] }) })),
       fetch(`${API_URL}/social-media/`, { headers }).catch(() => ({ ok: false, json: () => ({ data: [] }) })),
       fetch(`${API_URL}/dashboard/countdown`, { headers }).catch(() => ({ ok: false, json: () => ({ success: false }) }))
     ]);
 
     // 2. Yanıtları JSON olarak işle
-    const [stats, committee, activities, eventsData, socialPosts, countdown] = await Promise.all([
+    const [stats, committee, activities, socialPosts, countdown] = await Promise.all([
       statsRes.ok ? statsRes.json() : { total_members: 0, meeting_count: 0, academy_count: 0, total_events: 0 },
       committeeRes.ok ? committeeRes.json() : { activities: [] },
       activitiesRes.ok ? activitiesRes.json() : { activities: [] },
-      eventsRes.ok ? eventsRes.json() : { data: [] },
       socialRes.ok ? socialRes.json() : { data: [] },
       countdownRes.ok ? countdownRes.json() : { success: false }
     ]);
-
-    // 3. AllEventsList'i global olarak güncelle (Modal sekmeleri için)
-    allEventsList = eventsData.data || [];
 
     // 4. Bileşenleri hazırlanan verilerle güncelle
     updateDashboardDisplay(stats, activities.activities, committee);
@@ -593,12 +589,23 @@ function initCounterModal() {
   const btnClear = document.getElementById('btn-clear-counter');
 
   if (btnEnter) {
-    btnEnter.addEventListener('click', () => {
+    btnEnter.addEventListener('click', async () => {
       overlay.classList.add('open');
 
-      // Populate select with upcoming events
+      // Lazy-load: Etkinlikleri sadece modal açıldığında çek
       const select = document.getElementById('counter-event-select');
       if (select) {
+        select.innerHTML = '<option value="">Etkinlikler yükleniyor...</option>';
+        try {
+          const token = getToken();
+          const headers = token ? { "Authorization": `Bearer ${token}` } : {};
+          const eventsRes = await fetch(`${API_URL}/events/?limit=100`, { headers });
+          const eventsData = eventsRes.ok ? await eventsRes.json() : { data: [] };
+          allEventsList = eventsData.data || [];
+        } catch {
+          allEventsList = [];
+        }
+
         select.innerHTML = '<option value="">-- Bir Etkinlik Seçin (Opsiyonel) --</option>';
         const now = new Date();
         const upcoming = allEventsList.filter(ev => new Date(ev.event_date) > now);

@@ -1,5 +1,6 @@
 import { hasAnyPerm } from "./acl.js";
 import { clearUser } from "./store.js";
+import { BASE_URL } from "./config.js";
 
 const NAV_ITEMS = [
   {
@@ -268,7 +269,7 @@ export function initNavEvents() {
   // Çıkış Yap (ortak logout fonksiyonu)
   async function handleLogout() {
     try {
-      await fetch("http://localhost:8000/auth/logout", {
+      await fetch(`${BASE_URL}/auth/logout`, {
         method: "POST",
         credentials: "include"
       });

@@ -1,3 +1,7 @@
+const isLocal = window.location.hostname === "127.0.0.1" 
+             || window.location.hostname === "localhost";
+const BASE_URL = isLocal ? "http://127.0.0.1:8000" : "";
+
 const container = document.querySelector('.container');
 const btn = document.querySelector('.btn');
 const loginForm = document.querySelector('#LoginForm');
@@ -31,7 +35,7 @@ loginForm.addEventListener('submit', async (e) => {
     const password = loginPassword.value;
 
     try {
-        const response = await fetch(`http://127.0.0.1:8000/auth/login`, {
+        const response = await fetch(`${BASE_URL}/auth/login`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

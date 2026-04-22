@@ -1,7 +1,8 @@
 import { hasPerm } from "../acl.js";
 import { getToken } from "../store.js";
+import { BASE_URL } from "../config.js";
 
-const API_URL = "http://localhost:8000";
+const API_URL = BASE_URL;
 
 let membersData = [];
 let currentUser = null;

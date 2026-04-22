@@ -1,7 +1,8 @@
 import { getToken } from "../store.js";
 import { hasPerm } from "../acl.js";
+import { BASE_URL } from "../config.js";
 
-const API_URL = "http://localhost:8000";
+const API_URL = BASE_URL;
 const LS_KEY = "cal_events_v1";
 
 // ── Kategori tanımları ──────────────────────────

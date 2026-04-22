@@ -1,7 +1,8 @@
 import { getUser, getToken } from "../store.js";
 import { hasPerm } from "../acl.js";
+import { BASE_URL } from "../config.js";
 
-const API_URL = "http://127.0.0.1:8000/events"; // Backend Endpoint
+const API_URL = `${BASE_URL}/events`;
 
 const COMMITTEES = [
   "Yönetim Kurulu",

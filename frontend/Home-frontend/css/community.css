@@ -245,12 +245,18 @@
     border: 3px solid rgba(124, 58, 237, 0.2);
     border-top-color: #7c3aed;
     border-radius: 50%;
-    /* animation: commSpin 0.8s linear infinite; (performans için kaldırıldı) */
+    animation: commSpin 0.8s linear infinite;
 }
 
 @keyframes commSpin {
     to {
         transform: rotate(360deg);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .comm-spinner {
+        animation: none;
     }
 }
 

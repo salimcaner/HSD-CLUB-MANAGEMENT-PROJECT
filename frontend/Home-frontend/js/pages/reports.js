@@ -1,7 +1,8 @@
 import { hasPerm } from '../acl.js';
 import { getUser, getToken } from '../store.js';
+import { BASE_URL } from "../config.js";
 
-const API_URL = "http://127.0.0.1:8000/reports";
+const API_URL = `${BASE_URL}/reports`;
 
 let eventsData = []; // Backend'den çekilen veriler
 let editingReportId = null;

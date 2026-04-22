@@ -8,7 +8,8 @@ let currentProjectId = null;
 
 import { getToken } from "../store.js";
 import { hasPerm } from "../acl.js";
-const API_URL = "http://localhost:8000";
+import { BASE_URL } from "../config.js";
+const API_URL = BASE_URL;
 
 export function renderProjects(user) {
   globalUser = user;

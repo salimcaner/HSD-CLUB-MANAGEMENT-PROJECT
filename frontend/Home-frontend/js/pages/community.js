@@ -1,6 +1,7 @@
 import { getToken } from "../store.js";
+import { BASE_URL } from "../config.js";
 
-const API_URL = "http://localhost:8000";
+const API_URL = BASE_URL;
 
 const COMMITTEE_ORDER = [
   "Yönetim Kurulu",

@@ -1,5 +1,9 @@
 import { showToast } from "../../Home-frontend/js/notifications.js";
 
+const isLocal = window.location.hostname === "127.0.0.1" 
+             || window.location.hostname === "localhost";
+const BASE_URL = isLocal ? "http://127.0.0.1:8000" : "";
+
 const passwordForm = document.querySelector('#PasswordForm');
 const newPassword = document.querySelector('#newPassword');
 const confirmPassword = document.querySelector('#confirmPassword');
@@ -88,7 +92,7 @@ passwordForm.addEventListener('submit', async (e) => {
     btn.disabled = true;
 
     try {
-        const response = await fetch(`/auth/reset-password`, {
+        const response = await fetch(`${BASE_URL}/auth/reset-password`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
