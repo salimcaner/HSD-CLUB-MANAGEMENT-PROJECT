@@ -506,7 +506,7 @@ body.light-theme {
 }
 
 .modal-close:hover {
-  color: var(--danger);
+  color: var(--accent);
   transform: rotate(90deg);
 }
 

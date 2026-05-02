@@ -282,75 +282,75 @@ export function renderReports(user) {
           </tbody>
         </table>
       </div>
+    </div> <!-- End of reports-page -->
 
-      <!-- YENİ RAPOR MODAL -->
-      <div class="rp-modal-overlay" id="createReportModal" style="display:none;">
-        <div class="rp-modal">
-          <div class="rp-modal-header">
-            <h2 class="rp-modal-title">Yeni Rapor Oluştur</h2>
-            <button class="rp-modal-close" id="modalCloseBtn">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    <!-- YENİ RAPOR MODAL -->
+    <div class="modal-overlay" id="createReportModal">
+        <div class="modal">
+          <div class="modal-header">
+            <h2 id="reportModalTitle">Yeni Rapor Oluştur</h2>
+            <button class="modal-close" id="modalCloseBtn">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
           </div>
-          <div class="rp-modal-body">
-            <div class="rp-form-group">
-              <label class="rp-label">Rapor Adı <span class="rp-required">*</span></label>
-              <input class="rp-input" type="text" id="modalRaporAdi" />
+          <div class="modal-body">
+            <div class="form-group">
+              <label>Rapor Adı *</label>
+              <input type="text" class="form-control" id="modalRaporAdi" placeholder="Örn: Aylık Gider Raporu" />
             </div>
-            <div class="rp-form-group">
-              <label class="rp-label">İlgili Komite <span class="rp-required">*</span></label>
-              <select class="rp-modal-select" id="modalKomite">
+            <div class="form-group">
+              <label>İlgili Komite *</label>
+              <select class="form-control" id="modalKomite">
                 <option value="">Seçiniz</option>
                 ${modalKomiteOptions}
               </select>
             </div>
-            <div class="rp-form-group" id="modalTurGroup">
-              <label class="rp-label">Rapor Türü <span class="rp-required">*</span></label>
-              <select class="rp-modal-select" id="modalTur" disabled>
+            <div class="form-group" id="modalTurGroup">
+              <label>Rapor Türü *</label>
+              <select class="form-control" id="modalTur" disabled>
                 <option value="">Önce komite seçiniz</option>
               </select>
             </div>
-            <div class="rp-form-group" id="modalProjeGroup" style="display:none;">
-              <label class="rp-label">Proje Adı <span class="rp-required">*</span></label>
-              <select class="rp-modal-select" id="modalProjeAdi">
+            <div class="form-group" id="modalProjeGroup" style="display:none;">
+              <label>Proje Adı *</label>
+              <select class="form-control" id="modalProjeAdi">
                 <option value="">Seçiniz</option>
                 ${PROJE_ADLARI.map(p => `<option value="${p}">${p}</option>`).join('')}
               </select>
             </div>
-            <div class="rp-form-group">
-              <label class="rp-label">Gizlilik Seviyesi</label>
+            <div class="form-group">
+              <label>Gizlilik Seviyesi</label>
               <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 4px;">
-                <label style="display: flex; align-items: center; gap: 8px; color: #fff; font-size: 13.5px; cursor: pointer;">
-                  <input type="checkbox" id="modalGizlilikElci" class="rp-checkbox" style="width: 16px; height: 16px; cursor: pointer;">
+                <label style="display: flex; align-items: center; gap: 8px; color: var(--text-main); font-size: 13.5px; cursor: pointer;">
+                  <input type="checkbox" id="modalGizlilikElci" style="width: 16px; height: 16px; cursor: pointer;">
                   Sadece Elçi Görsün
                 </label>
-                <label style="display: flex; align-items: center; gap: 8px; color: #fff; font-size: 13.5px; cursor: pointer;">
-                  <input type="checkbox" id="modalGizlilikUye" class="rp-checkbox" style="width: 16px; height: 16px; cursor: pointer;">
+                <label style="display: flex; align-items: center; gap: 8px; color: var(--text-main); font-size: 13.5px; cursor: pointer;">
+                  <input type="checkbox" id="modalGizlilikUye" style="width: 16px; height: 16px; cursor: pointer;">
                   Sadece Üye Görmesin
                 </label>
               </div>
-              <div class="rp-hint">
-                <span>İkisi de seçilmezse rapor herkes tarafından görüntülenebilir.</span>
+              <div style="margin-top: 8px; font-size: 12px; color: var(--text-dim);">
+                İkisi de seçilmezse rapor herkes tarafından görüntülenebilir.
               </div>
             </div>
-            <div class="rp-form-group">
-              <label class="rp-label">Rapor Dosyası (PDF veya Word) <span class="rp-required">*</span></label>
-              <div class="rp-file-drop" id="modalFileDrop">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                <span>Dosyayı sürükleyin veya <label class="rp-file-link" for="modalFileInput">seçin</label></span>
-                <span style="font-size: 11px; opacity: 0.7;">En fazla 10MB büyüklüğünde dosya yükleyiniz.</span>
+            <div class="form-group">
+              <label>Rapor Dosyası (PDF veya Word) *</label>
+              <div class="rp-file-drop" id="modalFileDrop" style="border: 2px dashed var(--border-light); padding: 20px; text-align: center; border-radius: 8px; cursor: pointer; transition: all 0.3s ease;">
+                <svg width="24" height="24" style="color: var(--accent); margin-bottom: 8px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                <div style="color: var(--text-main); font-size: 14px;">Dosyayı sürükleyin veya seçin</div>
+                <div style="font-size: 11px; color: var(--text-dim);">En fazla 10MB büyüklüğünde dosya yükleyiniz.</div>
                 <input type="file" id="modalFileInput" accept=".pdf,.doc,.docx" style="display:none;" />
-                <span class="rp-file-name" id="modalFileName"></span>
+                <div id="modalFileName" style="margin-top: 8px; font-weight: bold; color: var(--accent);"></div>
               </div>
             </div>
           </div>
-          <div class="rp-modal-footer">
-            <button class="rp-btn-cancel" id="modalCancelBtn">İptal</button>
-            <button class="rp-btn-submit" id="modalSubmitBtn">Rapor Oluştur</button>
+          <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 12px; padding: 20px; border-top: 1px solid var(--border-light);">
+            <button class="btn btn-secondary" id="modalCancelBtn" style="background: transparent; color: var(--text-dim); border: 1px solid var(--border-light); padding: 8px 16px; border-radius: 6px; cursor: pointer;">İptal</button>
+            <button class="btn btn-primary" id="modalSubmitBtn" style="background: var(--accent); color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">Rapor Oluştur</button>
           </div>
         </div>
       </div>
-    </div>
   `;
 }
 
@@ -498,23 +498,21 @@ export async function initReports(userParam) {
   // --- MODAL FUNCTIONS DECLARED INSIDE FOR CLOSURE ACCESS OR ACCESSIBLE GLOBALLY
   function openReportModal() {
     editingReportId = null;
-    const titleEl = document.querySelector('.rp-modal-title');
+    const titleEl = document.getElementById('reportModalTitle');
     if (titleEl) titleEl.innerText = "Yeni Rapor Oluştur";
     const submitBtn = document.getElementById('modalSubmitBtn');
     if (submitBtn) submitBtn.innerText = "Rapor Oluştur";
 
     const modal = document.getElementById('createReportModal');
     if (!modal) return;
-    modal.style.display = 'flex';
-    document.body.style.overflow = 'hidden';
+    modal.classList.add('open');
     bindModalEvents();
   }
 
   function closeReportModal() {
     const modal = document.getElementById('createReportModal');
     if (!modal) return;
-    modal.style.display = 'none';
-    document.body.style.overflow = '';
+    modal.classList.remove('open');
     modal.querySelectorAll('input[type=text], select').forEach(f => f.value = '');
     const fn = document.getElementById('modalFileName');
     if (fn) fn.textContent = '';
@@ -536,15 +534,14 @@ export async function initReports(userParam) {
 
     editingReportId = id;
 
-    const titleEl = document.querySelector('.rp-modal-title');
+    const titleEl = document.getElementById('reportModalTitle');
     if (titleEl) titleEl.innerText = "Raporu Düzenle";
     const submitBtn = document.getElementById('modalSubmitBtn');
     if (submitBtn) submitBtn.innerText = "Kaydet";
 
     const modal = document.getElementById('createReportModal');
     if (!modal) return;
-    modal.style.display = 'flex';
-    document.body.style.overflow = 'hidden';
+    modal.classList.add('open');
 
     setTimeout(() => {
       document.getElementById('modalRaporAdi').value = r.report_name;

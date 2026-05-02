@@ -638,15 +638,20 @@ body.light-theme .fin-donut-legend-item {
 }
 
 .fin-modal-close {
-    background: none;
-    border: none;
-    color: var(--text-dim);
-    cursor: pointer;
-    padding: 4px;
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s, transform 0.2s;
 }
 
 .fin-modal-close:hover {
-    color: var(--danger);
+  color: var(--accent);
+  transform: rotate(90deg);
 }
 
 .fin-modal-body {
@@ -758,26 +763,20 @@ body.light-theme .fin-drawer {
 }
 
 .fin-drawer-close {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid var(--border-light);
-    color: var(--text-dim);
-    border-radius: 50%;
-    width: 36px;
-    height: 36px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-}
-
-body.light-theme .fin-drawer-close {
-    background: rgba(0, 0, 0, 0.04);
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s, transform 0.2s;
 }
 
 .fin-drawer-close:hover {
-    background: var(--danger);
-    border-color: var(--danger);
-    color: white;
+  color: var(--accent);
+  transform: rotate(90deg);
 }
 
 
