@@ -366,17 +366,20 @@
 /* Removed span styling */
 
 .cal-modal-close {
-    background: none;
-    border: none;
-    color: var(--cal-muted);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    transition: color 0.2s;
+  background: none;
+  border: none;
+  color: var(--cal-muted);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s, transform 0.2s;
 }
 
 .cal-modal-close:hover {
-    color: var(--cal-accent);
+  color: var(--cal-accent);
+  transform: rotate(90deg);
 }
 
 .cal-modal-body {

@@ -39,7 +39,9 @@ export function renderProjects(user) {
             <div class="modal">
                 <div class="modal-header">
                     <h2>Yeni Proje</h2>
-                    <button class="modal-close window-close-btn">&times;</button>
+                    <button class="modal-close window-close-btn">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    </button>
                 </div>
                 <div class="modal-body">
                     <div class="form-group">
@@ -75,7 +77,9 @@ export function renderProjects(user) {
             <div class="modal">
                 <div class="modal-header">
                     <h2>Üye Ekle</h2>
-                    <button class="modal-close window-close-btn">&times;</button>
+                    <button class="modal-close window-close-btn">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    </button>
                 </div>
                 <div class="modal-body">
                     <div class="form-group">
@@ -101,7 +105,9 @@ export function renderProjects(user) {
             <div class="modal">
                 <div class="modal-header">
                     <h2>Görev Ata</h2>
-                    <button class="modal-close window-close-btn">&times;</button>
+                    <button class="modal-close window-close-btn">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    </button>
                 </div>
                 <div class="modal-body">
                     <div class="form-group">

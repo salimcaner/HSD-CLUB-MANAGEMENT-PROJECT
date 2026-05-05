@@ -1,4 +1,4 @@
-import { getUser, getToken } from "../store.js";
+  import { getUser, getToken } from "../store.js";
 import { BASE_URL } from "../config.js";
 
 const API_URL = BASE_URL;
@@ -16,14 +16,14 @@ let allEventsList = [];
 function updateDashboardDisplay(stats, activities, committeeRes) {
   const listEl = document.getElementById("home-activity-list");
   const metricCards = document.querySelectorAll('.metric-info');
-  if (!listEl) return;
 
   // 1. Metric Cards (Sayaçlar) Güncelle
-  metricCards.forEach(card => {
-    const p = card.querySelector('p');
-    const h3 = card.querySelector('h3.counter-number');
-    if (!p || !h3) return;
-    const label = p.innerText.trim().toLowerCase();
+  if (stats) {
+    metricCards.forEach(card => {
+      const p = card.querySelector('p');
+      const h3 = card.querySelector('h3.counter-number');
+      if (!p || !h3) return;
+    const label = p.textContent.trim().toLowerCase();
     let targetValue = 0;
 
     if (label.includes('toplantı')) targetValue = stats.meeting_count || 0;
@@ -31,9 +31,9 @@ function updateDashboardDisplay(stats, activities, committeeRes) {
     else if (label.includes('topluluk') || label.includes('etkinlik')) targetValue = stats.total_events || 0;
     else if (label.includes('üye')) targetValue = stats.total_members || 0;
 
-    h3.setAttribute('data-target', targetValue);
-    h3.innerText = targetValue;
-  });
+      h3.setAttribute('data-target', targetValue);
+    });
+  }
 
   // 2. Komite Dağılımı (Pie Chart) Verisini Hazırla
   if (committeeRes) {
@@ -48,21 +48,23 @@ function updateDashboardDisplay(stats, activities, committeeRes) {
   }
 
   // 3. Son Aktiviteler
-  if (activities && activities.length > 0) {
-    listEl.innerHTML = activities.map(act => {
-      const timeAgo = getTimeAgo(new Date(act.created_at));
-      return `
-        <li class="activity-item">
-          <div class="activity-dot ${act.iconClass}"></div>
-          <div class="activity-content">
-            <p><strong>${act.title}:</strong> ${act.desc}</p>
-            <span class="activity-time">${timeAgo}</span>
-          </div>
-        </li>
-      `;
-    }).join("");
-  } else {
-    listEl.innerHTML = `<li style="text-align:center; padding: 20px 0; color:var(--text-muted); font-size:14px;">Henüz aktivite bulunmuyor.</li>`;
+  if (activities && listEl) {
+    if (activities.length > 0) {
+      listEl.innerHTML = activities.map(act => {
+        const timeAgo = getTimeAgo(new Date(act.created_at));
+        return `
+          <li class="activity-item">
+            <div class="activity-dot ${act.iconClass}"></div>
+            <div class="activity-content">
+              <p><strong>${act.title}:</strong> ${act.desc}</p>
+              <span class="activity-time">${timeAgo}</span>
+            </div>
+          </li>
+        `;
+      }).join("");
+    } else {
+      listEl.innerHTML = `<li style="text-align:center; padding: 20px 0; color:var(--text-muted); font-size:14px;">Henüz aktivite bulunmuyor.</li>`;
+    }
   }
 }
 
@@ -215,7 +217,7 @@ export function renderHome(user) {
       <div class="charts-grid">
         <div class="chart-container pie-chart-container">
           <h2 class="section-title">Komite Dağılımı</h2>
-          <div class="canvas-wrapper" style="min-height: 350px; position: relative;">
+          <div class="canvas-wrapper" style="height: 400px; position: relative; width: 100%;">
              <canvas id="committeePieChart"></canvas>
           </div>
         </div>
@@ -275,7 +277,7 @@ export function renderHome(user) {
         <div class="modal-header">
           <h2>Sosyal Medya Paylaşımı Ekle</h2>
           <button class="modal-close" id="btn-close-social-modal">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
           </button>
         </div>
         <div class="modal-body">
@@ -337,7 +339,6 @@ export function renderHome(user) {
           </div>
         </div>
         <div class="modal-footer">
-          <button class="btn btn-danger" id="btn-clear-counter" style="margin-right:auto; background:var(--danger); color:#fff; border:none; padding:8px 16px; border-radius:6px; cursor:pointer;">Etkinlik Sayacını Kaldır</button>
           <button class="btn" id="btn-cancel-counter" style="color:var(--text-dim); background:transparent;">İptal</button>
           <button class="btn btn-primary" id="btn-save-counter">Kaydet</button>
         </div>
@@ -350,38 +351,96 @@ export function renderHome(user) {
 }
 
 export async function initHome() {
+  // SPA Yapısında navbarla sayfa değiştirilip geri gelindiğinde eski çizimlerin cache'ini temizle
+  if (pieChartInstance) {
+    pieChartInstance.destroy();
+    pieChartInstance = null;
+  }
+  if (socialBarChartInstance) {
+    socialBarChartInstance.destroy();
+    socialBarChartInstance = null;
+  }
+
   try {
     const token = getToken();
     const headers = token ? { "Authorization": `Bearer ${token}` } : {};
 
-    // 1. Tüm verileri PARALEL olarak çek (etkinlik listesi lazy-load edilir, modal açılınca çekilir)
-    const [statsRes, committeeRes, activitiesRes, socialRes, countdownRes] = await Promise.all([
-      fetch(`${API_URL}/dashboard/stats`, { headers }).catch(() => ({ ok: false, json: () => ({}) })),
-      fetch(`${API_URL}/dashboard/committees`, { headers }).catch(() => ({ ok: false, json: () => ({}) })),
-      fetch(`${API_URL}/dashboard/activities`, { headers }).catch(() => ({ ok: false, json: () => ({ activities: [] }) })),
-      fetch(`${API_URL}/social-media/`, { headers }).catch(() => ({ ok: false, json: () => ({ data: [] }) })),
-      fetch(`${API_URL}/dashboard/countdown`, { headers }).catch(() => ({ ok: false, json: () => ({ success: false }) }))
-    ]);
-
-    // 2. Yanıtları JSON olarak işle
-    const [stats, committee, activities, socialPosts, countdown] = await Promise.all([
-      statsRes.ok ? statsRes.json() : { total_members: 0, meeting_count: 0, academy_count: 0, total_events: 0 },
-      committeeRes.ok ? committeeRes.json() : { activities: [] },
-      activitiesRes.ok ? activitiesRes.json() : { activities: [] },
-      socialRes.ok ? socialRes.json() : { data: [] },
-      countdownRes.ok ? countdownRes.json() : { success: false }
-    ]);
-
-    // 4. Bileşenleri hazırlanan verilerle güncelle
-    updateDashboardDisplay(stats, activities.activities, committee);
-    renderCharts(socialPosts.data || []);
-    initCountdown(countdown);
-
-    // 5. Bağımsız görsel efektleri başlat
+    // 1. Görsel Efektleri ve Araçları Anında Başlat
     initSocialModal();
     initCounterModal();
     initHomeSlider();
 
+    // 2. HIZLI YÜKLENENLER: Üyeler ve Etkinlikler 
+    Promise.all([
+      fetch(`${API_URL}/users/`, { headers }).catch(() => ({ ok: false, json: () => [] })),
+      fetch(`${API_URL}/events/?limit=100`, { headers }).catch(() => ({ ok: false, json: () => ({ data: [] }) }))
+    ]).then(async ([usersRes, eventsRes]) => {
+      const usersList = (usersRes && usersRes.ok) ? await usersRes.json() : [];
+      const eventsData = eventsRes.ok ? await eventsRes.json() : { data: [] };
+
+      // 3. Komite Dağılımını Frontend'de Hesapla
+      const deptMapping = {
+        "Yonetim": "Yönetim Kurulu",
+        "proje": "Proje Komitesi",
+        "pazarlama": "Pazarlama ve Sosyal Medya Komitesi",
+        "Organizasyon": "Sponsorluk ve Organizasyon Komitesi",
+        "Akademi": "Akademi Komitesi",
+        "Mezun": "Mezun"
+      };
+
+      const committeeCounts = {
+        "Yönetim Kurulu": 0, "Proje Komitesi": 0, "Pazarlama ve Sosyal Medya Komitesi": 0,
+        "Sponsorluk ve Organizasyon Komitesi": 0, "Akademi Komitesi": 0, "Mezun": 0
+      };
+
+      if (Array.isArray(usersList)) {
+        usersList.forEach(u => {
+          if (u.department) {
+            const mappedLabel = deptMapping[u.department];
+            if (mappedLabel && committeeCounts[mappedLabel] !== undefined) {
+               committeeCounts[mappedLabel]++;
+            }
+          }
+        });
+      }
+
+      const committee = {
+        labels: Object.keys(committeeCounts),
+        counts: Object.values(committeeCounts)
+      };
+
+      allEventsList = eventsData.data || [];
+      const meeting_count = allEventsList.filter(ev => ev.event_type === 'Toplantı').length;
+      const academy_count = allEventsList.filter(ev => ev.event_type === 'Akademi Eğitimi').length;
+      const total_events = allEventsList.length;
+
+      // AKTİF ÜYE SAYISI ARTIK YAVAŞ ÇALIŞAN RPC/STATS YERİNE "usersList" ÜZERİNDEN GELİYOR
+      const frontendStats = {
+        total_members: Array.isArray(usersList) ? usersList.length : 0,
+        meeting_count: meeting_count,
+        academy_count: academy_count,
+        total_events: total_events
+      };
+
+      // Grafikleri ve sayaçları hemen ateşle
+      updateDashboardDisplay(frontendStats, null, committee);
+      initNumberCounters();
+    });
+
+    // 4. DAHA YAVAŞ YÜKLENENLER: Aktiviteler, Sosyal Medya ve Countdown
+    Promise.all([
+      fetch(`${API_URL}/dashboard/activities`, { headers }).catch(() => ({ ok: false, json: () => ({ activities: [] }) })),
+      fetch(`${API_URL}/social-media/`, { headers }).catch(() => ({ ok: false, json: () => ({ data: [] }) })),
+      fetch(`${API_URL}/dashboard/countdown`, { headers }).catch(() => ({ ok: false, json: () => ({ success: false }) }))
+    ]).then(async ([activitiesRes, socialRes, countdownRes]) => {
+      const activities = activitiesRes.ok ? await activitiesRes.json() : { activities: [] };
+      const socialPosts = socialRes.ok ? await socialRes.json() : { data: [] };
+      const countdown = countdownRes.ok ? await countdownRes.json() : { success: false };
+
+      updateDashboardDisplay(null, activities.activities, null);
+      renderCharts(socialPosts.data || []);
+      initCountdown(countdown);
+    });
 
   } catch (err) {
     console.error("Ana sayfa yükleme hatası:", err);
@@ -475,17 +534,17 @@ function initNumberCounters() {
     counters.forEach(counter => {
       const updateCount = () => {
         const target = +counter.getAttribute('data-target');
-        const count = +counter.innerText;
+        const count = +counter.textContent;
 
         // Bölünen rakam = hız artışı. Ne kadar küçükse o kadar hızlı biter.
         const speed = 200; // Animation total duraction approx
-        const inc = target / speed;
+        const inc = Math.max(1, target / speed); // Fix increment so it doesn't stay stuck at 0 if target is small
 
         if (count < target) {
-          counter.innerText = Math.ceil(count + inc);
+          counter.textContent = Math.ceil(count + inc);
           setTimeout(updateCount, 10);
         } else {
-          counter.innerText = target;
+          counter.textContent = target;
         }
       };
       updateCount();
@@ -586,24 +645,27 @@ function initCounterModal() {
   const btnClose = document.getElementById('btn-close-counter-modal');
   const btnCancel = document.getElementById('btn-cancel-counter');
   const btnSave = document.getElementById('btn-save-counter');
-  const btnClear = document.getElementById('btn-clear-counter');
 
   if (btnEnter) {
     btnEnter.addEventListener('click', async () => {
       overlay.classList.add('open');
 
       // Lazy-load: Etkinlikleri sadece modal açıldığında çek
-      const select = document.getElementById('counter-event-select');
+        const select = document.getElementById('counter-event-select');
       if (select) {
         select.innerHTML = '<option value="">Etkinlikler yükleniyor...</option>';
-        try {
-          const token = getToken();
-          const headers = token ? { "Authorization": `Bearer ${token}` } : {};
-          const eventsRes = await fetch(`${API_URL}/events/?limit=100`, { headers });
-          const eventsData = eventsRes.ok ? await eventsRes.json() : { data: [] };
-          allEventsList = eventsData.data || [];
-        } catch {
-          allEventsList = [];
+        // Etkinlikler zaten initHome kısmında yüklendi (allEventsList).
+        // Eğer boşsa, tekrar fetch atabiliriz ama şu an zaten hazır dolu.
+        if (!allEventsList || allEventsList.length === 0) {
+          try {
+            const token = getToken();
+            const headers = token ? { "Authorization": `Bearer ${token}` } : {};
+            const evRes = await fetch(`${API_URL}/events/?limit=100`, { headers });
+            const evData = evRes.ok ? await evRes.json() : { data: [] };
+            allEventsList = evData.data || [];
+          } catch {
+            allEventsList = [];
+          }
         }
 
         select.innerHTML = '<option value="">-- Bir Etkinlik Seçin (Opsiyonel) --</option>';
@@ -679,16 +741,6 @@ function initCounterModal() {
       initCountdown(); // Restart the countdown with new data
     });
   }
-
-  if (btnClear) {
-    btnClear.addEventListener('click', () => {
-      localStorage.removeItem('countdown_event_name');
-      localStorage.removeItem('countdown_event_datetime');
-      showToast("Etkinlik sayacı başarıyla kaldırıldı.", "success");
-      overlay.classList.remove('open');
-      initCountdown(); // Restart without memory
-    });
-  }
 }
 
 function initTiltEffect() {
@@ -718,24 +770,28 @@ function processSocialData(posts) {
   // Aylara göre gruplandırma (Son 6 ay)
   const months = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
   const counts = new Array(12).fill(0);
+  const interactions = new Array(12).fill(0);
 
   posts.forEach(post => {
     const date = new Date(post.post_date);
     counts[date.getMonth()] += 1;
+    interactions[date.getMonth()] += (post.likes || 0) + (post.comments || 0) + (post.views || 0);
   });
 
   const currentMonth = new Date().getMonth();
   const labels = [];
   const data = [];
+  const intData = [];
 
   for (let i = 5; i >= 0; i--) {
     let mIdx = currentMonth - i;
     if (mIdx < 0) mIdx += 12;
     labels.push(months[mIdx]);
     data.push(counts[mIdx]);
+    intData.push(interactions[mIdx]);
   }
 
-  return { labels, data };
+  return { labels, data, interactions: intData };
 }
 
 function renderCharts(socialPosts) {
@@ -752,6 +808,7 @@ function renderCharts(socialPosts) {
         datasets: [{
           label: 'Paylaşım Sayısı',
           data: socialData.data,   // Backend'den gelen sayılar
+          interactions: socialData.interactions, // Tooltip'te göstermek için katılımcı sayıları
           backgroundColor: 'rgba(124, 58, 237, 0.8)',
           hoverBackgroundColor: '#7c3aed',
           borderRadius: 6,
@@ -822,7 +879,7 @@ function renderCharts(socialPosts) {
               '#94a3b8'  // mavi-gri (Mezun)
             ],
             borderWidth: 0,
-            hoverOffset: 10
+            hoverOffset: 5
           }]
         },
         options: {
@@ -831,12 +888,12 @@ function renderCharts(socialPosts) {
           animation: false,
           cutout: '65%',
           layout: {
-            padding: 25
+            padding: 15
           },
           plugins: {
             legend: {
               position: 'bottom',
-              labels: { padding: 20, color: isLightMode ? '#475569' : '#e2e8f0' }
+              labels: { padding: 15, color: isLightMode ? '#475569' : '#e2e8f0', font: { size: 11 } }
             },
             tooltip: {
               backgroundColor: isLightMode ? 'rgba(255, 255, 255, 0.9)' : 'rgba(28, 29, 33, 0.9)',

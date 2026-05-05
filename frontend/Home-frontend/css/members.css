@@ -465,16 +465,17 @@ body {
   background: none;
   border: none;
   color: var(--text-dim);
-  font-size: 24px;
   cursor: pointer;
+  padding: 4px;
   display: flex;
   align-items: center;
-  transition: color 0.2s;
-  padding: 4px;
+  justify-content: center;
+  transition: color 0.2s, transform 0.2s;
 }
 
 .modal-close:hover {
   color: var(--accent);
+  transform: rotate(90deg);
 }
 
 .modal-body {

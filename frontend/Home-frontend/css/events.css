@@ -424,11 +424,15 @@ body.light-theme {
   color: var(--text-dim);
   cursor: pointer;
   padding: 4px;
-  transition: color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s, transform 0.2s;
 }
 
 .modal-close:hover {
   color: var(--accent);
+  transform: rotate(90deg);
 }
 
 .modal-body {
