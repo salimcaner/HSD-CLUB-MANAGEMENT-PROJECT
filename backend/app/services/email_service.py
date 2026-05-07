@@ -62,3 +62,49 @@ def send_invite_email(to_email: str, invite_link: str, first_name: str, last_nam
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Davet e-postası gönderilemedi. Hata: {str(e)}"
         )
+
+def send_reset_email(to_email: str, reset_link: str):
+    if not settings.SMTP_USERNAME or not settings.SMTP_PASSWORD:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="SMTP ayarları eksik."
+        )
+
+    msg = MIMEMultipart()
+    msg['From'] = settings.SMTP_FROM_EMAIL
+    msg['To'] = to_email
+    msg['Subject'] = "Kulüp Yönetim Sistemi - Şifre Sıfırlama"
+
+    html_content = f"""
+    <html>
+      <body>
+        <h2>Şifre Sıfırlama</h2>
+        <p>Şifrenizi sıfırlamak için aşağıdaki linke tıklayın:</p>
+        <p><a href="{reset_link}" style="display:inline-block;padding:10px 20px;color:white;background-color:#007BFF;text-decoration:none;border-radius:5px;">Şifremi Sıfırla</a></p>
+        <p>Veya bu linki kopyalayıp tarayıcınıza yapıştırabilirsiniz:</p>
+        <p>{reset_link}</p>
+        <p>Bu isteği siz yapmadıysanız bu maili dikkate almayın.</p>
+      </body>
+    </html>
+    """
+
+    msg.attach(MIMEText(html_content, 'html'))
+
+    try:
+        if settings.SMTP_PORT == 465:
+            server = smtplib.SMTP_SSL(settings.SMTP_SERVER, settings.SMTP_PORT)
+            server.login(settings.SMTP_USERNAME, settings.SMTP_PASSWORD)
+        else:
+            server = smtplib.SMTP(settings.SMTP_SERVER, settings.SMTP_PORT)
+            server.starttls()
+            server.login(settings.SMTP_USERNAME, settings.SMTP_PASSWORD)
+
+        server.send_message(msg)
+        server.quit()
+        print(f"!!! ŞIFRE SIFIRLAMA MAILI GÖNDERİLDİ: {to_email}")
+    except Exception as e:
+        print(f"!!! MAIL GÖNDERME HATASI: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Mail gönderilemedi: {str(e)}"
+        )
