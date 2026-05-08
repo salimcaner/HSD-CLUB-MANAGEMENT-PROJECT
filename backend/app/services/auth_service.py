@@ -176,10 +176,8 @@ def change_password(user_id: str, old_password: str, new_password: str):
 # -------------------------
 # Şifremi Unuttum
 # -------------------------
-def forgot_password(email: str):
-    """
-    Şifre sıfırlama linki gönder
-    """
+def forgot_password(email: str, background_tasks=None):
+    import requests
     try:
         user = get_user_by_email(email)
         if not user:
@@ -187,9 +185,38 @@ def forgot_password(email: str):
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Bu email sistemde kayıtlı değil!"
             )
-        
-        supabase.auth.reset_password_email(email)
-        
+
+        url = f"{config.settings.SUPABASE_URL}/auth/v1/admin/generate_link"
+        headers = {
+            "apikey": config.settings.SUPABASE_SERVICE_KEY,
+            "Authorization": f"Bearer {config.settings.SUPABASE_SERVICE_KEY}",
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "type": "recovery",
+            "email": email,
+            "redirect_to": "http://127.0.0.1:8000/frontend/password/ConfirmPassword/password.html"
+        }
+        resp = requests.post(url, headers=headers, json=payload)
+
+        if resp.status_code >= 400:
+            raise HTTPException(status_code=400, detail="Şifre sıfırlama linki oluşturulamadı.")
+
+        data = resp.json()
+        action_link = data.get("action_link")
+
+        if not action_link:
+            raise HTTPException(status_code=500, detail="Şifre sıfırlama linki alınamadı.")
+
+        from app.services.email_service import send_reset_email
+        if background_tasks:
+            background_tasks.add_task(send_reset_email, email, action_link)
+        else:
+            try:
+                send_reset_email(email, action_link)
+            except Exception as e:
+                print(f"!!! ŞIFRE SIFIRLAMA MAILI HATASI: {str(e)}")
+
         return {"message": f"{email} adresine şifre sıfırlama linki gönderildi."}
     except HTTPException:
         raise
@@ -198,7 +225,6 @@ def forgot_password(email: str):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Email gönderilemedi: {str(e)}"
         )
-
 
 # -------------------------
 # Şifre Sıfırlama

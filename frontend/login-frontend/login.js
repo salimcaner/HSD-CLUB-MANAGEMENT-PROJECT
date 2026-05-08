@@ -11,6 +11,14 @@ const toggleBtn = document.getElementById("togglePassword");
 const toggleIcon = toggleBtn.querySelector("i");
 const loginMessage = document.getElementById('loginMessage');
 
+// Hatırlanan e-postayı kontrol et ve doldur
+const rememberedEmail = localStorage.getItem('remembered_email');
+if (rememberedEmail) {
+    loginEmail.value = rememberedEmail;
+    // Bir kere doldurduktan sonra silebiliriz veya tutabiliriz, kullanıcı deneyimine göre
+    // localStorage.removeItem('remembered_email'); 
+}
+
 function showMessage(text, type) {
     loginMessage.textContent = text;
     loginMessage.className = `login-message ${type}`;
@@ -53,6 +61,7 @@ loginForm.addEventListener('submit', async (e) => {
             showMessage(`Hoş geldiniz ${fullName}!`, 'success');
             loginEmail.value = '';
             loginPassword.value = '';
+            localStorage.removeItem('remembered_email');
 
             setTimeout(() => {
                 window.location.href = '../Home-frontend/html/index.html';
@@ -62,9 +71,18 @@ loginForm.addEventListener('submit', async (e) => {
         }
 
     } catch (error) {
-        const userFriendlyMessage = (error.message === 'Failed to fetch' || error.message === 'Giriş sırasında bir hata oluştu')
-            ? 'Girilen E-posta veya Şifre hatalı'
-            : error.message;
+        let userFriendlyMessage = "Giriş sırasında bir hata oluştu.";
+        
+        if (error.message === 'Failed to fetch') {
+            userFriendlyMessage = "Sunucuya bağlanılamadı. Lütfen internetinizi kontrol edin.";
+        } else if (error.message.includes("Email veya şifre hatalı")) {
+            userFriendlyMessage = "E-posta veya şifre hatalı. Lütfen tekrar deneyin.";
+        } else if (error.message.includes("Kullanıcı profili bulunamadı")) {
+            userFriendlyMessage = "Bu e-posta adresiyle kayıtlı bir kullanıcı bulunamadı.";
+        } else {
+            userFriendlyMessage = error.message;
+        }
+        
         showMessage(userFriendlyMessage, 'error');
     }
 });

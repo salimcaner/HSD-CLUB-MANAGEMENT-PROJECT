@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/frontend/login-frontend/login.css">
+    <link rel="stylesheet" href="/frontend/password/ForgotPassword/forgot.css">
+    <script src="https://kit.fontawesome.com/b452e5bdc3.js" crossorigin="anonymous"></script>
+    <title>Şifremi Unuttum</title>
+</head>
+<body>
+    <div class="container"> 
+        <!--Sol kutu-->
+        <div class="left-box">
+            <form id="ForgotForm">
+                <h2 class="baslik">Şifremi Unuttum</h2>
+                <p>E-posta adresinizi girin, size şifre sıfırlama bağlantısı gönderelim.</p>
+                <br>
+                <div class="input-box">
+                    <input type="email" id="forgotEmail" required placeholder="E-posta Adresi">
+                </div>
+                <div class="forgot-link">
+                    <a href="/frontend/login-frontend/login.html">Giriş Sayfasına Dön</a>
+                </div>
+                <div id="forgotMessage" class="login-message"></div>
+                <button type="submit" class="btn" id="submitBtn">Bağlantı Gönder</button>
+            </form>
+        </div>
+        <!--Sağ kutu-->
+        <div class="right-box">
+            <img class="resim" id="resim" src="/frontend/picture/resimbeyaz.png" alt="resim">
+        </div>
+    </div>
+
+    <script type="module" src="/frontend/password/ForgotPassword/forgot.js"></script>
+</body>
+</html>
