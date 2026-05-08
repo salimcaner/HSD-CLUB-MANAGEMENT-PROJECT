@@ -1,7 +1,20 @@
-import { showToast } from "../../Home-frontend/js/notifications.js";
+const passwordMessage = document.getElementById('passwordMessage');
 
-const isLocal = window.location.hostname === "127.0.0.1" 
-             || window.location.hostname === "localhost";
+function showMessage(text, type) {
+    if (!passwordMessage) return;
+    passwordMessage.textContent = text;
+    passwordMessage.className = `login-message ${type}`;
+    passwordMessage.style.display = 'block';
+
+    if (type === 'success') {
+        setTimeout(() => {
+            passwordMessage.style.display = 'none';
+        }, 5000);
+    }
+}
+
+const isLocal = window.location.hostname === "127.0.0.1"
+    || window.location.hostname === "localhost";
 const BASE_URL = isLocal ? "http://127.0.0.1:8000" : "";
 
 const passwordForm = document.querySelector('#PasswordForm');
@@ -41,9 +54,9 @@ if (hashParams.has('access_token')) {
 
 if (!token) {
     if (errorMessage) {
-        showToast("Bağlantı hatası: " + errorMessage, 'error');
+        showMessage("Bağlantı hatası: " + errorMessage, 'error');
     } else {
-        showToast("Geçersiz veya eksik token. Lütfen davet linkini kontrol edin.", 'warning');
+        showMessage("Geçersiz veya eksik token. Lütfen davet linkini kontrol edin.", 'warning');
     }
     // Butonu ve inputları pasife al ki kullanıcı boşuna işlem yapamasın:
     btn.disabled = true;
@@ -69,7 +82,7 @@ passwordForm.addEventListener('submit', async (e) => {
     e.preventDefault();
 
     if (!token) {
-        showToast("Geçersiz veya eksik token!", 'error');
+        showMessage("Geçersiz veya eksik token!", 'error');
         return;
     }
 
@@ -77,12 +90,12 @@ passwordForm.addEventListener('submit', async (e) => {
     const confirmVal = confirmPassword.value;
 
     if (passwordVal !== confirmVal) {
-        showToast("Şifreler birbiriyle eşleşmiyor.", 'warning');
+        showMessage("Şifreler birbiriyle eşleşmiyor. Lütfen kontrol edin.", 'warning');
         return;
     }
 
     if (passwordVal.length < 6) {
-        showToast("Şifreniz en az 6 karakter olmalıdır.", 'warning');
+        showMessage("Şifreniz çok kısa! En az 6 karakter olmalıdır.", 'warning');
         return;
     }
 
@@ -106,7 +119,7 @@ passwordForm.addEventListener('submit', async (e) => {
         const data = await response.json();
 
         if (response.ok) {
-            showToast("Şifreniz başarıyla oluşturuldu! Yönlendiriliyorsunuz...", 'success');
+            showMessage("Şifreniz başarıyla oluşturuldu! Yönlendiriliyorsunuz...", 'success');
             // Kullanıcıyı login sayfasına yönlendir (backend üzerinden sunulduğu için absolute path)
             setTimeout(() => {
                 window.location.href = '/frontend/login-frontend/login.html';
@@ -117,7 +130,7 @@ passwordForm.addEventListener('submit', async (e) => {
 
     } catch (error) {
         console.error("Şifre sıfırlama hatası:", error);
-        showToast(error.message, 'error');
+        showMessage(error.message, 'error');
     } finally {
         // Hata durumunda butonu eski haline getir
         btn.textContent = originalBtnText;
