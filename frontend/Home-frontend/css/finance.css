@@ -167,6 +167,10 @@ body.light-theme {
     margin-bottom: 24px;
 }
 
+.fin-health-row .fin-panel-chart {
+    flex: 1 1 100%;
+}
+
 .fin-metrics-grid {
     flex: 0 0 350px;
     display: flex;
@@ -783,6 +787,44 @@ body.light-theme .fin-btn-delete:hover {
     text-align: center;
 }
 
+.fin-transaction-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 14px;
+}
+
+.fin-transaction-page-btn {
+    border: 1px solid var(--border-light);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-main);
+    border-radius: 6px;
+    padding: 7px 12px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.fin-transaction-page-btn:hover:not(:disabled) {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.fin-transaction-page-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+}
+
+.fin-transaction-page-info {
+    color: var(--text-dim);
+    font-size: 12px;
+    font-weight: 700;
+    min-width: 70px;
+    text-align: center;
+}
+
 .fin-btn-recurring-delete:hover {
     border-color: var(--danger);
     color: var(--danger);
@@ -896,7 +938,7 @@ body.light-theme .fin-btn-delete:hover {
     flex-direction: column;
     gap: 16px;
     justify-content: center;
-    min-width: 170px;
+    min-width: 190px;
 }
 
 .fin-donut-legend-item {

@@ -4,6 +4,7 @@ import { BASE_URL } from "../config.js";
 
 const API_URL = `${BASE_URL}/api/finance`;
 const RECURRING_PAGE_SIZE = 3;
+const TRANSACTION_PAGE_SIZE = 5;
 
 function getHeaders() {
   const token = getToken();
@@ -22,6 +23,7 @@ function mapToFrontend(t, fallback = {}) {
     desc: t.baslik || t.desc || t.title || t.aciklama || fallback.desc || '', // Backend 'baslik' is our 'desc'
     amount: t.miktar ?? t.amount ?? t.tutar ?? fallback.amount,
     date: t.tarih || t.date || t.transaction_date || fallback.date,
+    createdAt: t.created_at || t.createdAt || fallback.createdAt || fallback.created_at || '',
     note: (t.baslik && t.aciklama) ? t.aciklama : (t.note ?? fallback.note ?? '') // If both exist, aciklama is our 'note'
   });
 }
@@ -109,8 +111,22 @@ function normalizeTransaction(transaction) {
     ...transaction,
     type: normalizeTransactionType(transaction.type || transaction.tur || transaction.transaction_type),
     amount: parseMoneyInput(transaction.amount ?? transaction.miktar ?? transaction.tutar),
-    date: normalizeDate(transaction.date || transaction.tarih || transaction.transaction_date)
+    date: normalizeDate(transaction.date || transaction.tarih || transaction.transaction_date),
+    createdAt: transaction.createdAt || transaction.created_at || ''
   };
+}
+
+function parseDateTime(value) {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function getCreatedSortValue(transaction) {
+  return parseDateTime(transaction.createdAt)?.getTime() ||
+    parseLocalDate(transaction.date)?.getTime() ||
+    Number(transaction.id) ||
+    0;
 }
 
 function parseLocalDate(value) {
@@ -147,105 +163,6 @@ function endOfDay(date) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999);
 }
 
-function isSameLocalDay(a, b) {
-  return a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate();
-}
-
-function getCurrentPeriodRange(period, referenceDate = new Date()) {
-  const today = parseLocalDate(referenceDate) || new Date();
-
-  if (period === 'day') {
-    return {
-      start: startOfDay(today),
-      end: endOfDay(today)
-    };
-  }
-
-  if (period === 'week') {
-    const start = startOfDay(today);
-    const mondayOffset = (start.getDay() + 6) % 7;
-    start.setDate(start.getDate() - mondayOffset);
-    const end = endOfDay(start);
-    end.setDate(start.getDate() + 6);
-    return { start, end };
-  }
-
-  if (period === 'month') {
-    return {
-      start: new Date(today.getFullYear(), today.getMonth(), 1, 0, 0, 0, 0),
-      end: new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59, 999)
-    };
-  }
-
-  return {
-    start: new Date(today.getFullYear(), 0, 1, 0, 0, 0, 0),
-    end: new Date(today.getFullYear(), 11, 31, 23, 59, 59, 999)
-  };
-}
-
-function isTransactionInPeriod(transaction, period) {
-  const date = parseLocalDate(transaction.date);
-  if (!date) return false;
-  const today = parseLocalDate(new Date());
-
-  if (period === 'day') {
-    return today ? isSameLocalDay(date, today) : false;
-  }
-
-  if (period === 'month') {
-    return today &&
-      date.getFullYear() === today.getFullYear() &&
-      date.getMonth() === today.getMonth();
-  }
-
-  if (period === 'year') {
-    return today && date.getFullYear() === today.getFullYear();
-  }
-
-  const { start, end } = getCurrentPeriodRange(period, new Date());
-  return date >= start && date <= end;
-}
-
-function getPeriodTransactions(period = state.selectedPeriod) {
-  return state.transactions.filter(t => isTransactionInPeriod(t, period));
-}
-
-function getTransactionYearRange(transactions) {
-  const years = transactions
-    .map(t => parseLocalDate(t.date)?.getFullYear())
-    .filter(Boolean)
-    .sort((a, b) => a - b);
-
-  if (!years.length) return '';
-  const firstYear = years[0];
-  const lastYear = years[years.length - 1];
-  return firstYear === lastYear ? String(firstYear) : `${firstYear}-${lastYear}`;
-}
-
-function getPeriodLabel(period, transactions = []) {
-  if (period === 'year') {
-    const yearRange = getTransactionYearRange(transactions);
-    return yearRange ? `${yearRange} yılları için ` : 'Yıllık görünümde ';
-  }
-
-  const referenceDate = new Date();
-  const { start, end } = getCurrentPeriodRange(period, referenceDate);
-
-  if (period === 'day') {
-    return `${start.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })} günü için `;
-  }
-
-  if (period === 'week') {
-    const startText = start.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
-    const endText = end.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' });
-    return `${startText} - ${endText} haftası için `;
-  }
-
-  return `${start.toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' })} ayı için `;
-}
-
 function calculateTransactionTotals(transactions) {
   const income = transactions
     .filter(t => t.type === 'income')
@@ -259,10 +176,6 @@ function calculateTransactionTotals(transactions) {
     expense,
     balance: income - expense
   };
-}
-
-function getSelectedPeriodSummary() {
-  return calculateTransactionTotals(getPeriodTransactions());
 }
 
 function setTransactions(transactions) {
@@ -318,45 +231,14 @@ export function renderFinance(user) {
         </div>
       </div>
 
-      <!-- ROW 1: HEALTH METRICS & ANALYTICS -->
+      <!-- ROW 1: ANALYTICS -->
       <div class="fin-health-row">
-        <!-- Dashboard Summary -->
-        <div class="fin-metrics-grid">
-          <div class="fin-metric-card" style="grid-column: 1 / -1;">
-            <div class="fin-metric-icon" style="background: rgba(124, 58, 237, 0.15); color: #a78bfa;">🏦</div>
-            <div class="fin-metric-info">
-              <h3>Net Bakiye (Kâr/Zarar)</h3>
-              <p id="val-net-balance" class="fin-text-gradient-primary" style="font-size:32px;">₺0</p>
-            </div>
-          </div>
-          <div class="fin-metric-card">
-            <div class="fin-metric-icon" style="background: rgba(34, 197, 94, 0.15); color: #4ade80;">💰</div>
-            <div class="fin-metric-info">
-              <h3>Toplam Gelir</h3>
-              <p id="val-total-income" class="fin-text-gradient-success">₺0</p>
-            </div>
-          </div>
-          <div class="fin-metric-card">
-            <div class="fin-metric-icon" style="background: rgba(239, 68, 68, 0.15); color: #f87171;">💸</div>
-            <div class="fin-metric-info">
-              <h3>Toplam Gider</h3>
-              <p id="val-total-expense" class="fin-text-gradient-danger">₺0</p>
-            </div>
-          </div>
-        </div>
-
         <!-- Analytics Section -->
-        <div class="fin-panel-glass fin-panel-chart" style="flex:1;">
+        <div class="fin-panel-glass fin-panel-chart" style="flex:1; width:100%;">
           <div class="fin-panel-header" style="flex-wrap: wrap; gap: 12px;">
             <div>
               <h2>Özet Analiz</h2>
               <p id="chart-summary-text" class="fin-chart-summary">Veriler yükleniyor...</p>
-            </div>
-            <div class="fin-toggle" id="chart-period-toggle">
-              <button data-period="day">Gün</button>
-              <button data-period="week">Hft</button>
-              <button class="active" data-period="month">Ay</button>
-              <button data-period="year">Yıl</button>
             </div>
           </div>
           <div class="fin-advanced-chart" id="analytics-chart">
@@ -373,6 +255,15 @@ export function renderFinance(user) {
             <h2>Kategori Dağılımı (Gider)</h2>
           </div>
           <div id="category-distribution" class="fin-category-list">
+            <!-- JS Render -->
+          </div>
+        </div>
+
+        <div class="fin-panel-glass" style="flex: 1;">
+          <div class="fin-panel-header">
+            <h2>Kategori Dağılımı (Gelir)</h2>
+          </div>
+          <div id="income-category-distribution" class="fin-category-list">
             <!-- JS Render -->
           </div>
         </div>
@@ -434,7 +325,8 @@ export function renderFinance(user) {
                  <div class="fin-form-group">
                    <label>Sıralama</label>
                    <select id="filter-sort" class="fin-form-control">
-                     <option value="date-desc">Tarih (En Yeni)</option>
+                    <option value="created-desc">Eklenme (En Yeni)</option>
+                    <option value="date-desc">İşlem Tarihi (En Yeni)</option>
                      <option value="date-asc">Tarih (En Eski)</option>
                      <option value="amount-desc">Tutar (Azalan)</option>
                      <option value="amount-asc">Tutar (Artan)</option>
@@ -496,6 +388,7 @@ export function renderFinance(user) {
               </tbody>
             </table>
           </div>
+          <div class="fin-transaction-pagination" id="transaction-pagination"></div>
         </div>
       </div>
     </section>
@@ -590,6 +483,7 @@ export function renderFinance(user) {
 // --- STATE ---
 const state = {
   transactions: [],
+  transactionPage: 1,
   recurring: [],
   recurringPage: 1,
   budget: {
@@ -603,10 +497,9 @@ const state = {
     maxAmt: '',
     startDate: '',
     endDate: '',
-    sort: 'date-desc',
+    sort: 'created-desc',
     quickChip: ''
   },
-  selectedPeriod: 'month',
   loading: false,
   error: null,
   user: null,
@@ -683,18 +576,12 @@ async function fetchFinanceData(silent = false) {
 
 function cacheElements() {
   elements = {
-    totalIncome: document.getElementById('val-total-income'),
-    totalExpense: document.getElementById('val-total-expense'),
-    netBalance: document.getElementById('val-net-balance'),
-    // budgetProgress: document.getElementById('budget-progress-bar'),
-    // budgetSpent: document.getElementById('txt-budget-spent'),
-    // budgetPlanned: document.getElementById('txt-budget-planned'),
-    // budgetWarning: document.getElementById('budget-warning'),
-    insightsList: document.getElementById('smart-insights'),
     chartSummary: document.getElementById('chart-summary-text'),
     analyticsChart: document.getElementById('analytics-chart'),
     tbody: document.getElementById('transaction-tbody'),
+    transactionPagination: document.getElementById('transaction-pagination'),
     catDistribution: document.getElementById('category-distribution'),
+    incomeCatDistribution: document.getElementById('income-category-distribution'),
     recurringList: document.getElementById('recurring-list'),
     recurringPagination: document.getElementById('recurring-pagination'),
     filterSearch: document.getElementById('filter-search'),
@@ -851,6 +738,12 @@ function syncCustomSelectDropdown(selectId) {
   select.dispatchEvent(new Event('change', { bubbles: true }));
 }
 
+function getRecurringPeriodValue() {
+  const select = document.getElementById('tr-recurring-period');
+  const value = select?.value || elements.recurringPeriod?.value || 'aylik';
+  return ['aylik', 'yillik', 'haftalik'].includes(value) ? value : 'aylik';
+}
+
 function updateTagsUI() {
   let tagsHTML = '';
   let isActive = false;
@@ -890,9 +783,9 @@ function updateTagsUI() {
 }
 
 function triggerRefilter() {
+  state.transactionPage = 1;
   updateTagsUI();
   renderTable();
-  renderDashboard();
 }
 
 function bindEvents() {
@@ -939,11 +832,11 @@ function bindEvents() {
   });
 
   elements.btnClearFilters.addEventListener('click', () => {
-    state.filters = { search:'', type:'all', category:'all', minAmt:'', maxAmt:'', startDate:'', endDate:'', sort:'date-desc', quickChip:'' };
+    state.filters = { search:'', type:'all', category:'all', minAmt:'', maxAmt:'', startDate:'', endDate:'', sort:'created-desc', quickChip:'' };
     ['filterSearch', 'filterMinAmt', 'filterMaxAmt', 'filterStartDate', 'filterEndDate'].forEach(k => { if(elements[k]) elements[k].value = ''; });
     if(elements.filterType) elements.filterType.value = 'all';
     if(elements.filterCategory) elements.filterCategory.value = 'all';
-    if(elements.filterSort) elements.filterSort.value = 'date-desc';
+    if(elements.filterSort) elements.filterSort.value = 'created-desc';
     elements.filterChips.forEach(c => c.classList.remove('active'));
     triggerRefilter();
   });
@@ -954,6 +847,14 @@ function bindEvents() {
     const id = btn.dataset.id; // Switch to string ID support
     if (btn.classList.contains('fin-btn-edit')) editTransaction(id);
     if (btn.classList.contains('fin-btn-delete')) deleteTransaction(id);
+  });
+
+  elements.transactionPagination?.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-transaction-page]');
+    if (!btn) return;
+
+    state.transactionPage = Number(btn.dataset.transactionPage);
+    renderTable();
   });
 
   const addRecBtn = document.getElementById('btn-add-recurring');
@@ -980,17 +881,6 @@ function bindEvents() {
 
     state.recurringPage = Number(btn.dataset.recurringPage);
     renderRecurring();
-  });
-
-  document.querySelectorAll('#chart-period-toggle button').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      const selectedPeriod = e.currentTarget.dataset.period;
-      document.querySelectorAll('#chart-period-toggle button').forEach(b => b.classList.remove('active'));
-      e.currentTarget.classList.add('active');
-      state.selectedPeriod = selectedPeriod;
-      renderDashboard();
-      renderAnalyticsChart();
-    });
   });
 
   document.getElementById('btn-export-pdf').addEventListener('click', () => alert('PDF Dışa Aktarma Başlatıldı'));
@@ -1067,15 +957,16 @@ function getFilteredTransactions() {
   }
 
   // Sorting
-  const sort = state.filters.sort || 'date-desc';
+  const sort = state.filters.sort || 'created-desc';
   list.sort((a, b) => {
      switch (sort) {
+       case 'created-desc': return getCreatedSortValue(b) - getCreatedSortValue(a);
        case 'date-desc': return (parseLocalDate(b.date)?.getTime() || 0) - (parseLocalDate(a.date)?.getTime() || 0);
        case 'date-asc': return (parseLocalDate(a.date)?.getTime() || 0) - (parseLocalDate(b.date)?.getTime() || 0);
        case 'amount-desc': return (parseMoneyInput(b.amount) || 0) - (parseMoneyInput(a.amount) || 0);
        case 'amount-asc': return (parseMoneyInput(a.amount) || 0) - (parseMoneyInput(b.amount) || 0);
        case 'category': return a.category.localeCompare(b.category);
-       default: return (parseLocalDate(b.date)?.getTime() || 0) - (parseLocalDate(a.date)?.getTime() || 0);
+       default: return getCreatedSortValue(b) - getCreatedSortValue(a);
      }
   });
 
@@ -1092,7 +983,6 @@ function renderAll() {
     return;
   }
 
-  renderDashboard();
   renderTable();
   renderCategoryDistribution();
   renderRecurring();
@@ -1111,19 +1001,15 @@ function renderError(msg) {
   if (elements.chartSummary) elements.chartSummary.textContent = "Hata oluştu.";
 }
 
-function renderDashboard() {
-  const { income, expense, balance } = calculateTransactionTotals(state.transactions);
-
-  elements.totalIncome.textContent = formatCurrency(income);
-  elements.totalExpense.textContent = formatCurrency(expense);
-  elements.netBalance.textContent = formatCurrency(balance);
-
-  if (balance >= 0) elements.netBalance.className = 'fin-text-gradient-success';
-  else elements.netBalance.className = 'fin-text-gradient-danger';
-}
-
 function renderTable() {
   const data = getFilteredTransactions();
+  const totalPages = Math.max(1, Math.ceil(data.length / TRANSACTION_PAGE_SIZE));
+
+  if (state.transactionPage > totalPages) state.transactionPage = totalPages;
+  if (state.transactionPage < 1) state.transactionPage = 1;
+
+  const startIndex = (state.transactionPage - 1) * TRANSACTION_PAGE_SIZE;
+  const visibleTransactions = data.slice(startIndex, startIndex + TRANSACTION_PAGE_SIZE);
   
   if (elements.resultsCount) {
     elements.resultsCount.textContent = `Toplam ${data.length} sonuç`;
@@ -1141,13 +1027,14 @@ function renderTable() {
         </td>
       </tr>
     `;
+    if (elements.transactionPagination) elements.transactionPagination.innerHTML = '';
     return;
   }
 
   const canUpdate = hasPerm(state.user, 'finance:update');
   const canDelete = hasPerm(state.user, 'finance:delete');
 
-  elements.tbody.innerHTML = data.map(t => {
+  elements.tbody.innerHTML = visibleTransactions.map(t => {
     const isIncome = t.type === 'income';
     const amount = parseMoneyInput(t.amount) || 0;
     const date = parseLocalDate(t.date);
@@ -1179,19 +1066,39 @@ function renderTable() {
       </tr>
     `;
   }).join('');
+
+  if (!elements.transactionPagination) return;
+
+  if (data.length <= TRANSACTION_PAGE_SIZE) {
+    elements.transactionPagination.innerHTML = '';
+    return;
+  }
+
+  const endIndex = Math.min(startIndex + TRANSACTION_PAGE_SIZE, data.length);
+  elements.transactionPagination.innerHTML = `
+    <button class="fin-transaction-page-btn" data-transaction-page="${state.transactionPage - 1}" ${state.transactionPage === 1 ? 'disabled' : ''}>
+      Önceki
+    </button>
+    <span class="fin-transaction-page-info">${startIndex + 1}-${endIndex} / ${data.length}</span>
+    <button class="fin-transaction-page-btn" data-transaction-page="${state.transactionPage + 1}" ${state.transactionPage === totalPages ? 'disabled' : ''}>
+      Sonraki
+    </button>
+  `;
 }
 
-function renderCategoryDistribution() {
-  const expenses = state.transactions.filter(t => t.type === 'expense');
-  const catTotals = expenses.reduce((acc, t) => {
+function renderCategoryDistributionByType(targetElement, type, emptyText) {
+  if (!targetElement) return;
+
+  const transactions = state.transactions.filter(t => t.type === type);
+  const catTotals = transactions.reduce((acc, t) => {
     acc[t.category] = (acc[t.category] || 0) + (parseMoneyInput(t.amount) || 0);
     return acc;
   }, {});
 
-  const totalExp = expenses.reduce((s, t) => s + (parseMoneyInput(t.amount) || 0), 0);
+  const total = transactions.reduce((s, t) => s + (parseMoneyInput(t.amount) || 0), 0);
 
-  if (totalExp === 0) {
-    elements.catDistribution.innerHTML = '<p class="fin-empty">Gider bulunmuyor</p>';
+  if (total === 0) {
+    targetElement.innerHTML = `<p class="fin-empty">${emptyText}</p>`;
     return;
   }
 
@@ -1211,7 +1118,7 @@ function renderCategoryDistribution() {
 
   Object.keys(catTotals).forEach(cat => {
     const val = catTotals[cat];
-    const sliceDeg = (val / totalExp) * 360;
+    const sliceDeg = (val / total) * 360;
     const color = getCatColor(cat);
     
     conicStops.push(`${color} ${currentAngle}deg ${currentAngle + sliceDeg}deg`);
@@ -1222,13 +1129,13 @@ function renderCategoryDistribution() {
         <span style="width:10px; height:10px; border-radius:50%; background:${color}; flex-shrink:0;"></span>
         <div style="display:flex; justify-content:space-between; width:100%;">
           <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:140px;" title="${cat}">${cat}</span>
-          <strong>${formatCurrency(val)} <small>(%${Math.round((val/totalExp)*100)})</small></strong>
+          <strong>${formatCurrency(val)} <small>(%${Math.round((val/total)*100)})</small></strong>
         </div>
       </div>
     `;
   });
 
-  elements.catDistribution.innerHTML = `
+  targetElement.innerHTML = `
     <div style="display:flex; flex-direction:column; align-items:center; gap:24px; padding:10px 0;">
       <div style="width: 140px; height: 140px; border-radius: 50%; 
                   background: conic-gradient(${conicStops.join(', ')}); 
@@ -1239,6 +1146,11 @@ function renderCategoryDistribution() {
       </div>
     </div>
   `;
+}
+
+function renderCategoryDistribution() {
+  renderCategoryDistributionByType(elements.catDistribution, 'expense', 'Gider bulunmuyor');
+  renderCategoryDistributionByType(elements.incomeCatDistribution, 'income', 'Gelir bulunmuyor');
 }
 
 function renderRecurring() {
@@ -1301,8 +1213,7 @@ function renderRecurring() {
 }
 
 function renderAnalyticsChart() {
-  const periodTransactions = getPeriodTransactions();
-  const { income, expense, balance: net } = calculateTransactionTotals(periodTransactions);
+  const { income, expense, balance: net } = calculateTransactionTotals(state.transactions);
   const total = income + expense;
   const hasData = total > 0;
   const incPct = hasData ? (income / total) * 100 : 0;
@@ -1341,27 +1252,30 @@ function renderAnalyticsChart() {
             <strong style="color:var(--text-main); font-size:16px;">${formatCurrency(expense)}</strong>
             <small>%${Math.round(expensePct)}</small>
          </div>
+         <div class="fin-donut-legend-item">
+            <div style="display:flex; align-items:center; gap:8px;">
+               <div style="width:12px; height:12px; border-radius:50%; background:${netColor};"></div>
+               <span style="font-size:13px; color:var(--text-dim);">Net Bakiye</span>
+            </div>
+            <strong style="color:${netColor}; font-size:16px;">${netSign}${formatCurrency(Math.abs(net))}</strong>
+            <small>Gelir - Gider</small>
+         </div>
       </div>
     </div>
   `;
 
   if (!hasData) {
-    elements.chartSummary.textContent = state.transactions.length
-      ? 'Seçili dönemde veri yok. Diğer dönem filtrelerini kontrol edin.'
-      : 'Finans kaydı bulunmuyor.';
+    elements.chartSummary.textContent = 'Finans kaydı bulunmuyor.';
     elements.chartSummary.className = 'fin-chart-summary';
   } else if(net > 0) {
-    const periodLabel = getPeriodLabel(state.selectedPeriod, periodTransactions);
-    const summaryStr = `${periodLabel}gelir payı %${Math.round(incPct)}.`;
+    const summaryStr = `Toplam gelir payı %${Math.round(incPct)}.`;
     elements.chartSummary.textContent = summaryStr;
     elements.chartSummary.className = 'fin-chart-summary fin-text-success';
   } else if(net === 0) {
-    const periodLabel = getPeriodLabel(state.selectedPeriod, periodTransactions);
-    elements.chartSummary.textContent = `${periodLabel}gelir ve gider dengede.`;
+    elements.chartSummary.textContent = 'Toplam gelir ve gider dengede.';
     elements.chartSummary.className = 'fin-chart-summary';
   } else {
-    const periodLabel = getPeriodLabel(state.selectedPeriod, periodTransactions);
-    const summaryStr = `${periodLabel}gider payı %${Math.round(expensePct)}.`;
+    const summaryStr = `Toplam gider payı %${Math.round(expensePct)}.`;
     elements.chartSummary.textContent = summaryStr;
     elements.chartSummary.className = 'fin-chart-summary fin-text-danger';
   }
@@ -1427,14 +1341,12 @@ function closeModal() {
 }
 
 function getRecurringFormPayload() {
-  const typeVal = document.querySelector('input[name="tr-type"]:checked').value;
   return {
     baslik: document.getElementById('tr-desc').value,
     miktar: parseMoneyInput(document.getElementById('tr-amount').value),
-    tur: typeVal === 'income' ? 'gelir' : 'gider',
     kategori: document.getElementById('tr-category').value,
     aciklama: document.getElementById('tr-note').value || null,
-    periyot: elements.recurringPeriod?.value || 'aylik',
+    periyot: getRecurringPeriodValue(),
     baslangic_tarihi: document.getElementById('tr-date').value
   };
 }
@@ -1462,7 +1374,6 @@ async function updateRecurringFromForm(id, form) {
       ...r,
       name: payload.baslik,
       amount: payload.miktar,
-      type: payload.tur === 'gelir' ? 'income' : 'expense',
       category: payload.kategori,
       note: payload.aciklama || '',
       period: payload.periyot,
@@ -1510,6 +1421,7 @@ async function handleTransactionSubmit(e) {
 
   const isNew = !idStr;
   const isRecurringRequested = document.getElementById('tr-recurring-check')?.checked;
+  const recurringPeriod = isRecurringRequested ? getRecurringPeriodValue() : null;
 
   const typeVal = normalizeTransactionType(document.querySelector('input[name="tr-type"]:checked')?.value);
   const amount = parseMoneyInput(document.getElementById('tr-amount').value);
@@ -1536,6 +1448,7 @@ async function handleTransactionSubmit(e) {
     desc: document.getElementById('tr-desc').value.trim(),
     amount,
     date,
+    createdAt: new Date().toISOString(),
     note: document.getElementById('tr-note').value
   });
 
@@ -1604,10 +1517,9 @@ async function handleTransactionSubmit(e) {
           const recurringPayload = {
             baslik: t.desc,
             miktar: t.amount,
-            tur: t.type === 'income' ? 'gelir' : 'gider',
             kategori: t.category,
             aciklama: t.note || 'Otomatik eklenen düzenli plan',
-            periyot: elements.recurringPeriod?.value || 'aylik',
+            periyot: recurringPeriod || 'aylik',
             baslangic_tarihi: t.date
           };
 
