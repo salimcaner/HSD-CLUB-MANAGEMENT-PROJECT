@@ -50,7 +50,7 @@ export function renderSettings() {
           <div class="settings-card-body">
             <p class="settings-desc">Hesap güvenliğiniz için şifre işlemlerini buradan yapabilirsiniz.</p>
             <div class="security-options">
-              <button class="forgot-password-btn" onclick="window.location.href='../../password/ConfirmPassword/password.html'">Şifremi Unuttum</button>
+              <button type="button" class="forgot-password-btn" onclick="window.location.href='/frontend/password/UpdatePassword/UpdatePassword.html'">Şifre Yenile</button>
             </div>
           </div>
         </div>

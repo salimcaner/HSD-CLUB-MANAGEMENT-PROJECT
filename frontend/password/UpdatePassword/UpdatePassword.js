@@ -1,5 +1,5 @@
-const isLocal = window.location.hostname === "127.0.0.1";
-window.location.hostname === "localhost";
+const isLocal = window.location.hostname === "127.0.0.1"
+    || window.location.hostname === "localhost";
 const BASE_URL = isLocal ? "http://127.0.0.1:8000" : "";
 const PASSWORD_RULE = /^(?=.*[a-z])(?=.*[A-Z]).{6,}$/;
 
@@ -88,6 +88,5 @@ form.addEventListener("submit", async (event) => {
     } finally {
         submitButton.disabled = false;
         submitButton.textContent = originalButtonText;
-        
     }
 });
