@@ -3,6 +3,8 @@ import { hasPerm } from "../acl.js";
 import { BASE_URL } from "../config.js";
 
 const API_URL = `${BASE_URL}/api/finance`;
+const RECURRING_PAGE_SIZE = 3;
+const TRANSACTION_PAGE_SIZE = 5;
 
 function getHeaders() {
   const token = getToken();
@@ -13,28 +15,196 @@ function getHeaders() {
 }
 
 // Helper to map backend format to frontend format
-function mapToFrontend(t) {
-  return {
-    id: t.id,
-    type: t.tur === 'gelir' ? 'income' : 'expense',
-    category: t.kategori,
-    desc: t.baslik || t.aciklama || '', // Backend 'baslik' is our 'desc'
-    amount: t.miktar,
-    date: t.tarih,
-    note: (t.baslik && t.aciklama) ? t.aciklama : '' // If both exist, aciklama is our 'note'
-  };
+function mapToFrontend(t, fallback = {}) {
+  return normalizeTransaction({
+    id: t.id ?? fallback.id,
+    type: t.tur || t.type || t.transaction_type || fallback.type,
+    category: t.kategori || t.category || fallback.category,
+    desc: t.baslik || t.desc || t.title || t.aciklama || fallback.desc || '', // Backend 'baslik' is our 'desc'
+    amount: t.miktar ?? t.amount ?? t.tutar ?? fallback.amount,
+    date: t.tarih || t.date || t.transaction_date || fallback.date,
+    createdAt: t.created_at || t.createdAt || fallback.createdAt || fallback.created_at || '',
+    note: (t.baslik && t.aciklama) ? t.aciklama : (t.note ?? fallback.note ?? '') // If both exist, aciklama is our 'note'
+  });
 }
 
 // Helper to map frontend format to backend format
 function mapToBackend(t) {
+  const normalized = normalizeTransaction(t);
   return {
     baslik: t.desc, // "Açıklama" -> baslik
-    miktar: parseFloat(t.amount),
-    tur: t.type === 'income' ? 'gelir' : 'gider',
+    miktar: normalized.amount,
+    tur: normalized.type === 'income' ? 'gelir' : 'gider',
     kategori: t.category,
     aciklama: t.note || null, // "Notlar" -> aciklama
-    tarih: t.date
+    tarih: normalized.date
   };
+}
+
+function getRecurringTypeLabel(type) {
+  return type === 'income' ? 'Gelir' : 'Gider';
+}
+
+function getRecurringTypeFromBackend(r) {
+  const rawType = r.tur || r.type || r.tip;
+  if (rawType === 'gelir' || rawType === 'income') return 'income';
+  if (rawType === 'gider' || rawType === 'expense') return 'expense';
+
+  const recurringDate = normalizeDate(r.baslangic_tarihi || r.baslangic || r.tarih);
+  const matchedTransaction = state.transactions.find(t =>
+    t.desc === (r.baslik || r.ad) &&
+    Number(t.amount) === Number(r.miktar) &&
+    (!recurringDate || normalizeDate(t.date) === recurringDate)
+  );
+
+  return matchedTransaction?.type || 'expense';
+}
+
+function normalizeDate(value) {
+  if (!value) return '';
+  const parsed = parseLocalDate(value);
+  if (!parsed) return '';
+
+  const year = parsed.getFullYear();
+  const month = String(parsed.getMonth() + 1).padStart(2, '0');
+  const day = String(parsed.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function parseMoneyInput(value) {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : NaN;
+
+  const rawValue = String(value ?? '').trim();
+  if (!rawValue) return NaN;
+
+  const cleaned = rawValue.replace(/[^\d,.-]/g, '');
+  const lastComma = cleaned.lastIndexOf(',');
+  const lastDot = cleaned.lastIndexOf('.');
+  let normalized = cleaned;
+
+  if (lastComma !== -1 && lastDot !== -1) {
+    const decimalSeparator = lastComma > lastDot ? ',' : '.';
+    const thousandSeparator = decimalSeparator === ',' ? '.' : ',';
+    normalized = cleaned
+      .replace(new RegExp(`\\${thousandSeparator}`, 'g'), '')
+      .replace(decimalSeparator, '.');
+  } else if (lastComma !== -1) {
+    normalized = cleaned.replace(/\./g, '').replace(',', '.');
+  } else if (lastDot !== -1) {
+    const [, fraction = ''] = cleaned.split('.');
+    normalized = fraction.length === 3 ? cleaned.replace(/\./g, '') : cleaned;
+  }
+
+  const amount = Number(normalized);
+  return Number.isFinite(amount) ? amount : NaN;
+}
+
+function normalizeTransactionType(type) {
+  const normalizedType = String(type || '').trim().toLowerCase();
+  if (normalizedType === 'gelir' || normalizedType === 'income') return 'income';
+  if (normalizedType === 'gider' || normalizedType === 'expense') return 'expense';
+  return '';
+}
+
+function normalizeTransaction(transaction) {
+  return {
+    ...transaction,
+    type: normalizeTransactionType(transaction.type || transaction.tur || transaction.transaction_type),
+    amount: parseMoneyInput(transaction.amount ?? transaction.miktar ?? transaction.tutar),
+    date: normalizeDate(transaction.date || transaction.tarih || transaction.transaction_date),
+    createdAt: transaction.createdAt || transaction.created_at || ''
+  };
+}
+
+function parseDateTime(value) {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function getCreatedSortValue(transaction) {
+  return parseDateTime(transaction.createdAt)?.getTime() ||
+    parseLocalDate(transaction.date)?.getTime() ||
+    Number(transaction.id) ||
+    0;
+}
+
+function parseLocalDate(value) {
+  if (!value) return null;
+  if (value instanceof Date) {
+    if (Number.isNaN(value.getTime())) return null;
+    return new Date(value.getFullYear(), value.getMonth(), value.getDate(), 12, 0, 0, 0);
+  }
+
+  const rawValue = String(value).trim();
+  const isoMatch = rawValue.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
+
+  if (isoMatch) {
+    const [, year, month, day] = isoMatch;
+    return new Date(Number(year), Number(month) - 1, Number(day), 12, 0, 0, 0);
+  }
+
+  const localMatch = rawValue.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})/);
+  if (localMatch) {
+    const [, day, month, year] = localMatch;
+    return new Date(Number(year), Number(month) - 1, Number(day), 12, 0, 0, 0);
+  }
+
+  const date = new Date(rawValue);
+  if (Number.isNaN(date.getTime())) return null;
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12, 0, 0, 0);
+}
+
+function startOfDay(date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0);
+}
+
+function endOfDay(date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999);
+}
+
+function calculateTransactionTotals(transactions) {
+  const income = transactions
+    .filter(t => t.type === 'income')
+    .reduce((sum, t) => sum + (parseMoneyInput(t.amount) || 0), 0);
+  const expense = transactions
+    .filter(t => t.type === 'expense')
+    .reduce((sum, t) => sum + (parseMoneyInput(t.amount) || 0), 0);
+
+  return {
+    income,
+    expense,
+    balance: income - expense
+  };
+}
+
+function setTransactions(transactions) {
+  state.transactions = transactions.map(normalizeTransaction);
+}
+
+function formatCurrency(value) {
+  return `₺${Number(value || 0).toLocaleString()}`;
+}
+
+function formatRecurringSchedule(period, startDate) {
+  if (!startDate) return 'Tekrar tarihi belirtilmedi';
+
+  const date = new Date(startDate);
+  if (Number.isNaN(date.getTime())) return 'Tekrar tarihi belirtilmedi';
+
+  const day = date.getDate();
+  const weekday = date.toLocaleDateString('tr-TR', { weekday: 'long' });
+  const monthDay = date.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' });
+
+  if (period === 'haftalik') return `Her hafta ${weekday}`;
+  if (period === 'yillik') return `Her yıl ${monthDay}`;
+  return `Her ay ${day}. gün`;
+}
+
+function getRecurringPeriodLabel(period) {
+  if (period === 'haftalik') return '/ hafta';
+  if (period === 'yillik') return '/ yıl';
+  return '/ ay';
 }
 
 export function renderFinance(user) {
@@ -42,7 +212,6 @@ export function renderFinance(user) {
 
 
   return `
-    <link rel="stylesheet" href="/frontend/Home-frontend/css/finance.css">
     <section class="page finance-page">
       <div class="fin-header">
         <div class="fin-welcome">
@@ -62,44 +231,14 @@ export function renderFinance(user) {
         </div>
       </div>
 
-      <!-- ROW 1: HEALTH METRICS & ANALYTICS -->
+      <!-- ROW 1: ANALYTICS -->
       <div class="fin-health-row">
-        <!-- Dashboard Summary -->
-        <div class="fin-metrics-grid">
-          <div class="fin-metric-card" style="grid-column: 1 / -1;">
-            <div class="fin-metric-icon" style="background: rgba(124, 58, 237, 0.15); color: #a78bfa;">🏦</div>
-            <div class="fin-metric-info">
-              <h3>Net Bakiye (Kâr/Zarar)</h3>
-              <p id="val-net-balance" class="fin-text-gradient-primary" style="font-size:32px;">₺0</p>
-            </div>
-          </div>
-          <div class="fin-metric-card">
-            <div class="fin-metric-icon" style="background: rgba(34, 197, 94, 0.15); color: #4ade80;">💰</div>
-            <div class="fin-metric-info">
-              <h3>Toplam Gelir</h3>
-              <p id="val-total-income" class="fin-text-gradient-success">₺0</p>
-            </div>
-          </div>
-          <div class="fin-metric-card">
-            <div class="fin-metric-icon" style="background: rgba(239, 68, 68, 0.15); color: #f87171;">💸</div>
-            <div class="fin-metric-info">
-              <h3>Toplam Gider</h3>
-              <p id="val-total-expense" class="fin-text-gradient-danger">₺0</p>
-            </div>
-          </div>
-        </div>
-
         <!-- Analytics Section -->
-        <div class="fin-panel-glass fin-panel-chart" style="flex:1;">
+        <div class="fin-panel-glass fin-panel-chart" style="flex:1; width:100%;">
           <div class="fin-panel-header" style="flex-wrap: wrap; gap: 12px;">
             <div>
               <h2>Özet Analiz</h2>
               <p id="chart-summary-text" class="fin-chart-summary">Veriler yükleniyor...</p>
-            </div>
-            <div class="fin-toggle" id="chart-period-toggle">
-              <button class="active" data-period="week">Hft</button>
-              <button data-period="month">Ay</button>
-              <button data-period="year">Yıl</button>
             </div>
           </div>
           <div class="fin-advanced-chart" id="analytics-chart">
@@ -120,6 +259,15 @@ export function renderFinance(user) {
           </div>
         </div>
 
+        <div class="fin-panel-glass" style="flex: 1;">
+          <div class="fin-panel-header">
+            <h2>Kategori Dağılımı (Gelir)</h2>
+          </div>
+          <div id="income-category-distribution" class="fin-category-list">
+            <!-- JS Render -->
+          </div>
+        </div>
+
         <!-- Recurring Expenses -->
         <div class="fin-panel-glass" style="flex: 1;">
           <div class="fin-panel-header">
@@ -129,6 +277,7 @@ export function renderFinance(user) {
           <ul class="fin-recurring-list" id="recurring-list">
             <!-- JS Render -->
           </ul>
+          <div class="fin-recurring-pagination" id="recurring-pagination"></div>
         </div>
       </div>
 
@@ -176,7 +325,8 @@ export function renderFinance(user) {
                  <div class="fin-form-group">
                    <label>Sıralama</label>
                    <select id="filter-sort" class="fin-form-control">
-                     <option value="date-desc">Tarih (En Yeni)</option>
+                    <option value="created-desc">Eklenme (En Yeni)</option>
+                    <option value="date-desc">İşlem Tarihi (En Yeni)</option>
                      <option value="date-asc">Tarih (En Eski)</option>
                      <option value="amount-desc">Tutar (Azalan)</option>
                      <option value="amount-asc">Tutar (Artan)</option>
@@ -238,6 +388,7 @@ export function renderFinance(user) {
               </tbody>
             </table>
           </div>
+          <div class="fin-transaction-pagination" id="transaction-pagination"></div>
         </div>
       </div>
     </section>
@@ -257,6 +408,7 @@ export function renderFinance(user) {
         
         <form id="transaction-form" class="fin-drawer-body">
           <input type="hidden" id="tr-id">
+          <input type="hidden" id="recurring-id">
           
           <div class="fin-segment-control">
             <input type="radio" name="tr-type" id="type-expense" value="expense" checked>
@@ -299,10 +451,19 @@ export function renderFinance(user) {
               <label class="fin-checkbox-label">
                 <input type="checkbox" id="tr-recurring-check">
                 <div class="fin-checkbox-custom"></div>
-                Bu işlemi her ay düzenli tekrarla
+                Bu işlemi düzenli tekrarla
               </label>
             </div>
             
+            <div class="fin-form-group" id="tr-recurring-period-group" style="grid-column: span 2; display:none;">
+              <label>Tekrar Sıklığı <span class="fin-req">*</span></label>
+              <select id="tr-recurring-period" class="fin-form-control">
+                <option value="aylik">Her Ay</option>
+                <option value="yillik">Her Yıl</option>
+                <option value="haftalik">Her Hafta</option>
+              </select>
+            </div>
+
             <div class="fin-form-group" style="grid-column: span 2; margin-top: 8px;">
               <label>Kısa Not (İsteğe bağlı)</label>
               <textarea id="tr-note" class="fin-form-control" rows="2" placeholder="İşlemle ilgili detaylar..."></textarea>
@@ -322,12 +483,9 @@ export function renderFinance(user) {
 // --- STATE ---
 const state = {
   transactions: [],
+  transactionPage: 1,
   recurring: [],
-  summary: {
-    income: 0,
-    expense: 0,
-    balance: 0
-  },
+  recurringPage: 1,
   budget: {
     planned: 10000 // Placeholder constant as backend doesn't have budget management yet
   },
@@ -339,9 +497,8 @@ const state = {
     maxAmt: '',
     startDate: '',
     endDate: '',
-    sort: 'date-desc',
-    quickChip: '',
-    chartPeriod: 'week'
+    sort: 'created-desc',
+    quickChip: ''
   },
   loading: false,
   error: null,
@@ -356,6 +513,8 @@ export async function initFinance(user) {
   
   state.user = user;
   cacheElements();
+  initCategoryDropdown();
+  initRecurringPeriodDropdown();
   bindEvents();
   
   await fetchFinanceData();
@@ -371,36 +530,40 @@ async function fetchFinanceData(silent = false) {
   try {
     const headers = getHeaders();
     
-    // Fetch Summary, Transactions, and Recurring in parallel
-    const [summaryRes, transRes, recurringRes] = await Promise.all([
-      fetch(`${API_URL}/summary`, { headers }),
+    // Fetch transactions and recurring plans in parallel. Totals are derived from transactions.
+    const [transactionsResult, recurringResult] = await Promise.allSettled([
       fetch(`${API_URL}/transactions`, { headers }),
       fetch(`${API_URL}/recurring`, { headers })
     ]);
 
-    if (!summaryRes.ok || !transRes.ok || !recurringRes.ok) {
-      const errorData = !summaryRes.ok ? await summaryRes.json().catch(()=>({})) : (!transRes.ok ? await transRes.json().catch(()=>({})) : await recurringRes.json().catch(()=>({})));
+    if (transactionsResult.status === 'rejected' || !transactionsResult.value.ok) {
+      const errorData = transactionsResult.status === 'fulfilled'
+        ? await transactionsResult.value.json().catch(()=>({}))
+        : {};
       console.error("Backend Validation/Auth Error:", errorData);
       throw new Error(errorData.detail || "Veriler alınırken bir hata oluştu.");
     }
 
-    const summaryData = await summaryRes.json();
-    const transData = await transRes.json();
-    const recurringData = await recurringRes.json();
+    const transData = await transactionsResult.value.json();
 
-    // Map and Store
-    state.summary = {
-      income: summaryData.toplam_gelir || 0,
-      expense: summaryData.toplam_gider || 0,
-      balance: summaryData.net_bakiye || 0
-    };
-    
-    state.transactions = (transData || []).map(mapToFrontend);
-    state.recurring = (recurringData || []).map(r => ({
+    // Keep visible totals and charts derived from the same transaction source.
+    setTransactions((transData || []).map(mapToFrontend));
+    if (recurringResult.status === 'fulfilled' && recurringResult.value.ok) {
+      const recurringData = await recurringResult.value.json();
+      state.recurring = (recurringData || []).map(r => ({
       id: r.id,
       name: r.baslik || r.ad || 'İsimsiz Plan',
-      amount: r.miktar
-    }));
+      amount: r.miktar,
+      type: getRecurringTypeFromBackend(r),
+      category: r.kategori || 'Yönetim Kurulu',
+      note: r.aciklama || '',
+      period: r.periyot || 'aylik',
+      startDate: r.baslangic_tarihi || r.baslangic || r.tarih || ''
+      }));
+    } else {
+      console.warn("Recurring finance data could not be loaded; transactions were rendered.");
+      state.recurring = [];
+    }
 
   } catch (err) {
     console.error("Finance fetch error:", err);
@@ -411,37 +574,16 @@ async function fetchFinanceData(silent = false) {
   }
 }
 
-// Local recalculation for speed
-function recalculateLocalSummary() {
-  const income = state.transactions
-    .filter(t => t.type === 'income')
-    .reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
-  const expense = state.transactions
-    .filter(t => t.type === 'expense')
-    .reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
-  
-  state.summary = {
-    income: income,
-    expense: expense,
-    balance: income - expense
-  };
-}
-
 function cacheElements() {
   elements = {
-    totalIncome: document.getElementById('val-total-income'),
-    totalExpense: document.getElementById('val-total-expense'),
-    netBalance: document.getElementById('val-net-balance'),
-    // budgetProgress: document.getElementById('budget-progress-bar'),
-    // budgetSpent: document.getElementById('txt-budget-spent'),
-    // budgetPlanned: document.getElementById('txt-budget-planned'),
-    // budgetWarning: document.getElementById('budget-warning'),
-    insightsList: document.getElementById('smart-insights'),
     chartSummary: document.getElementById('chart-summary-text'),
     analyticsChart: document.getElementById('analytics-chart'),
     tbody: document.getElementById('transaction-tbody'),
+    transactionPagination: document.getElementById('transaction-pagination'),
     catDistribution: document.getElementById('category-distribution'),
+    incomeCatDistribution: document.getElementById('income-category-distribution'),
     recurringList: document.getElementById('recurring-list'),
+    recurringPagination: document.getElementById('recurring-pagination'),
     filterSearch: document.getElementById('filter-search'),
     filterType: document.getElementById('filter-type'),
     filterCategory: document.getElementById('filter-category'),
@@ -457,8 +599,149 @@ function cacheElements() {
     resultsCount: document.getElementById('results-count'),
     btnClearFilters: document.getElementById('btn-clear-filters'),
     modal: document.getElementById('transaction-modal'),
-    form: document.getElementById('transaction-form')
+    form: document.getElementById('transaction-form'),
+    recurringCheck: document.getElementById('tr-recurring-check'),
+    recurringPeriod: document.getElementById('tr-recurring-period'),
+    recurringPeriodGroup: document.getElementById('tr-recurring-period-group')
   };
+}
+
+function updateRecurringPeriodVisibility() {
+  if (!elements.recurringCheck || !elements.recurringPeriodGroup) return;
+  elements.recurringPeriodGroup.style.display = elements.recurringCheck.checked ? 'block' : 'none';
+}
+
+function initCategoryDropdown() {
+  initCustomSelectDropdown('tr-category');
+}
+
+function initRecurringPeriodDropdown() {
+  initCustomSelectDropdown('tr-recurring-period');
+}
+
+function initCustomSelectDropdown(selectId) {
+  const select = document.getElementById(selectId);
+  if (!select || select.dataset.customized === 'true') return;
+
+  select.dataset.customized = 'true';
+  select.classList.add('fin-category-native-select');
+
+  const wrapper = document.createElement('div');
+  wrapper.className = 'fin-category-dropdown';
+
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'fin-category-dropdown-toggle';
+  button.setAttribute('aria-haspopup', 'listbox');
+  button.setAttribute('aria-expanded', 'false');
+
+  const label = document.createElement('span');
+  label.className = 'fin-category-dropdown-label';
+
+  const arrow = document.createElement('span');
+  arrow.className = 'fin-category-dropdown-arrow';
+  arrow.setAttribute('aria-hidden', 'true');
+
+  const menu = document.createElement('div');
+  menu.className = 'fin-category-dropdown-menu';
+  menu.setAttribute('role', 'listbox');
+
+  button.append(label, arrow);
+  select.parentNode.insertBefore(wrapper, select);
+  wrapper.append(select, button, menu);
+
+  const closeMenu = () => {
+    wrapper.classList.remove('open');
+    button.setAttribute('aria-expanded', 'false');
+  };
+
+  const openMenu = () => {
+    wrapper.classList.add('open');
+    button.setAttribute('aria-expanded', 'true');
+  };
+
+  const sync = () => {
+    const selected = select.options[select.selectedIndex] || select.options[0];
+    label.textContent = selected?.textContent || '';
+    menu.querySelectorAll('.fin-category-dropdown-option').forEach(option => {
+      const isSelected = option.dataset.value === select.value;
+      option.classList.toggle('selected', isSelected);
+      option.setAttribute('aria-selected', String(isSelected));
+    });
+  };
+
+  Array.from(select.options).forEach(option => {
+    const item = document.createElement('button');
+    item.type = 'button';
+    item.className = 'fin-category-dropdown-option';
+    item.dataset.value = option.value;
+    item.textContent = option.textContent;
+    item.setAttribute('role', 'option');
+    item.addEventListener('click', () => {
+      select.value = option.value;
+      select.dispatchEvent(new Event('input', { bubbles: true }));
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+      sync();
+      closeMenu();
+      button.focus();
+    });
+    menu.appendChild(item);
+  });
+
+  button.addEventListener('click', () => {
+    if (wrapper.classList.contains('open')) closeMenu();
+    else openMenu();
+  });
+
+  button.addEventListener('keydown', (event) => {
+    const currentIndex = Array.from(select.options).findIndex(option => option.value === select.value);
+    if (event.key === 'Escape') {
+      closeMenu();
+      return;
+    }
+    if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp' && event.key !== 'Enter' && event.key !== ' ') return;
+
+    event.preventDefault();
+    if (event.key === 'Enter' || event.key === ' ') {
+      if (wrapper.classList.contains('open')) closeMenu();
+      else openMenu();
+      return;
+    }
+
+    const direction = event.key === 'ArrowDown' ? 1 : -1;
+    const nextIndex = Math.min(Math.max(currentIndex + direction, 0), select.options.length - 1);
+    select.value = select.options[nextIndex].value;
+    select.dispatchEvent(new Event('input', { bubbles: true }));
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+    sync();
+  });
+
+  document.addEventListener('click', (event) => {
+    if (!wrapper.contains(event.target)) closeMenu();
+  });
+
+  select.addEventListener('change', sync);
+  sync();
+}
+
+function syncCategoryDropdown() {
+  syncCustomSelectDropdown('tr-category');
+}
+
+function syncRecurringPeriodDropdown() {
+  syncCustomSelectDropdown('tr-recurring-period');
+}
+
+function syncCustomSelectDropdown(selectId) {
+  const select = document.getElementById(selectId);
+  if (!select) return;
+  select.dispatchEvent(new Event('change', { bubbles: true }));
+}
+
+function getRecurringPeriodValue() {
+  const select = document.getElementById('tr-recurring-period');
+  const value = select?.value || elements.recurringPeriod?.value || 'aylik';
+  return ['aylik', 'yillik', 'haftalik'].includes(value) ? value : 'aylik';
 }
 
 function updateTagsUI() {
@@ -500,9 +783,9 @@ function updateTagsUI() {
 }
 
 function triggerRefilter() {
+  state.transactionPage = 1;
   updateTagsUI();
   renderTable();
-  renderDashboard();
 }
 
 function bindEvents() {
@@ -511,6 +794,9 @@ function bindEvents() {
   document.getElementById('btn-cancel-tr').addEventListener('click', closeModal);
   
   elements.form.addEventListener('submit', handleTransactionSubmit);
+  if (elements.recurringCheck) {
+    elements.recurringCheck.addEventListener('change', updateRecurringPeriodVisibility);
+  }
 
   // Advanced Filters
   elements.btnMoreFilters.addEventListener('click', () => {
@@ -546,11 +832,11 @@ function bindEvents() {
   });
 
   elements.btnClearFilters.addEventListener('click', () => {
-    state.filters = { search:'', type:'all', category:'all', minAmt:'', maxAmt:'', startDate:'', endDate:'', sort:'date-desc', quickChip:'' };
+    state.filters = { search:'', type:'all', category:'all', minAmt:'', maxAmt:'', startDate:'', endDate:'', sort:'created-desc', quickChip:'' };
     ['filterSearch', 'filterMinAmt', 'filterMaxAmt', 'filterStartDate', 'filterEndDate'].forEach(k => { if(elements[k]) elements[k].value = ''; });
     if(elements.filterType) elements.filterType.value = 'all';
     if(elements.filterCategory) elements.filterCategory.value = 'all';
-    if(elements.filterSort) elements.filterSort.value = 'date-desc';
+    if(elements.filterSort) elements.filterSort.value = 'created-desc';
     elements.filterChips.forEach(c => c.classList.remove('active'));
     triggerRefilter();
   });
@@ -563,27 +849,38 @@ function bindEvents() {
     if (btn.classList.contains('fin-btn-delete')) deleteTransaction(id);
   });
 
+  elements.transactionPagination?.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-transaction-page]');
+    if (!btn) return;
+
+    state.transactionPage = Number(btn.dataset.transactionPage);
+    renderTable();
+  });
+
   const addRecBtn = document.getElementById('btn-add-recurring');
   if (addRecBtn) {
     addRecBtn.addEventListener('click', () => {
       openModal();
       const recCheck = document.getElementById('tr-recurring-check');
       if (recCheck) recCheck.checked = true; // Pre-check for unified UI
+      updateRecurringPeriodVisibility();
     });
   }
 
-  let currentChartPeriod = 'week';
-  
-  document.querySelectorAll('#chart-period-toggle button').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      document.querySelectorAll('#chart-period-toggle button').forEach(b => b.classList.remove('active'));
-      e.target.classList.add('active');
-      currentChartPeriod = e.target.dataset.period;
-      // In a real app we'd trigger a render of the chart here
-      // but the requested renderAnalyticsChart will handle it. We just need to pass the period or make it global state.
-      state.filters.chartPeriod = currentChartPeriod;
-      renderAnalyticsChart();
-    });
+  elements.recurringList.addEventListener('click', (e) => {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    const id = btn.dataset.id;
+    if (btn.classList.contains('fin-btn-recurring-edit')) editRecurring(id);
+    if (btn.classList.contains('fin-btn-recurring-delete')) deleteRecurring(id);
+  });
+
+  elements.recurringPagination?.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-recurring-page]');
+    if (!btn) return;
+
+    state.recurringPage = Number(btn.dataset.recurringPage);
+    renderRecurring();
   });
 
   document.getElementById('btn-export-pdf').addEventListener('click', () => alert('PDF Dışa Aktarma Başlatıldı'));
@@ -606,16 +903,26 @@ function getFilteredTransactions() {
      list = list.filter(t => t.category === state.filters.category);
   }
   if (state.filters.minAmt) {
-     list = list.filter(t => t.amount >= parseFloat(state.filters.minAmt));
+     const minAmount = parseMoneyInput(state.filters.minAmt);
+     list = list.filter(t => parseMoneyInput(t.amount) >= minAmount);
   }
   if (state.filters.maxAmt) {
-     list = list.filter(t => t.amount <= parseFloat(state.filters.maxAmt));
+     const maxAmount = parseMoneyInput(state.filters.maxAmt);
+     list = list.filter(t => parseMoneyInput(t.amount) <= maxAmount);
   }
   if (state.filters.startDate) {
-     list = list.filter(t => new Date(t.date) >= new Date(state.filters.startDate));
+     const startDate = startOfDay(parseLocalDate(state.filters.startDate));
+     list = list.filter(t => {
+       const transactionDate = parseLocalDate(t.date);
+       return transactionDate && transactionDate >= startDate;
+     });
   }
   if (state.filters.endDate) {
-     list = list.filter(t => new Date(t.date) <= new Date(state.filters.endDate));
+     const endDate = endOfDay(parseLocalDate(state.filters.endDate));
+     list = list.filter(t => {
+       const transactionDate = parseLocalDate(t.date);
+       return transactionDate && transactionDate <= endDate;
+     });
   }
 
   // Quick Chips
@@ -629,13 +936,19 @@ function getFilteredTransactions() {
      } else if (qc === 'week') {
        const fd = new Date(today);
        fd.setDate(fd.getDate() - 7);
-       list = list.filter(t => new Date(t.date) >= fd);
+       list = list.filter(t => {
+         const transactionDate = parseLocalDate(t.date);
+         return transactionDate && transactionDate >= fd;
+       });
      } else if (qc === 'month') {
        const fd = new Date(today);
        fd.setMonth(fd.getMonth() - 1);
-       list = list.filter(t => new Date(t.date) >= fd);
+       list = list.filter(t => {
+         const transactionDate = parseLocalDate(t.date);
+         return transactionDate && transactionDate >= fd;
+       });
      } else if (qc === 'high') {
-       list = list.filter(t => t.amount >= 5000);
+       list = list.filter(t => (parseMoneyInput(t.amount) || 0) >= 5000);
      } else if (qc === 'income') {
        list = list.filter(t => t.type === 'income');
      } else if (qc === 'expense') {
@@ -644,15 +957,16 @@ function getFilteredTransactions() {
   }
 
   // Sorting
-  const sort = state.filters.sort || 'date-desc';
+  const sort = state.filters.sort || 'created-desc';
   list.sort((a, b) => {
      switch (sort) {
-       case 'date-desc': return new Date(b.date) - new Date(a.date);
-       case 'date-asc': return new Date(a.date) - new Date(b.date);
-       case 'amount-desc': return b.amount - a.amount;
-       case 'amount-asc': return a.amount - b.amount;
+       case 'created-desc': return getCreatedSortValue(b) - getCreatedSortValue(a);
+       case 'date-desc': return (parseLocalDate(b.date)?.getTime() || 0) - (parseLocalDate(a.date)?.getTime() || 0);
+       case 'date-asc': return (parseLocalDate(a.date)?.getTime() || 0) - (parseLocalDate(b.date)?.getTime() || 0);
+       case 'amount-desc': return (parseMoneyInput(b.amount) || 0) - (parseMoneyInput(a.amount) || 0);
+       case 'amount-asc': return (parseMoneyInput(a.amount) || 0) - (parseMoneyInput(b.amount) || 0);
        case 'category': return a.category.localeCompare(b.category);
-       default: return new Date(b.date) - new Date(a.date);
+       default: return getCreatedSortValue(b) - getCreatedSortValue(a);
      }
   });
 
@@ -669,7 +983,6 @@ function renderAll() {
     return;
   }
 
-  renderDashboard();
   renderTable();
   renderCategoryDistribution();
   renderRecurring();
@@ -688,21 +1001,15 @@ function renderError(msg) {
   if (elements.chartSummary) elements.chartSummary.textContent = "Hata oluştu.";
 }
 
-function renderDashboard() {
-  const income = state.summary.income;
-  const expense = state.summary.expense;
-  const balance = state.summary.balance;
-
-  elements.totalIncome.textContent = `₺${income.toLocaleString()}`;
-  elements.totalExpense.textContent = `₺${expense.toLocaleString()}`;
-  elements.netBalance.textContent = `₺${balance.toLocaleString()}`;
-
-  if (balance >= 0) elements.netBalance.className = 'fin-text-gradient-success';
-  else elements.netBalance.className = 'fin-text-gradient-danger';
-}
-
 function renderTable() {
   const data = getFilteredTransactions();
+  const totalPages = Math.max(1, Math.ceil(data.length / TRANSACTION_PAGE_SIZE));
+
+  if (state.transactionPage > totalPages) state.transactionPage = totalPages;
+  if (state.transactionPage < 1) state.transactionPage = 1;
+
+  const startIndex = (state.transactionPage - 1) * TRANSACTION_PAGE_SIZE;
+  const visibleTransactions = data.slice(startIndex, startIndex + TRANSACTION_PAGE_SIZE);
   
   if (elements.resultsCount) {
     elements.resultsCount.textContent = `Toplam ${data.length} sonuç`;
@@ -720,17 +1027,20 @@ function renderTable() {
         </td>
       </tr>
     `;
+    if (elements.transactionPagination) elements.transactionPagination.innerHTML = '';
     return;
   }
 
   const canUpdate = hasPerm(state.user, 'finance:update');
   const canDelete = hasPerm(state.user, 'finance:delete');
 
-  elements.tbody.innerHTML = data.map(t => {
+  elements.tbody.innerHTML = visibleTransactions.map(t => {
     const isIncome = t.type === 'income';
+    const amount = parseMoneyInput(t.amount) || 0;
+    const date = parseLocalDate(t.date);
     return `
       <tr>
-        <td class="fin-date-col">${new Date(t.date).toLocaleDateString('tr-TR')}</td>
+        <td class="fin-date-col">${date ? date.toLocaleDateString('tr-TR') : '-'}</td>
         <td><strong>${t.desc}</strong></td>
         <td><span class="fin-badge">${t.category}</span></td>
         <td>
@@ -739,7 +1049,7 @@ function renderTable() {
            </span>
         </td>
         <td class="${isIncome ? 'fin-text-success' : 'fin-text-danger'}">
-          ${isIncome ? '+' : '-'}₺${t.amount.toLocaleString()}
+          ${isIncome ? '+' : '-'}${formatCurrency(amount)}
         </td>
         <td>
           <div class="fin-action-group">
@@ -756,19 +1066,39 @@ function renderTable() {
       </tr>
     `;
   }).join('');
+
+  if (!elements.transactionPagination) return;
+
+  if (data.length <= TRANSACTION_PAGE_SIZE) {
+    elements.transactionPagination.innerHTML = '';
+    return;
+  }
+
+  const endIndex = Math.min(startIndex + TRANSACTION_PAGE_SIZE, data.length);
+  elements.transactionPagination.innerHTML = `
+    <button class="fin-transaction-page-btn" data-transaction-page="${state.transactionPage - 1}" ${state.transactionPage === 1 ? 'disabled' : ''}>
+      Önceki
+    </button>
+    <span class="fin-transaction-page-info">${startIndex + 1}-${endIndex} / ${data.length}</span>
+    <button class="fin-transaction-page-btn" data-transaction-page="${state.transactionPage + 1}" ${state.transactionPage === totalPages ? 'disabled' : ''}>
+      Sonraki
+    </button>
+  `;
 }
 
-function renderCategoryDistribution() {
-  const expenses = state.transactions.filter(t => t.type === 'expense');
-  const catTotals = expenses.reduce((acc, t) => {
-    acc[t.category] = (acc[t.category] || 0) + t.amount;
+function renderCategoryDistributionByType(targetElement, type, emptyText) {
+  if (!targetElement) return;
+
+  const transactions = state.transactions.filter(t => t.type === type);
+  const catTotals = transactions.reduce((acc, t) => {
+    acc[t.category] = (acc[t.category] || 0) + (parseMoneyInput(t.amount) || 0);
     return acc;
   }, {});
 
-  const totalExp = expenses.reduce((s, t) => s + t.amount, 0);
+  const total = transactions.reduce((s, t) => s + (parseMoneyInput(t.amount) || 0), 0);
 
-  if (totalExp === 0) {
-    elements.catDistribution.innerHTML = '<p class="fin-empty">Gider bulunmuyor</p>';
+  if (total === 0) {
+    targetElement.innerHTML = `<p class="fin-empty">${emptyText}</p>`;
     return;
   }
 
@@ -788,7 +1118,7 @@ function renderCategoryDistribution() {
 
   Object.keys(catTotals).forEach(cat => {
     const val = catTotals[cat];
-    const sliceDeg = (val / totalExp) * 360;
+    const sliceDeg = (val / total) * 360;
     const color = getCatColor(cat);
     
     conicStops.push(`${color} ${currentAngle}deg ${currentAngle + sliceDeg}deg`);
@@ -799,13 +1129,13 @@ function renderCategoryDistribution() {
         <span style="width:10px; height:10px; border-radius:50%; background:${color}; flex-shrink:0;"></span>
         <div style="display:flex; justify-content:space-between; width:100%;">
           <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:140px;" title="${cat}">${cat}</span>
-          <strong>₺${val.toLocaleString()} <small>(%${Math.round((val/totalExp)*100)})</small></strong>
+          <strong>${formatCurrency(val)} <small>(%${Math.round((val/total)*100)})</small></strong>
         </div>
       </div>
     `;
   });
 
-  elements.catDistribution.innerHTML = `
+  targetElement.innerHTML = `
     <div style="display:flex; flex-direction:column; align-items:center; gap:24px; padding:10px 0;">
       <div style="width: 140px; height: 140px; border-radius: 50%; 
                   background: conic-gradient(${conicStops.join(', ')}); 
@@ -818,59 +1148,90 @@ function renderCategoryDistribution() {
   `;
 }
 
+function renderCategoryDistribution() {
+  renderCategoryDistributionByType(elements.catDistribution, 'expense', 'Gider bulunmuyor');
+  renderCategoryDistributionByType(elements.incomeCatDistribution, 'income', 'Gelir bulunmuyor');
+}
+
 function renderRecurring() {
-  elements.recurringList.innerHTML = state.recurring.map(r => `
-    <li>
-      <span>${r.name}</span>
-      <strong>₺${r.amount.toLocaleString()} <span style="font-size:12px; font-weight:normal; color:var(--text-dim);">/ ay</span></strong>
-    </li>
-  `).join('') || '<p class="fin-empty">Kayıt yok</p>';
+  const canUpdate = hasPerm(state.user, 'finance:update');
+  const canDelete = hasPerm(state.user, 'finance:delete');
+  const totalPages = Math.max(1, Math.ceil(state.recurring.length / RECURRING_PAGE_SIZE));
+
+  if (state.recurringPage > totalPages) state.recurringPage = totalPages;
+  if (state.recurringPage < 1) state.recurringPage = 1;
+
+  const startIndex = (state.recurringPage - 1) * RECURRING_PAGE_SIZE;
+  const visibleRecurring = state.recurring.slice(startIndex, startIndex + RECURRING_PAGE_SIZE);
+
+  elements.recurringList.innerHTML = visibleRecurring.map(r => {
+    const isIncome = r.type === 'income';
+    return `
+      <li>
+        <div class="fin-recurring-main">
+          <div class="fin-recurring-title-row">
+            <span class="fin-recurring-name">${r.name}</span>
+            <span class="fin-type ${isIncome ? 'fin-type-income' : 'fin-type-expense'}">
+              ${getRecurringTypeLabel(r.type)}
+            </span>
+          </div>
+          <span class="fin-recurring-schedule">${formatRecurringSchedule(r.period, r.startDate)}</span>
+        </div>
+        <strong class="fin-recurring-amount ${isIncome ? 'fin-text-success' : 'fin-text-danger'}">
+          ${isIncome ? '+' : '-'}₺${Number(r.amount || 0).toLocaleString()}
+          <span>${getRecurringPeriodLabel(r.period)}</span>
+        </strong>
+        <div class="fin-recurring-actions">
+          ${canUpdate ? `
+          <button class="fin-btn-icon fin-btn-recurring-edit" data-id="${r.id}" title="Düzenle">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+          </button>` : ''}
+          ${canDelete ? `
+          <button class="fin-btn-icon fin-btn-recurring-delete" data-id="${r.id}" title="Sil">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+          </button>` : ''}
+        </div>
+      </li>
+    `;
+  }).join('') || '<p class="fin-empty">Kayıt yok</p>';
+  if (!elements.recurringPagination) return;
+
+  if (state.recurring.length <= RECURRING_PAGE_SIZE) {
+    elements.recurringPagination.innerHTML = '';
+    return;
+  }
+
+  elements.recurringPagination.innerHTML = `
+    <button class="fin-recurring-page-btn" data-recurring-page="${state.recurringPage - 1}" ${state.recurringPage === 1 ? 'disabled' : ''}>
+      Onceki
+    </button>
+    <span class="fin-recurring-page-info">${state.recurringPage} / ${totalPages}</span>
+    <button class="fin-recurring-page-btn" data-recurring-page="${state.recurringPage + 1}" ${state.recurringPage === totalPages ? 'disabled' : ''}>
+      Sonraki
+    </button>
+  `;
 }
 
 function renderAnalyticsChart() {
-  const data = state.transactions;
-  const period = state.filters.chartPeriod || 'week';
-  const today = new Date();
-  
-  let startDate = new Date();
-  if (period === 'week') {
-    startDate.setDate(today.getDate() - 7);
-  } else if (period === 'month') {
-    startDate.setMonth(today.getMonth() - 1);
-  } else if (period === 'year') {
-    startDate.setFullYear(today.getFullYear() - 1);
-  }
-
-  // Filter existing data within timeframe
-  const filtered = data.filter(t => new Date(t.date) >= startDate);
-  
-  let income = filtered.filter(t => t.type === 'income').reduce((s,t)=>s+t.amount, 0);
-  let expense = filtered.filter(t => t.type === 'expense').reduce((s,t)=>s+t.amount, 0);
-  
-  // Create dummy fallback data if perfect 0 (for empty demo states to look appealing)
-  if (income === 0 && expense === 0) {
-     if(period === 'week') { income = 12500; expense = 8400; }
-     else if(period === 'month') { income = 65000; expense = 42000; }
-     else { income = 450000; expense = 380000; }
-  }
-
-  const net = income - expense;
+  const { income, expense, balance: net } = calculateTransactionTotals(state.transactions);
   const total = income + expense;
-  
-  // Avoid division by zero
-  const incPct = total > 0 ? (income / total) * 100 : 50;
-  // the conic gradient expects degrees. incDeg = incPct * 3.6
+  const hasData = total > 0;
+  const incPct = hasData ? (income / total) * 100 : 0;
+  const expensePct = hasData ? (expense / total) * 100 : 0;
   const incDeg = (incPct * 3.6).toFixed(1);
 
   const netColor = net >= 0 ? 'var(--success)' : 'var(--danger)';
-  const netSign = net > 0 ? '+' : '';
+  const netSign = net > 0 ? '+' : (net < 0 ? '-' : '');
+  const donutBg = hasData
+    ? `conic-gradient(var(--success) 0deg, var(--success) ${incDeg}deg, var(--danger) ${incDeg}deg, var(--danger) 360deg)`
+    : 'conic-gradient(rgba(148, 163, 184, 0.35) 0deg 360deg)';
 
   elements.analyticsChart.innerHTML = `
-    <div style="display: flex; width: 100%; height: 100%; align-items: center; justify-content: space-around; padding: 10px;">
-      <div class="fin-donut-chart" style="background: conic-gradient(var(--success) 0deg, var(--success) ${incDeg}deg, var(--danger) ${incDeg}deg, var(--danger) 360deg)">
+    <div class="fin-donut-layout">
+      <div class="fin-donut-chart" style="background: ${donutBg}">
         <div class="fin-donut-hole">
-          <span style="font-size: 11px; color: var(--text-dim); text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;">Net</span>
-          <span style="font-size: ${Math.abs(net) > 99999 ? '13px' : '16px'}; font-weight: 800; color: ${netColor}">${netSign}₺${Math.abs(net).toLocaleString()}</span>
+          <span class="fin-donut-hole-label">Net</span>
+          <span class="fin-donut-hole-value" style="font-size: ${Math.abs(net) > 99999 ? '16px' : '19px'}; color: ${hasData ? netColor : 'var(--text-dim)'}">${netSign}${formatCurrency(Math.abs(net))}</span>
         </div>
       </div>
       
@@ -880,29 +1241,44 @@ function renderAnalyticsChart() {
                <div style="width:12px; height:12px; border-radius:50%; background:var(--success);"></div>
                <span style="font-size:13px; color:var(--text-dim);">Gelir Hacmi</span>
             </div>
-            <strong style="color:var(--text-main); font-size:16px;">₺${income.toLocaleString()}</strong>
+            <strong style="color:var(--text-main); font-size:16px;">${formatCurrency(income)}</strong>
+            <small>%${Math.round(incPct)}</small>
          </div>
          <div class="fin-donut-legend-item">
             <div style="display:flex; align-items:center; gap:8px;">
                <div style="width:12px; height:12px; border-radius:50%; background:var(--danger);"></div>
                <span style="font-size:13px; color:var(--text-dim);">Gider Hacmi</span>
             </div>
-            <strong style="color:var(--text-main); font-size:16px;">₺${expense.toLocaleString()}</strong>
+            <strong style="color:var(--text-main); font-size:16px;">${formatCurrency(expense)}</strong>
+            <small>%${Math.round(expensePct)}</small>
+         </div>
+         <div class="fin-donut-legend-item">
+            <div style="display:flex; align-items:center; gap:8px;">
+               <div style="width:12px; height:12px; border-radius:50%; background:${netColor};"></div>
+               <span style="font-size:13px; color:var(--text-dim);">Net Bakiye</span>
+            </div>
+            <strong style="color:${netColor}; font-size:16px;">${netSign}${formatCurrency(Math.abs(net))}</strong>
+            <small>Gelir - Gider</small>
          </div>
       </div>
     </div>
   `;
 
-  // Update summary text
-  let summaryStr = '';
-  if(net > 0) {
-    summaryStr = `Seçili dönemde gelir payı %${Math.round(incPct)}.`;
+  if (!hasData) {
+    elements.chartSummary.textContent = 'Finans kaydı bulunmuyor.';
+    elements.chartSummary.className = 'fin-chart-summary';
+  } else if(net > 0) {
+    const summaryStr = `Toplam gelir payı %${Math.round(incPct)}.`;
+    elements.chartSummary.textContent = summaryStr;
     elements.chartSummary.className = 'fin-chart-summary fin-text-success';
+  } else if(net === 0) {
+    elements.chartSummary.textContent = 'Toplam gelir ve gider dengede.';
+    elements.chartSummary.className = 'fin-chart-summary';
   } else {
-    summaryStr = `Seçili dönemde gider payı %${Math.round(100 - incPct)}.`;
+    const summaryStr = `Toplam gider payı %${Math.round(expensePct)}.`;
+    elements.chartSummary.textContent = summaryStr;
     elements.chartSummary.className = 'fin-chart-summary fin-text-danger';
   }
-  elements.chartSummary.textContent = summaryStr;
 }
 
 function openModal(t = null) {
@@ -910,6 +1286,7 @@ function openModal(t = null) {
   const dFormat = t ? t.date : new Date().toISOString().slice(0, 10);
 
   document.getElementById('tr-id').value = t ? t.id : '';
+  document.getElementById('recurring-id').value = '';
   if (t) {
     if (t.type === 'income') document.getElementById('type-income').checked = true;
     else document.getElementById('type-expense').checked = true;
@@ -917,19 +1294,118 @@ function openModal(t = null) {
     document.getElementById('type-expense').checked = true; 
   }
   document.getElementById('tr-category').value = t ? t.category : 'Yönetim Kurulu';
+  syncCategoryDropdown();
   document.getElementById('tr-desc').value = t ? t.desc : '';
   document.getElementById('tr-amount').value = t ? t.amount : '';
   document.getElementById('tr-date').value = dFormat;
   
   const recCheck = document.getElementById('tr-recurring-check');
   if(recCheck) recCheck.checked = false;
+  if (elements.recurringPeriod) elements.recurringPeriod.value = 'aylik';
+  syncRecurringPeriodDropdown();
+  updateRecurringPeriodVisibility();
   const trNote = document.getElementById('tr-note');
   if(trNote) trNote.value = '';
+}
+
+function openRecurringModal(r) {
+  elements.modal.classList.add('open');
+
+  document.getElementById('tr-id').value = '';
+  document.getElementById('recurring-id').value = r.id;
+  if (r.type === 'income') document.getElementById('type-income').checked = true;
+  else document.getElementById('type-expense').checked = true;
+
+  document.getElementById('tr-category').value = r.category || 'Yönetim Kurulu';
+  syncCategoryDropdown();
+  document.getElementById('tr-desc').value = r.name || '';
+  document.getElementById('tr-amount').value = r.amount || '';
+  document.getElementById('tr-date').value = normalizeDate(r.startDate) || new Date().toISOString().slice(0, 10);
+
+  if (elements.recurringCheck) elements.recurringCheck.checked = true;
+  if (elements.recurringPeriod) elements.recurringPeriod.value = r.period || 'aylik';
+  syncRecurringPeriodDropdown();
+  updateRecurringPeriodVisibility();
+
+  const trNote = document.getElementById('tr-note');
+  if(trNote) trNote.value = r.note || '';
 }
 
 function closeModal() {
   elements.modal.classList.remove('open');
   elements.form.reset();
+  document.getElementById('recurring-id').value = '';
+  syncCategoryDropdown();
+  syncRecurringPeriodDropdown();
+  updateRecurringPeriodVisibility();
+}
+
+function getRecurringFormPayload() {
+  return {
+    baslik: document.getElementById('tr-desc').value,
+    miktar: parseMoneyInput(document.getElementById('tr-amount').value),
+    kategori: document.getElementById('tr-category').value,
+    aciklama: document.getElementById('tr-note').value || null,
+    periyot: getRecurringPeriodValue(),
+    baslangic_tarihi: document.getElementById('tr-date').value
+  };
+}
+
+async function updateRecurringFromForm(id, form) {
+  if (state.submitting) return;
+  if (!hasPerm(state.user, 'finance:update')) {
+    alert("Düzenleme yetkiniz yok.");
+    return;
+  }
+
+  const submitBtn = form.querySelector('button[type="submit"]');
+  const originalBtnText = submitBtn ? submitBtn.textContent : 'İşlemi Kaydet';
+  const prevRecurring = [...state.recurring];
+  const payload = getRecurringFormPayload();
+
+  try {
+    state.submitting = true;
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Kaydediliyor...';
+    }
+
+    state.recurring = state.recurring.map(r => r.id == id ? {
+      ...r,
+      name: payload.baslik,
+      amount: payload.miktar,
+      category: payload.kategori,
+      note: payload.aciklama || '',
+      period: payload.periyot,
+      startDate: payload.baslangic_tarihi
+    } : r);
+    renderRecurring();
+    closeModal();
+
+    const response = await fetch(`${API_URL}/recurring/${id}`, {
+      method: 'PUT',
+      headers: getHeaders(),
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.detail || 'Düzenli plan güncellenemedi.');
+    }
+
+    showToast('Düzenli plan güncellendi.');
+    fetchFinanceData(true);
+  } catch (err) {
+    state.recurring = prevRecurring;
+    renderRecurring();
+    alert('Hata: ' + err.message);
+  } finally {
+    state.submitting = false;
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = originalBtnText;
+    }
+  }
 }
 
 async function handleTransactionSubmit(e) {
@@ -937,18 +1413,44 @@ async function handleTransactionSubmit(e) {
   if (state.submitting) return;
 
   const idStr = document.getElementById('tr-id').value;
+  const recurringId = document.getElementById('recurring-id').value;
+  if (recurringId) {
+    await updateRecurringFromForm(recurringId, e.target);
+    return;
+  }
+
   const isNew = !idStr;
   const isRecurringRequested = document.getElementById('tr-recurring-check')?.checked;
+  const recurringPeriod = isRecurringRequested ? getRecurringPeriodValue() : null;
 
-  const typeVal = document.querySelector('input[name="tr-type"]:checked').value;
-  const t = {
+  const typeVal = normalizeTransactionType(document.querySelector('input[name="tr-type"]:checked')?.value);
+  const amount = parseMoneyInput(document.getElementById('tr-amount').value);
+  const date = normalizeDate(document.getElementById('tr-date').value);
+
+  if (typeVal !== 'income' && typeVal !== 'expense') {
+    alert('Lütfen gelir veya gider türünü seçin.');
+    return;
+  }
+
+  if (!Number.isFinite(amount) || amount <= 0) {
+    alert('Lütfen sıfırdan büyük geçerli bir tutar girin.');
+    return;
+  }
+
+  if (!date || !parseLocalDate(date)) {
+    alert('Lütfen geçerli bir işlem tarihi seçin.');
+    return;
+  }
+
+  const t = normalizeTransaction({
     type: typeVal,
     category: document.getElementById('tr-category').value,
-    desc: document.getElementById('tr-desc').value,
-    amount: parseFloat(document.getElementById('tr-amount').value),
-    date: document.getElementById('tr-date').value,
+    desc: document.getElementById('tr-desc').value.trim(),
+    amount,
+    date,
+    createdAt: new Date().toISOString(),
     note: document.getElementById('tr-note').value
-  };
+  });
 
   const submitBtn = e.target.querySelector('button[type="submit"]');
   const originalBtnText = submitBtn ? submitBtn.textContent : 'İşlemi Kaydet';
@@ -973,12 +1475,10 @@ async function handleTransactionSubmit(e) {
 
     // --- OPTIMISTIC UPDATE ---
     if (isNew) {
-      state.transactions.push({ ...t, id: tempId });
+      setTransactions([...state.transactions, { ...t, id: tempId }]);
     } else {
-      const idx = state.transactions.findIndex(x => x.id == idStr);
-      if (idx !== -1) state.transactions[idx] = { ...t, id: idStr };
+      setTransactions(state.transactions.map(x => x.id == idStr ? { ...t, id: idStr } : x));
     }
-    recalculateLocalSummary();
     renderAll();
     closeModal();
     // -------------------------
@@ -999,10 +1499,12 @@ async function handleTransactionSubmit(e) {
 
     const savedData = await response.json();
 
-    // --- SYNC REAL ID ---
-    if (isNew && savedData.id) {
-       const idx = state.transactions.findIndex(x => x.id === tempId);
-       if(idx !== -1) state.transactions[idx].id = savedData.id;
+    // --- SYNC SAVED RECORD ---
+    const savedTransaction = savedData && savedData.id ? mapToFrontend(savedData, { ...t, id: savedData.id }) : null;
+    if (savedTransaction) {
+      const targetId = isNew ? tempId : idStr;
+      setTransactions(state.transactions.map(x => x.id == targetId ? savedTransaction : x));
+      renderAll();
     }
     // --------------------
 
@@ -1012,17 +1514,19 @@ async function handleTransactionSubmit(e) {
         console.warn("User lacks finance:create permission for recurring.");
       } else {
         try {
+          const recurringPayload = {
+            baslik: t.desc,
+            miktar: t.amount,
+            kategori: t.category,
+            aciklama: t.note || 'Otomatik eklenen düzenli plan',
+            periyot: recurringPeriod || 'aylik',
+            baslangic_tarihi: t.date
+          };
+
           const recurringResponse = await fetch(`${API_URL}/recurring`, {
             method: 'POST',
             headers: getHeaders(),
-            body: JSON.stringify({
-              baslik: t.desc, 
-              miktar: t.amount,
-              kategori: t.category,
-              aciklama: t.note || 'Otomatik eklenen düzenli plan',
-              periyot: 'aylik',
-              baslangic_tarihi: t.date
-            })
+            body: JSON.stringify(recurringPayload)
           });
 
           if (!recurringResponse.ok) {
@@ -1030,6 +1534,19 @@ async function handleTransactionSubmit(e) {
             console.error("Recurring creation failed (Transaction succeeded):", recErrData);
             alert("İşlem kaydedildi fakat düzenli plan oluşturulamadı: " + (recErrData.detail || "Yetki veya sunucu hatası"));
           } else {
+            const savedRecurring = await recurringResponse.json();
+            state.recurring.unshift({
+              id: savedRecurring.id || `rec-${Date.now()}`,
+              name: savedRecurring.baslik || recurringPayload.baslik,
+              amount: savedRecurring.miktar || recurringPayload.miktar,
+              type: t.type,
+              category: savedRecurring.kategori || recurringPayload.kategori,
+              note: savedRecurring.aciklama || recurringPayload.aciklama || '',
+              period: savedRecurring.periyot || recurringPayload.periyot,
+              startDate: savedRecurring.baslangic_tarihi || recurringPayload.baslangic_tarihi
+            });
+            state.recurringPage = 1;
+            renderRecurring();
             console.log("Recurring plan created successfully.");
           }
         } catch (recErr) {
@@ -1046,8 +1563,7 @@ async function handleTransactionSubmit(e) {
   } catch (err) {
     console.error("Submission error:", err);
     // ROLLBACK
-    state.transactions = prevTransactions;
-    recalculateLocalSummary();
+    setTransactions(prevTransactions);
     renderAll();
     alert('Hata: ' + err.message);
   } finally {
@@ -1081,6 +1597,47 @@ function editTransaction(id) {
   if (t) openModal(t);
 }
 
+function editRecurring(id) {
+  if (!hasPerm(state.user, 'finance:update')) {
+    alert("Düzenleme yetkiniz yok.");
+    return;
+  }
+  const r = state.recurring.find(x => x.id == id);
+  if (r) openRecurringModal(r);
+}
+
+async function deleteRecurring(id) {
+  if (!hasPerm(state.user, 'finance:delete')) {
+    alert("Silme yetkiniz yok.");
+    return;
+  }
+  if (!confirm('Bu düzenli planı silmek istediğinize emin misiniz?')) return;
+
+  const prevRecurring = [...state.recurring];
+
+  try {
+    state.recurring = state.recurring.filter(x => x.id != id);
+    renderRecurring();
+
+    const response = await fetch(`${API_URL}/recurring/${id}`, {
+      method: 'DELETE',
+      headers: getHeaders()
+    });
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.detail || 'Düzenli plan silinemedi.');
+    }
+
+    showToast('Düzenli plan silindi.');
+    fetchFinanceData(true);
+  } catch (err) {
+    state.recurring = prevRecurring;
+    renderRecurring();
+    alert('Hata: ' + err.message);
+  }
+}
+
 async function deleteTransaction(id) {
   if (!hasPerm(state.user, 'finance:delete')) {
     alert("Silme yetkiniz yok.");
@@ -1091,8 +1648,7 @@ async function deleteTransaction(id) {
     
     try {
       // --- OPTIMISTIC DELETE ---
-      state.transactions = state.transactions.filter(x => x.id != id);
-      recalculateLocalSummary();
+      setTransactions(state.transactions.filter(x => x.id != id));
       renderAll();
       // -------------------------
 
@@ -1108,8 +1664,7 @@ async function deleteTransaction(id) {
       fetchFinanceData(true);
     } catch (err) {
       // ROLLBACK
-      state.transactions = prevTransactions;
-      recalculateLocalSummary();
+      setTransactions(prevTransactions);
       renderAll();
       alert('Hata: ' + err.message);
     }
