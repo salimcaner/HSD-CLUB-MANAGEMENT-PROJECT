@@ -156,22 +156,45 @@ def invite_user(email: str, first_name: str, last_name: str, role: str, departme
 # -------------------------
 # Şifre Değiştirme
 # -------------------------
-def change_password(user_id: str, old_password: str, new_password: str):
-    """
-    Kullanıcı kendi şifresini değiştirir
-    """
+def change_password(user_id: str, email: str, old_password: str, new_password: str, confirm_password: str):
+    if new_password != confirm_password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Yeni şifreler eşleşmiyor!"
+        )
+    if len(new_password) < 6:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Şifre en az 6 karakter olmalıdır!"
+        )
     try:
-        supabase.auth.admin.update_user_by_id(
+        from app.core.supabase_client import get_supabase
+        supabase_client = get_supabase()
+        
+        auth_response = supabase_client.auth.sign_in_with_password({
+            "email": email,
+            "password": old_password
+        })
+        
+        if not auth_response.user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Mevcut şifre hatalı!"
+            )
+        
+        admin_supabase = get_supabase()
+        admin_supabase.auth.admin.update_user_by_id(
             user_id,
             {"password": new_password}
         )
-        return True
+        return {"message": "Şifreniz başarıyla güncellendi!"}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Şifre değiştirilemedi: {str(e)}"
         )
-
 
 # -------------------------
 # Şifremi Unuttum

@@ -540,6 +540,73 @@
     color: var(--cal-text);
 }
 
+.cal-drawer-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    position: relative;
+}
+
+.cal-drawer-add-btn {
+    background: none;
+    border: none;
+    color: var(--cal-muted);
+    cursor: pointer;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s, transform 0.2s;
+    border-radius: 4px;
+}
+
+.cal-drawer-add-btn:hover {
+    color: var(--cal-accent);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.cal-drawer-add-dropdown {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 8px;
+    background: var(--cal-card);
+    border: 1px solid var(--cal-border);
+    border-radius: 8px;
+    display: none;
+    flex-direction: column;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    z-index: 1001;
+    overflow: hidden;
+    min-width: 140px;
+}
+
+.cal-drawer-add-dropdown.open {
+    display: flex;
+}
+
+.cal-drawer-add-btn-option {
+    padding: 10px 16px;
+    background: transparent;
+    border: none;
+    color: var(--cal-text);
+    font-family: var(--cal-font);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    text-align: left;
+    border-bottom: 1px solid var(--cal-border);
+    transition: background 0.15s;
+}
+
+.cal-drawer-add-btn-option:last-child {
+    border-bottom: none;
+}
+
+.cal-drawer-add-btn-option:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
 .cal-drawer-empty {
     color: var(--cal-muted);
     font-size: 14px;
@@ -615,6 +682,46 @@
 
 .cal-drawer-delete:hover {
     background: rgba(248, 113, 113, 0.15);
+    color: #f87171;
+}
+
+.cal-note-item {
+    position: relative;
+    padding-right: 76px;
+}
+
+.cal-note-actions {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.cal-note-icon-btn {
+    width: 28px;
+    height: 28px;
+    border: 1px solid var(--cal-border);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--cal-muted);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.cal-note-icon-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.18);
+    color: var(--cal-text);
+}
+
+.cal-note-delete:hover {
+    background: rgba(248, 113, 113, 0.15);
+    border-color: rgba(248, 113, 113, 0.35);
     color: #f87171;
 }
 
@@ -797,4 +904,4 @@ body.light-theme .cal-drawer-type {
 
 body.light-theme .cal-form-group input[type="date"]::-webkit-calendar-picker-indicator {
     filter: invert(0) opacity(0.5);
-}
+}

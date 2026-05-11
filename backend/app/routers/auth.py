@@ -107,8 +107,10 @@ async def change_password_endpoint(
     """
     change_password(
         user_id=current_user.id,
+        email=current_user.email,
         old_password=request.old_password,
-        new_password=request.new_password
+        new_password=request.new_password,
+        confirm_password=request.confirm_password
     )
     return {"message": "Şifreniz başarıyla değiştirildi!"}
 
