@@ -68,7 +68,6 @@ async def invite_endpoint(
     background_tasks: BackgroundTasks,
     current_user = Depends(security.require_lider_or_above)
 ):
-    print(f"DEBUG: İstek geldi! Email: {request.email}") # <--- Bunu en başa ekle
     user = invite_user(
         email=request.email,
         first_name=request.first_name,

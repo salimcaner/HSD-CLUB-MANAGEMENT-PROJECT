@@ -63,9 +63,9 @@ def create_user(
 # -------------------------
 # Tüm Kullanıcıları Getir
 # -------------------------
-def get_all_users():
-    response = supabase.table("profiles").select("*").execute()
-    
+def get_all_users(limit: int = 50, offset: int = 0):
+    response = supabase.table("profiles").select("*").range(offset, offset + limit - 1).execute()
+
     if response.data:
         users = []
         for user_dict in response.data:

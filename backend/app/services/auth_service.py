@@ -64,7 +64,7 @@ def invite_user(email: str, first_name: str, last_name: str, role: str, departme
                 "first_name": first_name,
                 "last_name": last_name
             },
-            "redirect_to": "http://127.0.0.1:8000/frontend/password/ConfirmPassword/password.html"
+            "redirect_to": f"{config.settings.APP_BASE_URL}/frontend/password/ConfirmPassword/password.html"
         }
         resp = requests.post(url, headers=headers, json=payload)
         
@@ -218,7 +218,7 @@ def forgot_password(email: str, background_tasks=None):
         payload = {
             "type": "recovery",
             "email": email,
-            "redirect_to": "http://127.0.0.1:8000/frontend/password/ConfirmPassword/password.html"
+            "redirect_to": f"{config.settings.APP_BASE_URL}/frontend/password/ConfirmPassword/password.html"
         }
         resp = requests.post(url, headers=headers, json=payload)
 

@@ -1,6 +1,6 @@
 from fastapi import HTTPException
 from app.core.supabase_client import get_supabase
-from datetime import datetime
+from datetime import datetime, timezone
 
 supabase = get_supabase()
 
@@ -79,8 +79,7 @@ async def get_recent_activities(limit: int = 7):
 # ==========================================
 async def get_upcoming_event_countdown():
     try:
-        # Şu anki zamanı alıyoruz (ISO formatında)
-        now = datetime.now().isoformat()
+        now = datetime.now(timezone.utc).isoformat()
         
         # Etkinlik tarihi şu andan büyük (gelecekte) olan, 
         # tarihe göre en yakın (en küçük tarihli) 1 tanesini getir.
