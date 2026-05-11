@@ -20,4 +20,6 @@ class Settings:
     SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "")
     SMTP_FROM_EMAIL: str = os.getenv("SMTP_FROM_EMAIL", os.getenv("SMTP_USERNAME", ""))
 
+    APP_BASE_URL: str = os.getenv("APP_BASE_URL", "http://127.0.0.1:8000")
+
 settings = Settings()

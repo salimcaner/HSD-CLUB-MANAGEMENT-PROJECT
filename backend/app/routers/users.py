@@ -1,5 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from typing import List,Optional  
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from typing import List, Optional
 from app.schemas.user import User, UserUpdateAdmin, UserUpdateSelf
 from app.services.user_service import (
     get_user_by_email,
@@ -38,12 +38,14 @@ async def update_self(
 # -------------------------
 @router.get("/", response_model=List[User])
 async def list_users(
+    limit: int = Query(50, ge=1, le=100, description="Sayfa başına kullanıcı sayısı"),
+    offset: int = Query(0, ge=0, description="Atlanacak kayıt sayısı"),
     current_user = Depends(security.require_lider_or_above)
 ):
     """
     Tüm kullanıcıları listele (Yönetim yetkisi gerekli)
     """
-    users = get_all_users()
+    users = get_all_users(limit=limit, offset=offset)
     return users
 
 
@@ -127,7 +129,13 @@ async def update_user_endpoint(
             detail="Güncelleme yetkiniz yok. Sadece kendi profilinizi veya Yönetim yetkiniz varsa diğer profilleri güncelleyebilirsiniz."
         )
     # 2. GÜNCELLEME İŞLEMİ
-    updated_user = update_user(user_id, user_data.dict(exclude_unset=True))
+    update_dict = user_data.dict(exclude_unset=True)
+
+    # Sadece sahip olan ama admin olmayan kullanıcı rol değiştiremez
+    if is_owner and not is_admin:
+        update_dict.pop("role", None)
+
+    updated_user = update_user(user_id, update_dict)
     if not updated_user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

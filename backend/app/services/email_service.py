@@ -10,8 +10,6 @@ def send_invite_email(to_email: str, invite_link: str, first_name: str, last_nam
     Sends an invitation email to the user with the generated invite link.
     """
     if not settings.SMTP_USERNAME or not settings.SMTP_PASSWORD:
-        print("!!! SMTP AYARLARI EKSİK! E-POSTA GÖNDERİLEMEDİ: SMTP_USERNAME veya SMTP_PASSWORD bulunamadı.")
-        print(f"!!! OLUŞTURULAN DAVET LİNKİ: {invite_link}")
         # Eğer SMTP ayarları yoksa geliştirme ortamındadır diye linki loglayıp devam edebilir veya hata fırlatabiliriz.
         # Hata fırlatmayı seçiyoruz.
         raise HTTPException(
