@@ -22,7 +22,17 @@ class TransactionUpdate(BaseModel):
 class RecurringCreate(BaseModel):
     baslik: str
     miktar: float
+    tur: Optional[str] = "gider"  # 'gelir' veya 'gider'
     kategori: Optional[str] = None
     aciklama: Optional[str] = None
     periyot: str  # 'haftalik', 'aylik', 'yillik'
     baslangic_tarihi: date
+
+class RecurringUpdate(BaseModel):
+    baslik: Optional[str] = None
+    miktar: Optional[float] = None
+    tur: Optional[str] = None
+    kategori: Optional[str] = None
+    aciklama: Optional[str] = None
+    periyot: Optional[str] = None
+    baslangic_tarihi: Optional[date] = None

@@ -1,7 +1,7 @@
 import { getToken } from "../store.js";
 import { BASE_URL } from "../config.js";
 
-const NOTES_KEY = "calendar_notes_v1";
+// Notlar artık backend API'den geliyor (localStorage kaldırıldı)
 const API_URL = BASE_URL;
 
 export const CATEGORY = {
@@ -17,7 +17,7 @@ export const CATEGORY = {
 let currentDate = new Date();
 let selectedCalendarDate = new Date().toISOString().slice(0, 10);
 let editingNoteId = null;
-let notes = loadNotes();
+let notes = [];
 let events = [];
 
 export function renderCalendar(user) {
@@ -115,7 +115,7 @@ export function renderCalendar(user) {
 }
 
 export async function initCalendar() {
-  notes = loadNotes();
+  notes = await loadNotes();
   await loadEvents();
   renderGrid();
   bindNav();
@@ -128,18 +128,31 @@ function canUserManageNotes(user) {
   return role !== "uye" && role !== "üye";
 }
 
-function loadNotes() {
+async function loadNotes() {
   try {
-    const parsed = JSON.parse(localStorage.getItem(NOTES_KEY) || "[]");
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
+    const token = getToken();
+    const headers = token ? { "Authorization": `Bearer ${token}` } : {};
+    const response = await fetch(`${API_URL}/calendar/notes`, { headers });
+    if (!response.ok) {
+      console.warn("Notlar yüklenemedi:", response.status);
+      return [];
+    }
+    const data = await response.json();
+    // Backend: {baslik, icerik, tarih} → Frontend: {title, body, date}
+    return (data.data || []).map(n => ({
+      id: n.id,
+      title: n.baslik,
+      body: n.icerik,
+      date: String(n.tarih).slice(0, 10),
+      createdAt: n.created_at || ""
+    }));
+  } catch (err) {
+    console.warn("Notlar yüklenirken hata:", err);
     return [];
   }
 }
 
-function saveNotes() {
-  localStorage.setItem(NOTES_KEY, JSON.stringify(notes));
-}
+function saveNotes() { /* kaldırıldı – artık API kullanılıyor */ }
 
 async function loadEvents() {
   try {
@@ -412,7 +425,7 @@ function closeNoteModal() {
   if (bodyInput) bodyInput.value = "";
 }
 
-function saveNoteFromModal() {
+async function saveNoteFromModal() {
   const title = document.getElementById("calNoteTitleInput")?.value.trim();
   const body = document.getElementById("calNoteBodyInput")?.value.trim();
   const wasEditing = !!editingNoteId;
@@ -422,32 +435,61 @@ function saveNoteFromModal() {
     return;
   }
 
-  if (editingNoteId) {
-    notes = notes.map(note => String(note.id) === String(editingNoteId)
-      ? { ...note, title, body, updatedAt: new Date().toISOString() }
-      : note
-    );
-  } else {
-    notes.push({
-      id: `note-${Date.now()}`,
-      title,
-      body,
-      date: selectedCalendarDate,
-      createdAt: new Date().toISOString()
-    });
-  }
+  try {
+    const token = getToken();
+    const headers = token
+      ? { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" }
+      : { "Content-Type": "application/json" };
 
-  saveNotes();
-  closeNoteModal();
-  refreshOpenDate();
-  showToast(wasEditing ? "Not güncellendi." : "Not eklendi.", "success");
+    if (editingNoteId) {
+      const response = await fetch(`${API_URL}/calendar/notes/${editingNoteId}`, {
+        method: "PUT",
+        headers,
+        body: JSON.stringify({ baslik: title, icerik: body })
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.detail || "Not güncellenemedi.");
+      }
+    } else {
+      const response = await fetch(`${API_URL}/calendar/notes`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ baslik: title, icerik: body, tarih: selectedCalendarDate })
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.detail || "Not eklenemedi.");
+      }
+    }
+
+    notes = await loadNotes();
+    closeNoteModal();
+    refreshOpenDate();
+    showToast(wasEditing ? "Not güncellendi." : "Not eklendi.", "success");
+  } catch (err) {
+    showToast(err.message || "Bir hata oluştu.", "error");
+  }
 }
 
-function deleteNote(noteId) {
-  notes = notes.filter(note => String(note.id) !== String(noteId));
-  saveNotes();
-  refreshOpenDate();
-  showToast("Not silindi.", "success");
+async function deleteNote(noteId) {
+  try {
+    const token = getToken();
+    const headers = token ? { "Authorization": `Bearer ${token}` } : {};
+    const response = await fetch(`${API_URL}/calendar/notes/${noteId}`, {
+      method: "DELETE",
+      headers
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.detail || "Not silinemedi.");
+    }
+    notes = await loadNotes();
+    refreshOpenDate();
+    showToast("Not silindi.", "success");
+  } catch (err) {
+    showToast(err.message || "Bir hata oluştu.", "error");
+  }
 }
 
 function refreshOpenDate() {
