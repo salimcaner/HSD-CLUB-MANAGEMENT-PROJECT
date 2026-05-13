@@ -79,21 +79,55 @@ def get_summary(baslangic: date = None, bitis: date = None):
         "toplam_gider": toplam_gider,
         "net_bakiye": toplam_gelir - toplam_gider
     }
+
 # -------------------------
-# Düzenli Giderler
+# Düzenli Planları Listele
 # -------------------------
 def get_recurring():
     supabase = get_supabase()
     response = supabase.table("recurring_expenses").select("*").eq("aktif", True).execute()
     return response.data or []
 
+# -------------------------
+# Düzenli Plan Ekle
+# -------------------------
 def create_recurring(data: dict, olusturan_id: str):
     supabase = get_supabase()
     data["olusturan_id"] = olusturan_id
+    data["aktif"] = True
     if "baslangic_tarihi" in data and isinstance(data["baslangic_tarihi"], date):
         data["baslangic_tarihi"] = str(data["baslangic_tarihi"])
     
     response = supabase.table("recurring_expenses").insert(data).execute()
     if response.data:
         return response.data[0]
-    raise HTTPException(status_code=500, detail="Düzenli gider eklenemedi!")
+    raise HTTPException(status_code=500, detail="Düzenli plan eklenemedi!")
+
+# -------------------------
+# Düzenli Plan Güncelle
+# -------------------------
+def update_recurring(id: str, data: dict):
+    supabase = get_supabase()
+
+    # Tarih alanını string'e çevir
+    if "baslangic_tarihi" in data and isinstance(data["baslangic_tarihi"], date):
+        data["baslangic_tarihi"] = str(data["baslangic_tarihi"])
+
+    # None olan alanları temizle (boş güncelleme yapılmasın)
+    data = {k: v for k, v in data.items() if v is not None}
+
+    if not data:
+        raise HTTPException(status_code=400, detail="Güncellenecek alan bulunamadı!")
+
+    response = supabase.table("recurring_expenses").update(data).eq("id", id).execute()
+    if response.data:
+        return response.data[0]
+    raise HTTPException(status_code=404, detail="Düzenli plan bulunamadı!")
+
+# -------------------------
+# Düzenli Plan Sil
+# -------------------------
+def delete_recurring(id: str):
+    supabase = get_supabase()
+    supabase.table("recurring_expenses").delete().eq("id", id).execute()
+    return {"message": "Düzenli plan silindi!"}
