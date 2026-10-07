@@ -1,7 +1,9 @@
 🚀 HSD-CLUB-MANAGEMENT-PROJECT
 
 Üniversite topluluklarının yönetim süreçlerini dijitalleştirmek, hızlandırmak ve şeffaf hale getirmek amacıyla geliştirilmiş kapsamlı kulüp yönetim platformu.
+Not: Canlıya alınan proje develop branchinde yer almaktadır.
 
+Canlı Proje: https://hsd-backend-api.onrender.com/
 
 📌 Proje Hakkında
 
